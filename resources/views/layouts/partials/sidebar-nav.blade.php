@@ -24,5 +24,11 @@
                 <span>Articles</span>
             </a>
         </li>
+        <li class="nav-item">
+            <a href="{{ route('stock.fournisseurs.index') }}" class="nav-link d-flex align-items-center gap-2 {{ request()->routeIs('stock.fournisseurs.*') ? 'active' : '' }}">
+                <i class="bi bi-truck-front"></i>
+                <span>Fournisseurs</span>
+            </a>
+        </li>
     @endcan
 </ul>
