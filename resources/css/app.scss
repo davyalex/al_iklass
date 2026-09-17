@@ -9,6 +9,18 @@ $border-radius-sm: 0.375rem;
 $border-radius-lg: 0.75rem;
 $enable-shadows: false;
 
+// Bootstrap fait heriter le fond des cartes de $body-bg par defaut : on force le blanc
+// pour que les cartes (login, dashboard, articles...) restent blanches sur le fond bleu clair.
+$card-bg: #fff;
+
+// Champs de formulaire : fond blanc (heritait aussi de $body-bg) + bordure bleue
+// (au lieu du gris par defaut de Bootstrap)
+$input-bg: #fff;
+$input-border-color: $primary;
+$input-focus-bg: #fff;
+$input-focus-border-color: $primary;
+$input-focus-box-shadow: 0 0 0 0.2rem rgba(2, 87, 189, 0.15);
+
 @import "bootstrap/scss/bootstrap";
 @import "bootstrap-icons/font/bootstrap-icons.css";
 @import "select2/dist/css/select2.css";
