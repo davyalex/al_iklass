@@ -15,8 +15,8 @@
         </div>
 
         <div class="mb-3">
-            <x-input-label for="email" value="Adresse e-mail" />
-            <x-text-input id="email" name="email" type="email" :value="old('email', $user->email)" required autocomplete="username" />
+            <x-input-label for="email" value="Adresse e-mail (facultatif)" />
+            <x-text-input id="email" name="email" type="email" :value="old('email', $user->email)" autocomplete="email" />
             <x-input-error :messages="$errors->get('email')" />
         </div>
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Models\User;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -28,7 +29,7 @@ class LoginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'email' => ['required', 'string', 'email'],
+            'username' => ['required', 'string'],
             'password' => ['required', 'string'],
         ];
     }
@@ -42,13 +43,37 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
-            RateLimiter::hit($this->throttleKey());
+        $user = User::where('username', $this->string('username'))->first();
 
+        if ($user && $user->isLocked()) {
             throw ValidationException::withMessages([
-                'email' => trans('auth.failed'),
+                'username' => 'Ce compte est verrouillé après plusieurs tentatives échouées. Contactez un administrateur.',
             ]);
         }
+
+        if ($user && ! $user->is_active) {
+            throw ValidationException::withMessages([
+                'username' => 'Ce compte est désactivé. Contactez un administrateur.',
+            ]);
+        }
+
+        if (! $user || ! Auth::attempt(['username' => $this->string('username'), 'password' => $this->string('password')], $this->boolean('remember'))) {
+            RateLimiter::hit($this->throttleKey());
+
+            $user?->registerFailedLogin();
+
+            if ($user?->isLocked()) {
+                throw ValidationException::withMessages([
+                    'username' => 'Ce compte vient d\'être verrouillé après 3 tentatives échouées. Contactez un administrateur.',
+                ]);
+            }
+
+            throw ValidationException::withMessages([
+                'username' => trans('auth.failed'),
+            ]);
+        }
+
+        $user->clearFailedLogins();
 
         RateLimiter::clear($this->throttleKey());
     }
@@ -69,7 +94,7 @@ class LoginRequest extends FormRequest
         $seconds = RateLimiter::availableIn($this->throttleKey());
 
         throw ValidationException::withMessages([
-            'email' => trans('auth.throttle', [
+            'username' => trans('auth.throttle', [
                 'seconds' => $seconds,
                 'minutes' => ceil($seconds / 60),
             ]),
@@ -81,6 +106,6 @@ class LoginRequest extends FormRequest
      */
     public function throttleKey(): string
     {
-        return Str::transliterate(Str::lower($this->string('email')).'|'.$this->ip());
+        return Str::transliterate(Str::lower($this->string('username')).'|'.$this->ip());
     }
 }

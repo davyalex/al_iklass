@@ -22,8 +22,8 @@ class AuthenticationTest extends TestCase
         $user = User::factory()->create();
 
         $response = $this->post('/login', [
-            'email' => $user->email,
-            'password' => 'password',
+            'username' => $user->username,
+            'password' => '12345',
         ]);
 
         $this->assertAuthenticated();
@@ -35,11 +35,45 @@ class AuthenticationTest extends TestCase
         $user = User::factory()->create();
 
         $this->post('/login', [
-            'email' => $user->email,
+            'username' => $user->username,
             'password' => 'wrong-password',
         ]);
 
         $this->assertGuest();
+    }
+
+    public function test_deactivated_users_can_not_authenticate(): void
+    {
+        $user = User::factory()->inactive()->create();
+
+        $this->post('/login', [
+            'username' => $user->username,
+            'password' => '12345',
+        ]);
+
+        $this->assertGuest();
+    }
+
+    public function test_account_is_locked_after_three_failed_attempts(): void
+    {
+        $user = User::factory()->create();
+
+        foreach (range(1, 3) as $attempt) {
+            $this->post('/login', [
+                'username' => $user->username,
+                'password' => 'wrong-password',
+            ]);
+        }
+
+        $this->assertTrue($user->fresh()->isLocked());
+
+        $response = $this->post('/login', [
+            'username' => $user->username,
+            'password' => '12345',
+        ]);
+
+        $this->assertGuest();
+        $response->assertSessionHasErrors('username');
     }
 
     public function test_users_can_logout(): void

@@ -3,8 +3,8 @@
 namespace Database\Seeders;
 
 use App\Models\User;
+use App\Services\Admin\UserService;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Str;
 
 class AdminUserSeeder extends Seeder
 {
@@ -16,18 +16,16 @@ class AdminUserSeeder extends Seeder
             return;
         }
 
-        $password = Str::password(16);
-
-        $user = User::create([
+        $resultat = app(UserService::class)->creer([
             'name' => 'Alex Kouamelan',
+            'username' => 'superadmin',
             'email' => $email,
-            'password' => $password,
+            'telephone' => '0000000000',
+            'role' => 'superadmin',
         ]);
 
-        $user->assignRole('superadmin');
-
-        $this->command?->warn("Compte superadmin créé : {$email}");
-        $this->command?->warn("Mot de passe temporaire : {$password}");
+        $this->command?->warn("Compte superadmin créé : {$resultat['user']->username}");
+        $this->command?->warn("Mot de passe temporaire : {$resultat['password']}");
         $this->command?->warn('Notez-le maintenant, il ne sera plus jamais affiché.');
     }
 }

@@ -42,5 +42,23 @@
                 <span>Paiements</span>
             </a>
         </li>
+        <li class="nav-item">
+            <a href="{{ route('stock.sorties.index') }}" class="nav-link d-flex align-items-center gap-2 {{ request()->routeIs('stock.sorties.*') ? 'active' : '' }}">
+                <i class="bi bi-box-arrow-up-right"></i>
+                <span>Sorties</span>
+            </a>
+        </li>
+    @endcan
+
+    @can('users.view')
+        <li class="nav-item mt-3">
+            <span class="px-3 text-uppercase small fw-semibold" style="color: rgba(255,255,255,0.45); letter-spacing: .04em;">Administration</span>
+        </li>
+        <li class="nav-item">
+            <a href="{{ route('admin.users.index') }}" class="nav-link d-flex align-items-center gap-2 {{ request()->routeIs('admin.users.*') ? 'active' : '' }}">
+                <i class="bi bi-people"></i>
+                <span>Utilisateurs</span>
+            </a>
+        </li>
     @endcan
 </ul>

@@ -24,9 +24,19 @@ class RolePermissionSeeder extends Seeder
         'stock.demande.create',
     ];
 
+    /**
+     * Permissions de gestion des utilisateurs.
+     *
+     * @var list<string>
+     */
+    private const USER_PERMISSIONS = [
+        'users.view',
+        'users.manage',
+    ];
+
     public function run(): void
     {
-        foreach (self::STOCK_PERMISSIONS as $permission) {
+        foreach ([...self::STOCK_PERMISSIONS, ...self::USER_PERMISSIONS] as $permission) {
             Permission::firstOrCreate(['name' => $permission, 'guard_name' => 'web']);
         }
 
@@ -34,7 +44,7 @@ class RolePermissionSeeder extends Seeder
         Role::firstOrCreate(['name' => 'superadmin', 'guard_name' => 'web']);
 
         Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web'])
-            ->syncPermissions(self::STOCK_PERMISSIONS);
+            ->syncPermissions([...self::STOCK_PERMISSIONS, ...self::USER_PERMISSIONS]);
 
         Role::firstOrCreate(['name' => 'gestionnaire_stock', 'guard_name' => 'web'])
             ->syncPermissions(array_diff(self::STOCK_PERMISSIONS, ['stock.demande.create']));

@@ -7,9 +7,9 @@
         @csrf
 
         <div class="mb-3">
-            <x-input-label for="email" value="Adresse e-mail" />
-            <x-text-input id="email" type="email" name="email" :value="old('email')" required autofocus autocomplete="username" />
-            <x-input-error :messages="$errors->get('email')" />
+            <x-input-label for="username" value="Nom d'utilisateur" />
+            <x-text-input id="username" type="text" name="username" :value="old('username')" required autofocus autocomplete="username" />
+            <x-input-error :messages="$errors->get('username')" />
         </div>
 
         <div class="mb-3">
@@ -26,13 +26,5 @@
         <div class="d-grid gap-2">
             <x-primary-button>Se connecter</x-primary-button>
         </div>
-
-        @if (Route::has('password.request'))
-            <div class="text-center mt-3">
-                <a class="small text-decoration-none" href="{{ route('password.request') }}">
-                    Mot de passe oublié ?
-                </a>
-            </div>
-        @endif
     </form>
 </x-guest-layout>
