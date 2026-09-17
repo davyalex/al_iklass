@@ -30,5 +30,11 @@
                 <span>Fournisseurs</span>
             </a>
         </li>
+        <li class="nav-item">
+            <a href="{{ route('stock.achats.index') }}" class="nav-link d-flex align-items-center gap-2 {{ request()->routeIs('stock.achats.*') ? 'active' : '' }}">
+                <i class="bi bi-cart-check"></i>
+                <span>Achats</span>
+            </a>
+        </li>
     @endcan
 </ul>
