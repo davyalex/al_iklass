@@ -9,7 +9,56 @@
         @endcan
     </div>
 
-    <div class="card shadow-sm border-0">
+    <div class="card shadow-sm border-0 bg-white mb-3">
+        <div class="card-body">
+            <form id="filtres-achats" class="row g-2 align-items-end">
+                <div class="col-6 col-md-2">
+                    <label class="form-label small mb-1">Du</label>
+                    <input type="date" name="date_debut" class="form-control form-control-sm">
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label small mb-1">Au</label>
+                    <input type="date" name="date_fin" class="form-control form-control-sm">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small mb-1">Fournisseur</label>
+                    <select name="fournisseur_id" class="form-select form-select-sm select2-filtre-fournisseur">
+                        <option value="">Tous</option>
+                        @foreach ($fournisseurs as $fournisseur)
+                            <option value="{{ $fournisseur->id }}">{{ $fournisseur->nom }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label small mb-1">Statut</label>
+                    <select name="statut_paiement" class="form-select form-select-sm">
+                        <option value="">Tous</option>
+                        <option value="comptant">Comptant</option>
+                        <option value="partiel">Partiel</option>
+                        <option value="credit">Crédit</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-3 d-flex flex-wrap gap-2">
+                    <button type="button" class="btn btn-sm btn-primary" id="btn-filtrer-achats">
+                        <i class="bi bi-funnel me-1"></i>Filtrer
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-reset-achats">
+                        Réinitialiser
+                    </button>
+                    <div class="ms-md-auto d-flex gap-2">
+                        <a href="#" id="btn-export-excel-achats" class="btn btn-sm btn-outline-success">
+                            <i class="bi bi-file-earmark-excel me-1"></i>Excel
+                        </a>
+                        <a href="#" id="btn-export-pdf-achats" class="btn btn-sm btn-outline-danger">
+                            <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0 bg-white">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0 w-100" id="table-achats">
                 <thead>
@@ -120,11 +169,12 @@
 
     @push('scripts')
         <script>
-        $(function () {
+        document.addEventListener('DOMContentLoaded', function () {
             let ligneIndex = 0;
             const modalAchat = new bootstrap.Modal('#modal-achat');
 
             $('.select2-fournisseur').select2({ dropdownParent: $('#modal-achat'), width: '100%' });
+            $('.select2-filtre-fournisseur').select2({ width: '100%', placeholder: 'Tous' });
 
             function recalculerTotal() {
                 let total = 0;
@@ -190,10 +240,22 @@
                     });
             });
 
-            $('#table-achats').DataTable({
+            function filtresAchats() {
+                return {
+                    date_debut: $('#filtres-achats [name=date_debut]').val(),
+                    date_fin: $('#filtres-achats [name=date_fin]').val(),
+                    fournisseur_id: $('#filtres-achats [name=fournisseur_id]').val(),
+                    statut_paiement: $('#filtres-achats [name=statut_paiement]').val(),
+                };
+            }
+
+            const tableAchats = $('#table-achats').DataTable({
                 processing: true,
                 serverSide: true,
-                ajax: '{{ route('stock.achats.data') }}',
+                ajax: {
+                    url: '{{ route('stock.achats.data') }}',
+                    data: (d) => Object.assign(d, filtresAchats()),
+                },
                 language: { url: 'https://cdn.datatables.net/plug-ins/2.1.8/i18n/fr-FR.json' },
                 columns: [
                     { data: 'date_achat', name: 'date_achat' },
@@ -205,6 +267,29 @@
                     { data: 'statut_badge', name: 'statut_paiement', orderable: false },
                 ],
                 order: [[0, 'desc']],
+            });
+
+            $('#btn-filtrer-achats').on('click', () => tableAchats.ajax.reload());
+
+            $('#btn-reset-achats').on('click', function () {
+                $('#filtres-achats')[0].reset();
+                $('.select2-filtre-fournisseur').val('').trigger('change');
+                tableAchats.ajax.reload();
+            });
+
+            function urlAvecFiltres(base) {
+                const params = new URLSearchParams(filtresAchats());
+                return base + '?' + params.toString();
+            }
+
+            $('#btn-export-excel-achats').on('click', function (e) {
+                e.preventDefault();
+                window.location = urlAvecFiltres('{{ route('stock.achats.export.excel') }}');
+            });
+
+            $('#btn-export-pdf-achats').on('click', function (e) {
+                e.preventDefault();
+                window.location = urlAvecFiltres('{{ route('stock.achats.export.pdf') }}');
             });
         });
         </script>

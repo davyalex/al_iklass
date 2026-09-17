@@ -8,6 +8,9 @@
         <title>{{ config('app.name') }}@isset($title) — {{ $title }}@endisset</title>
 
         @vite(['resources/css/app.scss', 'resources/js/app.js'])
+        {{-- select2 : script classique (pas de bundle ESM), chargé après le bundle Vite
+             pour que window.jQuery existe déjà — voir resources/js/app.js. --}}
+        <script defer src="{{ asset('vendor/select2/select2.min.js') }}"></script>
     </head>
     <body>
         <div class="d-flex">

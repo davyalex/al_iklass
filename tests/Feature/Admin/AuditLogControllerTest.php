@@ -55,4 +55,54 @@ class AuditLogControllerTest extends TestCase
         $descriptions = collect($response->json('data'))->pluck('description');
         $this->assertTrue($descriptions->contains(fn ($d) => str_contains($d, 'Nouvel Utilisateur')));
     }
+
+    public function test_data_can_be_filtered_by_causer_and_search(): void
+    {
+        $admin = User::factory()->create()->assignRole('admin');
+
+        $this->actingAs($admin);
+
+        app(UserService::class)->creer([
+            'name' => 'Utilisateur Filtré',
+            'username' => 'utilisateurfiltre',
+            'telephone' => '0102030406',
+            'role' => 'gestionnaire',
+        ]);
+
+        $response = $this->actingAs($admin)->getJson(route('admin.audit.data', [
+            'causer_id' => $admin->id,
+            'recherche' => 'Utilisateur Filtré',
+        ]));
+
+        $response->assertOk();
+        $this->assertGreaterThanOrEqual(1, $response->json('recordsFiltered'));
+
+        $responseVide = $this->actingAs($admin)->getJson(route('admin.audit.data', [
+            'recherche' => 'Action inexistante xyz',
+        ]));
+
+        $responseVide->assertOk();
+        $this->assertSame(0, $responseVide->json('recordsFiltered'));
+    }
+
+    public function test_admin_can_export_audit_log_excel_and_pdf(): void
+    {
+        $admin = User::factory()->create()->assignRole('admin');
+
+        $this->actingAs($admin)->get(route('admin.audit.export.excel'))
+            ->assertOk()
+            ->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+        $this->actingAs($admin)->get(route('admin.audit.export.pdf'))
+            ->assertOk()
+            ->assertHeader('content-type', 'application/pdf');
+    }
+
+    public function test_gestionnaire_cannot_export_audit_log(): void
+    {
+        $user = User::factory()->create()->assignRole('gestionnaire');
+
+        $this->actingAs($user)->get(route('admin.audit.export.excel'))->assertForbidden();
+        $this->actingAs($user)->get(route('admin.audit.export.pdf'))->assertForbidden();
+    }
 }

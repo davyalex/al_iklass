@@ -138,7 +138,7 @@
 
     @push('scripts')
         <script>
-        $(function () {
+        document.addEventListener('DOMContentLoaded', function () {
             $('.select2-role').select2({ dropdownParent: $('#modal-utilisateur'), width: '100%' });
 
             $('#recherche-utilisateur').on('input', function () {

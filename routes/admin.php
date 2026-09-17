@@ -33,5 +33,7 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::middleware('permission:audit.view')->group(function () {
         Route::get('audit', [AuditLogController::class, 'index'])->name('audit.index');
         Route::get('audit/data', [AuditLogController::class, 'data'])->name('audit.data');
+        Route::get('audit/export/excel', [AuditLogController::class, 'exportExcel'])->name('audit.export.excel');
+        Route::get('audit/export/pdf', [AuditLogController::class, 'exportPdf'])->name('audit.export.pdf');
     });
 });

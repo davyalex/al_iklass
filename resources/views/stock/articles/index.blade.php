@@ -60,7 +60,7 @@
     <div class="modal fade" id="modal-article" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
-                <form id="form-article">
+                <form id="form-article" class="needs-validation" novalidate>
                     <input type="hidden" name="id" id="article-id">
                     <div class="modal-header">
                         <h5 class="modal-title" id="modal-article-titre">Nouvel article</h5>
@@ -70,10 +70,12 @@
                         <div class="mb-3">
                             <label class="form-label">Référence</label>
                             <input type="text" name="reference" class="form-control" required>
+                            <div class="invalid-feedback">La référence est obligatoire.</div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Nom</label>
                             <input type="text" name="nom" class="form-control" required>
+                            <div class="invalid-feedback">Le nom est obligatoire.</div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Catégorie</label>
@@ -92,11 +94,13 @@
                             <div class="col-6 mb-3">
                                 <label class="form-label">Seuil d'alerte</label>
                                 <input type="number" name="seuil_alerte" class="form-control" value="0" min="0" required>
+                                <div class="invalid-feedback">Le seuil doit être un nombre positif ou nul.</div>
                             </div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Prix de vente suggéré (FCFA)</label>
                             <input type="number" name="prix_vente" class="form-control" min="0" step="0.01">
+                            <div class="invalid-feedback">Le prix doit être un nombre positif ou nul.</div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Description</label>
@@ -118,7 +122,7 @@
 
     @push('scripts')
         <script>
-        $(function () {
+        document.addEventListener('DOMContentLoaded', function () {
             $('.select2-categorie').select2({ dropdownParent: $('#modal-article'), width: '100%' });
 
             $('#recherche-article').on('input', function () {
@@ -140,9 +144,16 @@
             });
 
             const modal = new bootstrap.Modal('#modal-article');
+            const $form = $('#form-article');
+
+            function resetValidation() {
+                $form.removeClass('was-validated');
+                $form.find('.is-invalid').removeClass('is-invalid');
+            }
 
             $('#btn-nouvel-article').on('click', function () {
-                $('#form-article')[0].reset();
+                $form[0].reset();
+                resetValidation();
                 $('#article-id').val('');
                 $('#modal-article-titre').text('Nouvel article');
                 $('.select2-categorie').val('').trigger('change');
@@ -152,6 +163,7 @@
             $('.btn-modifier-article').on('click', function () {
                 const id = $(this).data('id');
                 $.get(`/stock/articles/${id}`, function (article) {
+                    resetValidation();
                     $('#article-id').val(article.id);
                     $('#form-article [name=reference]').val(article.reference);
                     $('#form-article [name=nom]').val(article.nom);
@@ -166,12 +178,21 @@
                 });
             });
 
-            $('#form-article').on('submit', function (e) {
+            $form.on('submit', function (e) {
                 e.preventDefault();
+                e.stopPropagation();
+
+                const formEl = $form[0];
+                $form.find('.is-invalid').removeClass('is-invalid');
+
+                if (!formEl.checkValidity()) {
+                    $form.addClass('was-validated');
+                    return;
+                }
 
                 const id = $('#article-id').val();
                 const url = id ? `/stock/articles/${id}` : '/stock/articles';
-                const data = $(this).serializeArray();
+                const data = $form.serializeArray();
                 if (id) {
                     data.push({ name: '_method', value: 'PUT' });
                 }
@@ -181,11 +202,19 @@
 
                 $.post(url, $.param(data))
                     .done(function (res) {
+                        resetValidation();
                         modal.hide();
                         Swal.fire({ icon: 'success', text: res.message, timer: 1800, showConfirmButton: false })
                             .then(() => window.location.reload());
                     })
                     .fail(function (xhr) {
+                        if (xhr.status === 422 && xhr.responseJSON?.errors) {
+                            $.each(xhr.responseJSON.errors, function (field, messages) {
+                                const $input = $form.find(`[name="${field}"]`);
+                                $input.addClass('is-invalid');
+                                $input.siblings('.invalid-feedback').text(messages[0]);
+                            });
+                        }
                         const msg = xhr.responseJSON?.message || 'Une erreur est survenue.';
                         Swal.fire({ icon: 'error', text: msg });
                     });

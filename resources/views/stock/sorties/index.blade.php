@@ -14,7 +14,55 @@
         @endcan
     </div>
 
-    <div class="card shadow-sm border-0">
+    <div class="card shadow-sm border-0 bg-white mb-3">
+        <div class="card-body">
+            <form id="filtres-sorties" class="row g-2 align-items-end">
+                <div class="col-6 col-md-2">
+                    <label class="form-label small mb-1">Du</label>
+                    <input type="date" name="date_debut" class="form-control form-control-sm">
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label small mb-1">Au</label>
+                    <input type="date" name="date_fin" class="form-control form-control-sm">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small mb-1">Article</label>
+                    <select name="article_id" class="form-select form-select-sm select2-filtre-article">
+                        <option value="">Tous</option>
+                        @foreach ($articles as $article)
+                            <option value="{{ $article->id }}">{{ $article->reference }} — {{ $article->nom }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label small mb-1">Nature</label>
+                    <select name="nature" class="form-select form-select-sm">
+                        <option value="">Toutes</option>
+                        <option value="interne">Interne</option>
+                        <option value="externe">Vente externe</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-3 d-flex flex-wrap gap-2">
+                    <button type="button" class="btn btn-sm btn-primary" id="btn-filtrer-sorties">
+                        <i class="bi bi-funnel me-1"></i>Filtrer
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-reset-sorties">
+                        Réinitialiser
+                    </button>
+                    <div class="ms-md-auto d-flex gap-2">
+                        <a href="#" id="btn-export-excel-sorties" class="btn btn-sm btn-outline-success">
+                            <i class="bi bi-file-earmark-excel me-1"></i>Excel
+                        </a>
+                        <a href="#" id="btn-export-pdf-sorties" class="btn btn-sm btn-outline-danger">
+                            <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0 bg-white">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0 w-100" id="table-sorties">
                 <thead>
@@ -101,7 +149,7 @@
 
     @push('scripts')
         <script>
-        $(function () {
+        document.addEventListener('DOMContentLoaded', function () {
             const modal = new bootstrap.Modal('#modal-sortie');
 
             function ouvrirModale(nature) {
@@ -131,6 +179,7 @@
 
             $('.select2-article-sortie').select2({ dropdownParent: $('#modal-sortie'), width: '100%' });
             $('.select2-vehicule').select2({ dropdownParent: $('#modal-sortie'), width: '100%' });
+            $('.select2-filtre-article').select2({ width: '100%', placeholder: 'Tous' });
 
             $('#form-sortie').on('submit', function (e) {
                 e.preventDefault();
@@ -156,10 +205,22 @@
                     });
             });
 
-            $('#table-sorties').DataTable({
+            function filtresSorties() {
+                return {
+                    date_debut: $('#filtres-sorties [name=date_debut]').val(),
+                    date_fin: $('#filtres-sorties [name=date_fin]').val(),
+                    article_id: $('#filtres-sorties [name=article_id]').val(),
+                    nature: $('#filtres-sorties [name=nature]').val(),
+                };
+            }
+
+            const tableSorties = $('#table-sorties').DataTable({
                 processing: true,
                 serverSide: true,
-                ajax: '{{ route('stock.sorties.data') }}',
+                ajax: {
+                    url: '{{ route('stock.sorties.data') }}',
+                    data: (d) => Object.assign(d, filtresSorties()),
+                },
                 language: { url: 'https://cdn.datatables.net/plug-ins/2.1.8/i18n/fr-FR.json' },
                 columns: [
                     { data: 'date_mouvement', name: 'date_mouvement' },
@@ -170,6 +231,29 @@
                     { data: 'prix_vente', name: 'prix_vente' },
                 ],
                 order: [[0, 'desc']],
+            });
+
+            $('#btn-filtrer-sorties').on('click', () => tableSorties.ajax.reload());
+
+            $('#btn-reset-sorties').on('click', function () {
+                $('#filtres-sorties')[0].reset();
+                $('.select2-filtre-article').val('').trigger('change');
+                tableSorties.ajax.reload();
+            });
+
+            function urlAvecFiltres(base) {
+                const params = new URLSearchParams(filtresSorties());
+                return base + '?' + params.toString();
+            }
+
+            $('#btn-export-excel-sorties').on('click', function (e) {
+                e.preventDefault();
+                window.location = urlAvecFiltres('{{ route('stock.sorties.export.excel') }}');
+            });
+
+            $('#btn-export-pdf-sorties').on('click', function (e) {
+                e.preventDefault();
+                window.location = urlAvecFiltres('{{ route('stock.sorties.export.pdf') }}');
             });
         });
         </script>

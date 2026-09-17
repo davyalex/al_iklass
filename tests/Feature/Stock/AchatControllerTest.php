@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Stock;
 
+use App\Models\Achat;
 use App\Models\Article;
 use App\Models\Fournisseur;
 use App\Models\User;
@@ -71,5 +72,65 @@ class AchatControllerTest extends TestCase
             'fournisseur_id' => $fournisseur->id,
             'lignes' => [],
         ])->assertUnprocessable();
+    }
+
+    public function test_data_can_be_filtered_by_fournisseur_and_statut(): void
+    {
+        $user = User::factory()->create()->assignRole('gestionnaire_stock');
+        $fournisseurRecherche = Fournisseur::factory()->create();
+
+        Achat::factory()->create([
+            'fournisseur_id' => $fournisseurRecherche->id,
+            'statut_paiement' => 'comptant',
+        ]);
+        Achat::factory()->create([
+            'statut_paiement' => 'credit',
+        ]);
+
+        $response = $this->actingAs($user)->getJson(route('stock.achats.data', [
+            'fournisseur_id' => $fournisseurRecherche->id,
+            'statut_paiement' => 'comptant',
+        ]));
+
+        $response->assertOk();
+        $this->assertSame(1, $response->json('recordsFiltered'));
+    }
+
+    public function test_data_can_be_filtered_by_date_range(): void
+    {
+        $user = User::factory()->create()->assignRole('gestionnaire_stock');
+
+        Achat::factory()->create(['date_achat' => now()->subDays(10)]);
+        Achat::factory()->create(['date_achat' => now()]);
+
+        $response = $this->actingAs($user)->getJson(route('stock.achats.data', [
+            'date_debut' => now()->subDay()->format('Y-m-d'),
+            'date_fin' => now()->addDay()->format('Y-m-d'),
+        ]));
+
+        $response->assertOk();
+        $this->assertSame(1, $response->json('recordsFiltered'));
+    }
+
+    public function test_gestionnaire_stock_can_export_achats_excel_and_pdf(): void
+    {
+        $user = User::factory()->create()->assignRole('gestionnaire_stock');
+        Achat::factory()->create();
+
+        $this->actingAs($user)->get(route('stock.achats.export.excel'))
+            ->assertOk()
+            ->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+        $this->actingAs($user)->get(route('stock.achats.export.pdf'))
+            ->assertOk()
+            ->assertHeader('content-type', 'application/pdf');
+    }
+
+    public function test_chef_mecanicien_cannot_export_achats(): void
+    {
+        $user = User::factory()->create()->assignRole('chef_mecanicien');
+
+        $this->actingAs($user)->get(route('stock.achats.export.excel'))->assertForbidden();
+        $this->actingAs($user)->get(route('stock.achats.export.pdf'))->assertForbidden();
     }
 }

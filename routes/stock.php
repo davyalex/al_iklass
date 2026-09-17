@@ -17,12 +17,18 @@ Route::middleware(['auth'])->prefix('stock')->name('stock.')->group(function () 
 
         Route::get('achats', [AchatController::class, 'index'])->name('achats.index');
         Route::get('achats/data', [AchatController::class, 'data'])->name('achats.data');
+        Route::get('achats/export/excel', [AchatController::class, 'exportExcel'])->name('achats.export.excel');
+        Route::get('achats/export/pdf', [AchatController::class, 'exportPdf'])->name('achats.export.pdf');
 
         Route::get('paiements', [PaiementFournisseurController::class, 'index'])->name('paiements.index');
         Route::get('paiements/data', [PaiementFournisseurController::class, 'data'])->name('paiements.data');
+        Route::get('paiements/export/excel', [PaiementFournisseurController::class, 'exportExcel'])->name('paiements.export.excel');
+        Route::get('paiements/export/pdf', [PaiementFournisseurController::class, 'exportPdf'])->name('paiements.export.pdf');
 
         Route::get('sorties', [SortieStockController::class, 'index'])->name('sorties.index');
         Route::get('sorties/data', [SortieStockController::class, 'data'])->name('sorties.data');
+        Route::get('sorties/export/excel', [SortieStockController::class, 'exportExcel'])->name('sorties.export.excel');
+        Route::get('sorties/export/pdf', [SortieStockController::class, 'exportPdf'])->name('sorties.export.pdf');
     });
 
     Route::middleware('permission:stock.article.manage')->group(function () {

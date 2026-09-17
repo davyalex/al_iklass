@@ -151,7 +151,7 @@
 
     @push('scripts')
         <script>
-        $(function () {
+        document.addEventListener('DOMContentLoaded', function () {
             const modalRole = new bootstrap.Modal('#modal-role');
             const modalPermissions = new bootstrap.Modal('#modal-permissions');
 

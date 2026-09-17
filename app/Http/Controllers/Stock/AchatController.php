@@ -2,15 +2,22 @@
 
 namespace App\Http\Controllers\Stock;
 
+use App\Exports\Stock\AchatsExport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Stock\StoreAchatRequest;
 use App\Models\Achat;
 use App\Models\Article;
 use App\Models\Fournisseur;
 use App\Services\Stock\AchatService;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
+use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Yajra\DataTables\Facades\DataTables;
 
 class AchatController extends Controller
@@ -27,11 +34,11 @@ class AchatController extends Controller
         return view('stock.achats.index', compact('fournisseurs', 'articles'));
     }
 
-    public function data(): JsonResponse
+    public function data(Request $request): JsonResponse
     {
         Gate::authorize('viewAny', Achat::class);
 
-        $query = Achat::query()->with('fournisseur')->select('achats.*');
+        $query = $this->filtrer(Achat::query(), $request)->with('fournisseur')->select('achats.*');
 
         return DataTables::of($query)
             ->editColumn('date_achat', fn (Achat $achat) => $achat->date_achat->format('d/m/Y'))
@@ -59,5 +66,34 @@ class AchatController extends Controller
             'message' => "Achat #{$achat->id} enregistré.",
             'achat' => $achat,
         ], 201);
+    }
+
+    public function exportExcel(Request $request): BinaryFileResponse
+    {
+        Gate::authorize('viewAny', Achat::class);
+
+        $achats = $this->filtrer(Achat::query(), $request)->with('fournisseur')->orderByDesc('date_achat')->get();
+
+        return Excel::download(new AchatsExport($achats), 'achats-'.now()->format('Y-m-d-His').'.xlsx');
+    }
+
+    public function exportPdf(Request $request): Response
+    {
+        Gate::authorize('viewAny', Achat::class);
+
+        $achats = $this->filtrer(Achat::query(), $request)->with('fournisseur')->orderByDesc('date_achat')->get();
+
+        return Pdf::loadView('exports.pdf.achats', ['achats' => $achats])
+            ->setPaper('a4', 'landscape')
+            ->download('achats-'.now()->format('Y-m-d-His').'.pdf');
+    }
+
+    private function filtrer(Builder $query, Request $request): Builder
+    {
+        return $query
+            ->when($request->filled('date_debut'), fn (Builder $q) => $q->whereDate('date_achat', '>=', $request->string('date_debut')))
+            ->when($request->filled('date_fin'), fn (Builder $q) => $q->whereDate('date_achat', '<=', $request->string('date_fin')))
+            ->when($request->filled('fournisseur_id'), fn (Builder $q) => $q->where('fournisseur_id', $request->integer('fournisseur_id')))
+            ->when($request->filled('statut_paiement'), fn (Builder $q) => $q->where('statut_paiement', $request->string('statut_paiement')));
     }
 }

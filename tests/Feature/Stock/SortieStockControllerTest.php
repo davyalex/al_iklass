@@ -92,4 +92,69 @@ class SortieStockControllerTest extends TestCase
             'motif' => 'Test',
         ])->assertForbidden();
     }
+
+    public function test_data_can_be_filtered_by_article_and_nature(): void
+    {
+        $user = User::factory()->create()->assignRole('gestionnaire_stock');
+        $article = Article::factory()->create(['quantite_stock' => 10]);
+        $vehicule = Vehicule::factory()->create();
+
+        $this->actingAs($user)->postJson(route('stock.sorties.store'), [
+            'nature' => 'interne',
+            'article_id' => $article->id,
+            'quantite' => 1,
+            'vehicule_id' => $vehicule->id,
+            'motif' => 'Test',
+        ])->assertCreated();
+
+        $autreArticle = Article::factory()->create(['quantite_stock' => 10]);
+        $this->actingAs($user)->postJson(route('stock.sorties.store'), [
+            'nature' => 'externe',
+            'article_id' => $autreArticle->id,
+            'quantite' => 1,
+            'prix_vente' => 1000,
+            'vehicule_externe' => 'CI-0002-BB',
+            'acheteur' => 'Autre client',
+            'motif' => 'Vente',
+        ])->assertCreated();
+
+        $response = $this->actingAs($user)->getJson(route('stock.sorties.data', [
+            'article_id' => $article->id,
+            'nature' => 'interne',
+        ]));
+
+        $response->assertOk();
+        $this->assertSame(1, $response->json('recordsFiltered'));
+    }
+
+    public function test_gestionnaire_stock_can_export_sorties_excel_and_pdf(): void
+    {
+        $user = User::factory()->create()->assignRole('gestionnaire_stock');
+        $article = Article::factory()->create(['quantite_stock' => 10]);
+        $vehicule = Vehicule::factory()->create();
+
+        $this->actingAs($user)->postJson(route('stock.sorties.store'), [
+            'nature' => 'interne',
+            'article_id' => $article->id,
+            'quantite' => 1,
+            'vehicule_id' => $vehicule->id,
+            'motif' => 'Test',
+        ])->assertCreated();
+
+        $this->actingAs($user)->get(route('stock.sorties.export.excel'))
+            ->assertOk()
+            ->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+        $this->actingAs($user)->get(route('stock.sorties.export.pdf'))
+            ->assertOk()
+            ->assertHeader('content-type', 'application/pdf');
+    }
+
+    public function test_chef_mecanicien_cannot_export_sorties(): void
+    {
+        $user = User::factory()->create()->assignRole('chef_mecanicien');
+
+        $this->actingAs($user)->get(route('stock.sorties.export.excel'))->assertForbidden();
+        $this->actingAs($user)->get(route('stock.sorties.export.pdf'))->assertForbidden();
+    }
 }

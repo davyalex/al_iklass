@@ -3,15 +3,22 @@
 namespace App\Http\Controllers\Stock;
 
 use App\Exceptions\Stock\StockInsuffisantException;
+use App\Exports\Stock\SortiesStockExport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Stock\StoreSortieRequest;
 use App\Models\Article;
 use App\Models\MouvementStock;
 use App\Models\Vehicule;
 use App\Services\Stock\SortieStockService;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
+use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Yajra\DataTables\Facades\DataTables;
 
 class SortieStockController extends Controller
@@ -28,11 +35,11 @@ class SortieStockController extends Controller
         return view('stock.sorties.index', compact('articles', 'vehicules'));
     }
 
-    public function data(): JsonResponse
+    public function data(Request $request): JsonResponse
     {
         Gate::authorize('viewAny', MouvementStock::class);
 
-        $query = MouvementStock::query()->sorties()->select('mouvements_stock.*');
+        $query = $this->filtrer(MouvementStock::query()->sorties(), $request)->select('mouvements_stock.*');
 
         return DataTables::of($query)
             ->editColumn('date_mouvement', fn (MouvementStock $m) => $m->date_mouvement->format('d/m/Y H:i'))
@@ -69,5 +76,34 @@ class SortieStockController extends Controller
             'message' => 'Sortie de stock enregistrée.',
             'mouvement' => $mouvement,
         ], 201);
+    }
+
+    public function exportExcel(Request $request): BinaryFileResponse
+    {
+        Gate::authorize('viewAny', MouvementStock::class);
+
+        $mouvements = $this->filtrer(MouvementStock::query()->sorties(), $request)->orderByDesc('date_mouvement')->get();
+
+        return Excel::download(new SortiesStockExport($mouvements), 'sorties-stock-'.now()->format('Y-m-d-His').'.xlsx');
+    }
+
+    public function exportPdf(Request $request): Response
+    {
+        Gate::authorize('viewAny', MouvementStock::class);
+
+        $mouvements = $this->filtrer(MouvementStock::query()->sorties(), $request)->orderByDesc('date_mouvement')->get();
+
+        return Pdf::loadView('exports.pdf.sorties', ['mouvements' => $mouvements])
+            ->setPaper('a4', 'landscape')
+            ->download('sorties-stock-'.now()->format('Y-m-d-His').'.pdf');
+    }
+
+    private function filtrer(Builder $query, Request $request): Builder
+    {
+        return $query
+            ->when($request->filled('date_debut'), fn (Builder $q) => $q->whereDate('date_mouvement', '>=', $request->string('date_debut')))
+            ->when($request->filled('date_fin'), fn (Builder $q) => $q->whereDate('date_mouvement', '<=', $request->string('date_fin')))
+            ->when($request->filled('article_id'), fn (Builder $q) => $q->where('article_id', $request->integer('article_id')))
+            ->when($request->filled('nature'), fn (Builder $q) => $q->where('nature', $request->string('nature')));
     }
 }
