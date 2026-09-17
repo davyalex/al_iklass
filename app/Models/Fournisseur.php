@@ -7,12 +7,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class Vehicule extends Model
+class Fournisseur extends Model
 {
-    /** @use HasFactory<\Database\Factories\VehiculeFactory> */
+    /** @use HasFactory<\Database\Factories\FournisseurFactory> */
     use HasFactory, SoftDeletes;
 
-    protected $fillable = ['code', 'libelle', 'actif'];
+    protected $fillable = ['nom', 'telephone', 'email', 'adresse', 'actif'];
 
     protected function casts(): array
     {
@@ -21,8 +21,8 @@ class Vehicule extends Model
         ];
     }
 
-    public function mouvementsStock(): HasMany
+    public function achats(): HasMany
     {
-        return $this->hasMany(MouvementStock::class);
+        return $this->hasMany(Achat::class);
     }
 }
