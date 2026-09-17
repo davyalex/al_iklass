@@ -1,0 +1,48 @@
+// Palette AL-IKLASS — surcharge des variables Bootstrap avant import
+$primary: #0257bd;
+$secondary: #073763;
+$body-bg: #e6f2fb;
+$body-color: #1c2b39;
+$font-family-sans-serif: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+$border-radius: 0.5rem;
+$border-radius-sm: 0.375rem;
+$border-radius-lg: 0.75rem;
+$enable-shadows: false;
+
+@import "bootstrap/scss/bootstrap";
+@import "bootstrap-icons/font/bootstrap-icons.css";
+@import "select2/dist/css/select2.css";
+@import "sweetalert2/dist/sweetalert2.min.css";
+@import "datatables.net-bs5/css/dataTables.bootstrap5.css";
+
+:root {
+    --al-navy: #073763;
+    --al-blue: #0257bd;
+    --al-bg-light: #e6f2fb;
+}
+
+body {
+    background-color: var(--al-bg-light);
+}
+
+// Sidebar ERP (style Odoo) — voir resources/views/layouts/app.blade.php
+.al-sidebar {
+    background-color: var(--al-navy);
+    min-height: 100vh;
+}
+
+.al-sidebar .nav-link {
+    color: rgba(255, 255, 255, 0.75);
+    border-radius: var(--bs-border-radius);
+}
+
+.al-sidebar .nav-link.active,
+.al-sidebar .nav-link:hover {
+    color: #fff;
+    background-color: rgba(255, 255, 255, 0.12);
+}
+
+.al-topbar {
+    background-color: #fff;
+    border-bottom: 1px solid rgba(7, 55, 99, 0.1);
+}

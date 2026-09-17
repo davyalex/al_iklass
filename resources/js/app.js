@@ -1,7 +1,11 @@
+import $ from 'jquery';
 
+window.$ = window.jQuery = $;
 
-import Alpine from 'alpinejs';
+import 'bootstrap';
+import 'select2';
+import Swal from 'sweetalert2';
 
-window.Alpine = Alpine;
+window.Swal = Swal;
 
-Alpine.start();
+import 'datatables.net-bs5';
