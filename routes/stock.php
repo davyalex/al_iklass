@@ -3,6 +3,7 @@
 use App\Http\Controllers\Stock\AchatController;
 use App\Http\Controllers\Stock\ArticleController;
 use App\Http\Controllers\Stock\FournisseurController;
+use App\Http\Controllers\Stock\PaiementFournisseurController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth'])->prefix('stock')->name('stock.')->group(function () {
@@ -15,6 +16,9 @@ Route::middleware(['auth'])->prefix('stock')->name('stock.')->group(function () 
 
         Route::get('achats', [AchatController::class, 'index'])->name('achats.index');
         Route::get('achats/data', [AchatController::class, 'data'])->name('achats.data');
+
+        Route::get('paiements', [PaiementFournisseurController::class, 'index'])->name('paiements.index');
+        Route::get('paiements/data', [PaiementFournisseurController::class, 'data'])->name('paiements.data');
     });
 
     Route::middleware('permission:stock.article.manage')->group(function () {
@@ -31,5 +35,9 @@ Route::middleware(['auth'])->prefix('stock')->name('stock.')->group(function () 
 
     Route::middleware('permission:stock.achat.manage')->group(function () {
         Route::post('achats', [AchatController::class, 'store'])->name('achats.store');
+    });
+
+    Route::middleware('permission:stock.paiement.manage')->group(function () {
+        Route::post('paiements', [PaiementFournisseurController::class, 'store'])->name('paiements.store');
     });
 });

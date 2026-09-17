@@ -36,5 +36,11 @@
                 <span>Achats</span>
             </a>
         </li>
+        <li class="nav-item">
+            <a href="{{ route('stock.paiements.index') }}" class="nav-link d-flex align-items-center gap-2 {{ request()->routeIs('stock.paiements.*') ? 'active' : '' }}">
+                <i class="bi bi-cash-coin"></i>
+                <span>Paiements</span>
+            </a>
+        </li>
     @endcan
 </ul>
