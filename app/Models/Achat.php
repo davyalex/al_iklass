@@ -62,4 +62,17 @@ class Achat extends Model
         return $query->whereYear('date_achat', $date->format('Y'))
             ->whereMonth('date_achat', $date->format('m'));
     }
+
+    public static function deriveStatutPaiement(float $montantPaye, float $montantRestant): string
+    {
+        if ($montantRestant <= 0) {
+            return 'comptant';
+        }
+
+        if ($montantPaye <= 0) {
+            return 'credit';
+        }
+
+        return 'partiel';
+    }
 }

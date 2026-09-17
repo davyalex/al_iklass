@@ -15,7 +15,7 @@ class MouvementCaisse extends Model
 
     protected $fillable = [
         'caisse_id', 'sens', 'montant', 'mode_paiement_id', 'reference',
-        'motif', 'user_id', 'date_mouvement',
+        'motif', 'origine_type', 'origine_id', 'user_id', 'date_mouvement',
     ];
 
     protected function casts(): array
