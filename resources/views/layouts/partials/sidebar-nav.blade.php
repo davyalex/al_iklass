@@ -50,15 +50,33 @@
         </li>
     @endcan
 
-    @can('users.view')
+    @canany(['users.view', 'roles.view', 'audit.view'])
         <li class="nav-item mt-3">
             <span class="px-3 text-uppercase small fw-semibold" style="color: rgba(255,255,255,0.45); letter-spacing: .04em;">Administration</span>
         </li>
-        <li class="nav-item">
-            <a href="{{ route('admin.users.index') }}" class="nav-link d-flex align-items-center gap-2 {{ request()->routeIs('admin.users.*') ? 'active' : '' }}">
-                <i class="bi bi-people"></i>
-                <span>Utilisateurs</span>
-            </a>
-        </li>
-    @endcan
+        @can('users.view')
+            <li class="nav-item">
+                <a href="{{ route('admin.users.index') }}" class="nav-link d-flex align-items-center gap-2 {{ request()->routeIs('admin.users.*') ? 'active' : '' }}">
+                    <i class="bi bi-people"></i>
+                    <span>Utilisateurs</span>
+                </a>
+            </li>
+        @endcan
+        @can('roles.view')
+            <li class="nav-item">
+                <a href="{{ route('admin.roles.index') }}" class="nav-link d-flex align-items-center gap-2 {{ request()->routeIs('admin.roles.*') ? 'active' : '' }}">
+                    <i class="bi bi-shield-lock"></i>
+                    <span>Rôles</span>
+                </a>
+            </li>
+        @endcan
+        @can('audit.view')
+            <li class="nav-item">
+                <a href="{{ route('admin.audit.index') }}" class="nav-link d-flex align-items-center gap-2 {{ request()->routeIs('admin.audit.*') ? 'active' : '' }}">
+                    <i class="bi bi-clock-history"></i>
+                    <span>Journal d'audit</span>
+                </a>
+            </li>
+        @endcan
+    @endcanany
 </ul>

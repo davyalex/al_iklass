@@ -34,6 +34,11 @@ class UserService
 
             $user->syncRoles([$data['role']]);
 
+            activity()
+                ->performedOn($user)
+                ->withProperties(['role' => $data['role']])
+                ->log("Compte « {$user->name} » créé avec le rôle {$data['role']}.");
+
             return $user;
         });
 
@@ -52,6 +57,8 @@ class UserService
     public function mettreAJour(User $user, array $data): User
     {
         return DB::transaction(function () use ($user, $data) {
+            $ancienRole = $user->roles->pluck('name')->first();
+
             $user->update([
                 'name' => $data['name'],
                 'username' => $data['username'],
@@ -60,6 +67,11 @@ class UserService
             ]);
 
             $user->syncRoles([$data['role']]);
+
+            activity()
+                ->performedOn($user)
+                ->withProperties(['role_avant' => $ancienRole, 'role_apres' => $data['role']])
+                ->log("Compte « {$user->name} » mis à jour.");
 
             return $user;
         });
@@ -78,6 +90,8 @@ class UserService
             'locked_at' => null,
         ])->save();
 
+        activity()->performedOn($user)->log("Mot de passe de « {$user->name} » réinitialisé.");
+
         return ['user' => $user, 'password' => $password];
     }
 
@@ -85,12 +99,16 @@ class UserService
     {
         $user->forceFill(['is_active' => true])->save();
 
+        activity()->performedOn($user)->log("Compte « {$user->name} » activé.");
+
         return $user;
     }
 
     public function desactiver(User $user): User
     {
         $user->forceFill(['is_active' => false])->save();
+
+        activity()->performedOn($user)->log("Compte « {$user->name} » désactivé.");
 
         return $user;
     }

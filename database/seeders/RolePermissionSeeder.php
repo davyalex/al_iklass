@@ -34,9 +34,20 @@ class RolePermissionSeeder extends Seeder
         'users.manage',
     ];
 
+    /**
+     * Permissions de gestion des rôles/permissions et du journal d'audit.
+     *
+     * @var list<string>
+     */
+    private const ADMIN_PERMISSIONS = [
+        'roles.view',
+        'roles.manage',
+        'audit.view',
+    ];
+
     public function run(): void
     {
-        foreach ([...self::STOCK_PERMISSIONS, ...self::USER_PERMISSIONS] as $permission) {
+        foreach ([...self::STOCK_PERMISSIONS, ...self::USER_PERMISSIONS, ...self::ADMIN_PERMISSIONS] as $permission) {
             Permission::firstOrCreate(['name' => $permission, 'guard_name' => 'web']);
         }
 
@@ -44,7 +55,7 @@ class RolePermissionSeeder extends Seeder
         Role::firstOrCreate(['name' => 'superadmin', 'guard_name' => 'web']);
 
         Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web'])
-            ->syncPermissions([...self::STOCK_PERMISSIONS, ...self::USER_PERMISSIONS]);
+            ->syncPermissions([...self::STOCK_PERMISSIONS, ...self::USER_PERMISSIONS, ...self::ADMIN_PERMISSIONS]);
 
         Role::firstOrCreate(['name' => 'gestionnaire_stock', 'guard_name' => 'web'])
             ->syncPermissions(array_diff(self::STOCK_PERMISSIONS, ['stock.demande.create']));

@@ -9,8 +9,10 @@ use App\Models\User;
 use App\Observers\AchatObserver;
 use App\Observers\MouvementStockObserver;
 use App\Observers\PaiementFournisseurObserver;
+use App\Policies\RolePolicy;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
+use Spatie\Permission\Models\Role;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -28,6 +30,8 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Gate::before(fn (User $user) => $user->hasRole('superadmin') ? true : null);
+
+        Gate::policy(Role::class, RolePolicy::class);
 
         Achat::observe(AchatObserver::class);
         PaiementFournisseur::observe(PaiementFournisseurObserver::class);
