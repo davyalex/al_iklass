@@ -197,4 +197,98 @@ class BonCommandeServiceTest extends TestCase
 
         $this->bonCommandeService->annuler($bonCommande->fresh());
     }
+
+    public function test_reference_generee_automatiquement_si_vide(): void
+    {
+        $user = User::factory()->create();
+        $fournisseur = Fournisseur::factory()->create();
+        $article = Article::factory()->create();
+
+        $bonCommande = $this->bonCommandeService->creer([
+            'fournisseur_id' => $fournisseur->id,
+            'date_commande' => now(),
+            'user_id' => $user->id,
+            'lignes' => [['article_id' => $article->id, 'quantite_commandee' => 1, 'prix_unitaire_estime' => 100]],
+        ]);
+
+        $this->assertMatchesRegularExpression('/^BC-\d{4}-\d{4}$/', $bonCommande->reference);
+    }
+
+    public function test_reference_fournie_est_conservee(): void
+    {
+        $user = User::factory()->create();
+        $fournisseur = Fournisseur::factory()->create();
+        $article = Article::factory()->create();
+
+        $bonCommande = $this->bonCommandeService->creer([
+            'fournisseur_id' => $fournisseur->id,
+            'reference' => 'MA-REF-PERSO',
+            'date_commande' => now(),
+            'user_id' => $user->id,
+            'lignes' => [['article_id' => $article->id, 'quantite_commandee' => 1, 'prix_unitaire_estime' => 100]],
+        ]);
+
+        $this->assertSame('MA-REF-PERSO', $bonCommande->reference);
+    }
+
+    public function test_achat_reference_generee_automatiquement_si_vide(): void
+    {
+        $user = User::factory()->create();
+        $fournisseur = Fournisseur::factory()->create();
+        $article = Article::factory()->create();
+
+        $achat = $this->achatService->creer([
+            'fournisseur_id' => $fournisseur->id,
+            'date_achat' => now(),
+            'user_id' => $user->id,
+            'lignes' => [['article_id' => $article->id, 'quantite' => 1, 'prix_unitaire' => 100]],
+        ]);
+
+        $this->assertMatchesRegularExpression('/^ACH-\d{4}-\d{4}$/', $achat->reference);
+    }
+
+    public function test_supprimer_bon_commande_sans_reception(): void
+    {
+        $user = User::factory()->create();
+        $fournisseur = Fournisseur::factory()->create();
+        $article = Article::factory()->create();
+
+        $bonCommande = $this->bonCommandeService->creer([
+            'fournisseur_id' => $fournisseur->id,
+            'date_commande' => now(),
+            'user_id' => $user->id,
+            'lignes' => [['article_id' => $article->id, 'quantite_commandee' => 1, 'prix_unitaire_estime' => 100]],
+        ]);
+
+        $this->bonCommandeService->supprimer($bonCommande);
+
+        $this->assertSoftDeleted($bonCommande);
+    }
+
+    public function test_supprimer_bon_commande_deja_receptionne_est_bloque(): void
+    {
+        $user = User::factory()->create();
+        $fournisseur = Fournisseur::factory()->create();
+        $article = Article::factory()->create();
+
+        $bonCommande = $this->bonCommandeService->creer([
+            'fournisseur_id' => $fournisseur->id,
+            'date_commande' => now(),
+            'user_id' => $user->id,
+            'lignes' => [['article_id' => $article->id, 'quantite_commandee' => 5, 'prix_unitaire_estime' => 200]],
+        ]);
+        $ligneId = $bonCommande->lignes->first()->id;
+
+        $this->achatService->creer([
+            'fournisseur_id' => $fournisseur->id,
+            'bon_commande_id' => $bonCommande->id,
+            'date_achat' => now(),
+            'user_id' => $user->id,
+            'lignes' => [['article_id' => $article->id, 'quantite' => 2, 'prix_unitaire' => 200, 'bon_commande_ligne_id' => $ligneId]],
+        ]);
+
+        $this->expectException(ValidationException::class);
+
+        $this->bonCommandeService->supprimer($bonCommande->fresh());
+    }
 }

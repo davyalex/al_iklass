@@ -88,6 +88,18 @@ class AchatController extends Controller
             ->download('achats-'.now()->format('Y-m-d-His').'.pdf');
     }
 
+    public function pdf(Achat $achat): Response
+    {
+        Gate::authorize('view', $achat);
+
+        $achat->load('lignes', 'bonCommande');
+
+        // stream() : aperçu dans le navigateur pour impression, pas un téléchargement forcé.
+        return Pdf::loadView('exports.pdf.achat', ['achat' => $achat])
+            ->setPaper('a4', 'portrait')
+            ->stream("achat-{$achat->reference}.pdf");
+    }
+
     private function filtrer(Builder $query, Request $request): Builder
     {
         return $query

@@ -29,6 +29,11 @@
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
+        <env name="SUPERADMIN_NAME" value="Alex Kouamelan"/>
+        <env name="SUPERADMIN_USERNAME" value="superadmin"/>
+        <env name="SUPERADMIN_EMAIL" value="alexkouamelan96@gmail.com"/>
+        <env name="SUPERADMIN_TELEPHONE" value="0000000000"/>
+        <env name="SUPERADMIN_PASS" value=""/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>

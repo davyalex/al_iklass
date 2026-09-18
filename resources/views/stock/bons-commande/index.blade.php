@@ -17,6 +17,7 @@
                         <th>Date</th>
                         <th>Référence</th>
                         <th>Fournisseur</th>
+                        <th>Réception</th>
                         <th>Statut</th>
                         <th class="text-end">Actions</th>
                     </tr>
@@ -47,7 +48,7 @@
                             </div>
                             <div class="col-md-3 mb-3">
                                 <label class="form-label">Référence</label>
-                                <input type="text" name="reference" class="form-control">
+                                <input type="text" name="reference" class="form-control" placeholder="Générée automatiquement si vide">
                             </div>
                             <div class="col-md-3 mb-3">
                                 <label class="form-label">Date</label>
@@ -209,6 +210,30 @@
                 });
             });
 
+            $('#table-bons-commande').on('click', '.btn-supprimer-bc', function () {
+                const id = $(this).data('id');
+
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Supprimer ce bon de commande ?',
+                    text: 'Cette action est définitive.',
+                    showCancelButton: true,
+                    confirmButtonText: 'Supprimer',
+                    cancelButtonText: 'Retour',
+                }).then((result) => {
+                    if (!result.isConfirmed) return;
+
+                    $.post(`/stock/bons-commande/${id}`, { _method: 'DELETE' })
+                        .done(function (res) {
+                            Swal.fire({ icon: 'success', text: res.message, timer: 1800, showConfirmButton: false });
+                            $('#table-bons-commande').DataTable().ajax.reload();
+                        })
+                        .fail(function (xhr) {
+                            Swal.fire({ icon: 'error', text: xhr.responseJSON?.message || 'Une erreur est survenue.' });
+                        });
+                });
+            });
+
             $('#table-bons-commande').DataTable({
                 processing: true,
                 serverSide: true,
@@ -218,15 +243,26 @@
                     { data: 'date_commande', name: 'date_commande' },
                     { data: 'reference', name: 'reference', defaultContent: '—' },
                     { data: 'fournisseur_nom', name: 'fournisseur_nom' },
+                    { data: 'taux_reception', name: 'taux_reception', orderable: false },
                     { data: 'statut_badge', name: 'statut', orderable: false },
                     {
                         data: null,
                         orderable: false,
                         searchable: false,
                         render: function (bc) {
-                            let boutons = `<a href="/stock/achats?bon_commande_id=${bc.id}" class="btn btn-sm btn-outline-primary">Recevoir</a>`;
+                            const recevable = bc.statut === 'en_attente' || bc.statut === 'partiellement_recu';
+                            const supprimable = bc.statut === 'en_attente' || bc.statut === 'annule';
+
+                            let boutons = '';
+                            if (recevable) {
+                                boutons += `<a href="/stock/achats?bon_commande_id=${bc.id}" class="btn btn-sm btn-outline-primary">Recevoir</a> `;
+                            }
+                            boutons += `<a href="/stock/bons-commande/${bc.id}/pdf" target="_blank" class="btn btn-sm btn-outline-secondary" title="Imprimer"><i class="bi bi-printer"></i></a> `;
                             if (bc.statut === 'en_attente') {
-                                boutons += ` <button type="button" class="btn btn-sm btn-outline-danger btn-annuler-bc" data-id="${bc.id}">Annuler</button>`;
+                                boutons += `<button type="button" class="btn btn-sm btn-outline-danger btn-annuler-bc" data-id="${bc.id}">Annuler</button> `;
+                            }
+                            if (supprimable) {
+                                boutons += `<button type="button" class="btn btn-sm btn-outline-danger btn-supprimer-bc" data-id="${bc.id}" title="Supprimer"><i class="bi bi-trash"></i></button>`;
                             }
                             return boutons;
                         },

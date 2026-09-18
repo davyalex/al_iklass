@@ -2,8 +2,6 @@
     <x-slot name="header">Articles</x-slot>
 
     <div class="d-flex flex-wrap gap-2 align-items-center justify-content-end mb-3">
-        <x-export-dropdown id-suffix="articles" />
-
         @can('create', \App\Models\Article::class)
             <button type="button" class="btn btn-outline-secondary" id="btn-gerer-categories">
                 <i class="bi bi-tags me-1"></i>Catégories
@@ -29,6 +27,10 @@
         <div class="form-check form-switch mb-0 text-nowrap">
             <input class="form-check-input" type="checkbox" role="switch" id="filtre-en-alerte" @checked(request()->boolean('en_alerte'))>
             <label class="form-check-label" for="filtre-en-alerte">En alerte</label>
+        </div>
+
+        <div class="ms-auto">
+            <x-export-dropdown id-suffix="articles" />
         </div>
     </div>
 

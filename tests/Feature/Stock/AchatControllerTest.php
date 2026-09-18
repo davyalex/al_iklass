@@ -133,4 +133,14 @@ class AchatControllerTest extends TestCase
         $this->actingAs($user)->get(route('stock.achats.export.excel'))->assertForbidden();
         $this->actingAs($user)->get(route('stock.achats.export.pdf'))->assertForbidden();
     }
+
+    public function test_pdf_detail_endpoint_returns_pdf(): void
+    {
+        $user = User::factory()->create()->assignRole('gestionnaire_stock');
+        $achat = Achat::factory()->create();
+
+        $this->actingAs($user)->get(route('stock.achats.pdf', $achat))
+            ->assertOk()
+            ->assertHeader('content-type', 'application/pdf');
+    }
 }

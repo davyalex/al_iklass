@@ -65,6 +65,7 @@
                         <th>Payé</th>
                         <th>Restant</th>
                         <th>Statut</th>
+                        <th class="text-end">Actions</th>
                     </tr>
                 </thead>
             </table>
@@ -94,8 +95,8 @@
                                 </select>
                             </div>
                             <div class="col-md-3 mb-3">
-                                <label class="form-label">Référence (BC)</label>
-                                <input type="text" name="reference" class="form-control">
+                                <label class="form-label">Référence</label>
+                                <input type="text" name="reference" class="form-control" placeholder="Générée automatiquement si vide">
                             </div>
                             <div class="col-md-3 mb-3">
                                 <label class="form-label">Date</label>
@@ -311,6 +312,12 @@
                     { data: 'montant_paye', name: 'montant_paye' },
                     { data: 'montant_restant', name: 'montant_restant' },
                     { data: 'statut_badge', name: 'statut_paiement', orderable: false },
+                    {
+                        data: null,
+                        orderable: false,
+                        searchable: false,
+                        render: (achat) => `<a href="/stock/achats/${achat.id}/pdf" target="_blank" class="btn btn-sm btn-outline-secondary" title="Imprimer"><i class="bi bi-printer"></i></a>`,
+                    },
                 ],
                 order: [[0, 'desc']],
             });

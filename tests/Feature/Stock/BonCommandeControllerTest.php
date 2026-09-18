@@ -70,4 +70,41 @@ class BonCommandeControllerTest extends TestCase
 
         $this->assertDatabaseHas('bons_commande', ['id' => $bonCommandeId, 'statut' => 'annule']);
     }
+
+    public function test_supprimer_bon_commande_via_http(): void
+    {
+        $user = User::factory()->create()->assignRole('gestionnaire_stock');
+        $fournisseur = Fournisseur::factory()->create();
+        $article = Article::factory()->create();
+
+        $create = $this->actingAs($user)->postJson(route('stock.bons-commande.store'), [
+            'fournisseur_id' => $fournisseur->id,
+            'lignes' => [['article_id' => $article->id, 'quantite_commandee' => 1, 'prix_unitaire_estime' => 100]],
+        ]);
+
+        $bonCommandeId = $create->json('bonCommande.id');
+
+        $this->actingAs($user)->deleteJson(route('stock.bons-commande.destroy', $bonCommandeId))
+            ->assertOk();
+
+        $this->assertSoftDeleted('bons_commande', ['id' => $bonCommandeId]);
+    }
+
+    public function test_pdf_endpoint_returns_pdf(): void
+    {
+        $user = User::factory()->create()->assignRole('gestionnaire_stock');
+        $fournisseur = Fournisseur::factory()->create();
+        $article = Article::factory()->create();
+
+        $create = $this->actingAs($user)->postJson(route('stock.bons-commande.store'), [
+            'fournisseur_id' => $fournisseur->id,
+            'lignes' => [['article_id' => $article->id, 'quantite_commandee' => 1, 'prix_unitaire_estime' => 100]],
+        ]);
+
+        $bonCommandeId = $create->json('bonCommande.id');
+
+        $this->actingAs($user)->get(route('stock.bons-commande.pdf', $bonCommandeId))
+            ->assertOk()
+            ->assertHeader('content-type', 'application/pdf');
+    }
 }

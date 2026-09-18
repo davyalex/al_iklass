@@ -69,7 +69,7 @@ class LoginRequest extends FormRequest
             }
 
             throw ValidationException::withMessages([
-                'username' => trans('auth.failed'),
+                'username' => 'Ces identifiants ne correspondent à aucun compte.',
             ]);
         }
 
@@ -94,10 +94,7 @@ class LoginRequest extends FormRequest
         $seconds = RateLimiter::availableIn($this->throttleKey());
 
         throw ValidationException::withMessages([
-            'username' => trans('auth.throttle', [
-                'seconds' => $seconds,
-                'minutes' => ceil($seconds / 60),
-            ]),
+            'username' => "Trop de tentatives de connexion. Réessayez dans {$seconds} secondes.",
         ]);
     }
 

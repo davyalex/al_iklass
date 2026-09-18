@@ -27,7 +27,7 @@ class BonCommandeService
             $fournisseur = Fournisseur::findOrFail($data['fournisseur_id']);
 
             $bonCommande = BonCommande::create([
-                'reference' => $data['reference'] ?? null,
+                'reference' => ($data['reference'] ?? null) ?: $this->genererReference(),
                 'fournisseur_id' => $fournisseur->id,
                 'fournisseur_nom' => $fournisseur->nom,
                 'date_commande' => $data['date_commande'] ?? now(),
@@ -72,5 +72,33 @@ class BonCommandeService
         $bonCommande->update(['statut' => 'annule']);
 
         return $bonCommande;
+    }
+
+    /**
+     * Archivage (soft delete) : refusé si une ligne a déjà été réceptionnée, même partiellement —
+     * l'historique de réception doit rester consultable (règle d'or : jamais de suppression
+     * physique d'un enregistrement porteur d'historique).
+     *
+     * @throws ValidationException
+     */
+    public function supprimer(BonCommande $bonCommande): void
+    {
+        $bonCommande->loadMissing('lignes');
+
+        if ($bonCommande->lignes->contains(fn ($l) => $l->quantite_recue > 0)) {
+            throw ValidationException::withMessages([
+                'statut' => 'Ce bon de commande a des lignes déjà réceptionnées, il ne peut pas être supprimé.',
+            ]);
+        }
+
+        $bonCommande->delete();
+    }
+
+    private function genererReference(): string
+    {
+        $annee = now()->year;
+        $sequence = BonCommande::withTrashed()->whereYear('date_commande', $annee)->count() + 1;
+
+        return sprintf('BC-%d-%04d', $annee, $sequence);
     }
 }

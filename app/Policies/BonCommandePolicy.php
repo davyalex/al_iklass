@@ -26,4 +26,9 @@ class BonCommandePolicy
     {
         return $user->can('stock.bon_commande.gerer');
     }
+
+    public function delete(User $user, BonCommande $bonCommande): bool
+    {
+        return $user->can('stock.bon_commande.gerer');
+    }
 }

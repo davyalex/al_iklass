@@ -41,7 +41,7 @@ class AchatService
             $montantRestant = $montantTotal - $montantPaye;
 
             $achat = Achat::create([
-                'reference' => $data['reference'] ?? null,
+                'reference' => ($data['reference'] ?? null) ?: $this->genererReference(),
                 'fournisseur_id' => $fournisseur->id,
                 'fournisseur_nom' => $fournisseur->nom,
                 'bon_commande_id' => $data['bon_commande_id'] ?? null,
@@ -118,5 +118,13 @@ class AchatService
         $bonCommandeLigne->increment('quantite_recue', $ligneData['quantite']);
 
         return $bonCommandeLigne;
+    }
+
+    private function genererReference(): string
+    {
+        $annee = now()->year;
+        $sequence = Achat::withTrashed()->whereYear('date_achat', $annee)->count() + 1;
+
+        return sprintf('ACH-%d-%04d', $annee, $sequence);
     }
 }
