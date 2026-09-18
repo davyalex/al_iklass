@@ -25,7 +25,7 @@
                     <button type="button" class="btn btn-sm btn-primary" id="btn-filtrer-audit">
                         <i class="bi bi-funnel me-1"></i>Filtrer
                     </button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-reset-audit">
+                    <button type="button" class="btn btn-sm btn-outline-secondary d-none" id="btn-reset-audit">
                         Réinitialiser
                     </button>
                     <div class="ms-md-auto">
@@ -53,7 +53,7 @@
     @push('scripts')
         <script>
         document.addEventListener('DOMContentLoaded', function () {
-            $('.select2-filtre-utilisateur').select2({ width: '100%', placeholder: 'Tous', containerCssClass: 'select2-sm' });
+            $('.select2-filtre-utilisateur').select2({ width: '100%', placeholder: 'Tous', selectionCssClass: 'select2-sm' });
 
             function filtresAudit() {
                 return {
@@ -62,6 +62,14 @@
                     causer_id: $('#filtres-audit [name=causer_id]').val(),
                 };
             }
+
+            function actualiserBoutonResetAudit() {
+                const actif = Object.values(filtresAudit()).some((v) => v !== undefined && v !== null && v !== '');
+                $('#btn-reset-audit').toggleClass('d-none', !actif);
+            }
+
+            $('#filtres-audit').on('change input', actualiserBoutonResetAudit);
+            actualiserBoutonResetAudit();
 
             const tableAudit = $('#table-audit').DataTable({
                 processing: true,

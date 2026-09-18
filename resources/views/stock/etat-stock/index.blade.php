@@ -48,7 +48,7 @@
                     </div>
                 </div>
                 <div class="col-12 col-md-4 d-flex flex-wrap gap-2">
-                    <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-reset-etat-stock">
+                    <button type="button" class="btn btn-sm btn-outline-secondary d-none" id="btn-reset-etat-stock">
                         Réinitialiser
                     </button>
                     <div class="ms-md-auto">
@@ -89,6 +89,14 @@
                     en_alerte: $('#filtres-etat-stock [name=en_alerte]').is(':checked') ? 1 : '',
                 };
             }
+
+            function actualiserBoutonResetEtatStock() {
+                const actif = Object.values(filtresEtatStock()).some((v) => v !== undefined && v !== null && v !== '');
+                $('#btn-reset-etat-stock').toggleClass('d-none', !actif);
+            }
+
+            $('#filtres-etat-stock').on('change input', actualiserBoutonResetEtatStock);
+            actualiserBoutonResetEtatStock();
 
             const tableEtatStock = $('#table-etat-stock').DataTable({
                 processing: true,

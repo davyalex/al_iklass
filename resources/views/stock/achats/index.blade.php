@@ -556,6 +556,14 @@
                 };
             }
 
+            function actualiserBoutonResetAchats() {
+                const actif = Object.values(filtresAchats()).some((v) => v !== undefined && v !== null && v !== '');
+                $('#btn-reset-achats').toggleClass('d-none', !actif);
+            }
+
+            $('#filtres-achats').on('change input', actualiserBoutonResetAchats);
+            actualiserBoutonResetAchats();
+
             const tableAchats = $('#table-achats').DataTable({
                 processing: true,
                 serverSide: true,

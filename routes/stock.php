@@ -6,6 +6,7 @@ use App\Http\Controllers\Stock\BonCommandeController;
 use App\Http\Controllers\Stock\CategorieArticleController;
 use App\Http\Controllers\Stock\EtatStockController;
 use App\Http\Controllers\Stock\FournisseurController;
+use App\Http\Controllers\Stock\InventaireController;
 use App\Http\Controllers\Stock\PaiementFournisseurController;
 use App\Http\Controllers\Stock\SortieStockController;
 use Illuminate\Support\Facades\Route;
@@ -53,6 +54,12 @@ Route::middleware(['auth'])->prefix('stock')->name('stock.')->group(function () 
         Route::get('sorties/data', [SortieStockController::class, 'data'])->name('sorties.data');
         Route::get('sorties/export/excel', [SortieStockController::class, 'exportExcel'])->name('sorties.export.excel');
         Route::get('sorties/export/pdf', [SortieStockController::class, 'exportPdf'])->name('sorties.export.pdf');
+
+        Route::get('inventaires', [InventaireController::class, 'index'])->name('inventaires.index');
+        Route::get('inventaires/data', [InventaireController::class, 'data'])->name('inventaires.data');
+        Route::get('inventaires/export/excel', [InventaireController::class, 'exportExcel'])->name('inventaires.export.excel');
+        Route::get('inventaires/export/pdf', [InventaireController::class, 'exportPdf'])->name('inventaires.export.pdf');
+        Route::get('inventaires/{inventaire}', [InventaireController::class, 'show'])->name('inventaires.show');
     });
 
     Route::middleware('permission:stock.article.gerer')->group(function () {
@@ -89,5 +96,12 @@ Route::middleware(['auth'])->prefix('stock')->name('stock.')->group(function () 
     // geree par StoreSortieRequest::authorize(), pas par un middleware de permission unique.
     Route::middleware('permission:stock.sortie.interne|stock.sortie.vente')->group(function () {
         Route::post('sorties', [SortieStockController::class, 'store'])->name('sorties.store');
+    });
+
+    Route::middleware('permission:stock.inventaire.gerer')->group(function () {
+        Route::post('inventaires', [InventaireController::class, 'store'])->name('inventaires.store');
+        Route::put('inventaires/lignes/{ligne}', [InventaireController::class, 'updateLigne'])->name('inventaires.lignes.update');
+        Route::post('inventaires/{inventaire}/valider', [InventaireController::class, 'valider'])->name('inventaires.valider');
+        Route::delete('inventaires/{inventaire}', [InventaireController::class, 'destroy'])->name('inventaires.destroy');
     });
 });

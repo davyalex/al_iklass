@@ -46,7 +46,7 @@
                     <button type="button" class="btn btn-sm btn-primary" id="btn-filtrer-sorties">
                         <i class="bi bi-funnel me-1"></i>Filtrer
                     </button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-reset-sorties">
+                    <button type="button" class="btn btn-sm btn-outline-secondary d-none" id="btn-reset-sorties">
                         Réinitialiser
                     </button>
                     <div class="ms-md-auto">
@@ -174,7 +174,7 @@
 
             $('.select2-article-sortie').select2({ dropdownParent: $('#modal-sortie'), width: '100%' });
             $('.select2-vehicule').select2({ dropdownParent: $('#modal-sortie'), width: '100%' });
-            $('.select2-filtre-article').select2({ width: '100%', placeholder: 'Tous', containerCssClass: 'select2-sm' });
+            $('.select2-filtre-article').select2({ width: '100%', placeholder: 'Tous', selectionCssClass: 'select2-sm' });
 
             $('#form-sortie').on('submit', function (e) {
                 e.preventDefault();
@@ -208,6 +208,14 @@
                     nature: $('#filtres-sorties [name=nature]').val(),
                 };
             }
+
+            function actualiserBoutonResetSorties() {
+                const actif = Object.values(filtresSorties()).some((v) => v !== undefined && v !== null && v !== '');
+                $('#btn-reset-sorties').toggleClass('d-none', !actif);
+            }
+
+            $('#filtres-sorties').on('change input', actualiserBoutonResetSorties);
+            actualiserBoutonResetSorties();
 
             const tableSorties = $('#table-sorties').DataTable({
                 processing: true,

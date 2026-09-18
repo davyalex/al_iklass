@@ -93,12 +93,28 @@ body {
 
 // Variante "sm" : pour les barres de filtre (form-control-sm / form-select-sm / btn-sm
 // voisins), afin que tous les champs d'une même ligne aient la même hauteur.
-.select2-container--default.select2-sm .select2-selection--single {
+// Appliquée via l'option select2 `selectionCssClass` (et non `containerCssClass`,
+// absent de la version installée), qui ajoute la classe sur .select2-selection--single.
+.select2-selection--single.select2-sm {
     height: $input-height-sm;
     padding: 0 0.4rem;
     font-size: $font-size-sm;
 }
 
-.select2-container--default.select2-sm .select2-selection--single .select2-selection__arrow {
+.select2-selection--single.select2-sm .select2-selection__arrow {
     right: 0.4rem;
+}
+
+// Champs numeriques : on masque les fleches +/- du navigateur partout dans l'app
+// (formulaires achats, bons de commande, quantites, prix...), les boutons dedies
+// (input-group +/-) ou la saisie clavier suffisent.
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
 }

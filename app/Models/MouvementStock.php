@@ -17,7 +17,7 @@ class MouvementStock extends Model
         'article_id', 'article_reference', 'article_nom', 'type', 'nature',
         'quantite', 'prix_unitaire', 'prix_vente', 'motif',
         'vehicule_id', 'vehicule_code', 'vehicule_externe', 'acheteur',
-        'achat_id', 'intervention_id', 'caisse_mouvement_id', 'user_id', 'date_mouvement',
+        'achat_id', 'inventaire_id', 'intervention_id', 'caisse_mouvement_id', 'user_id', 'date_mouvement',
     ];
 
     protected function casts(): array
@@ -42,6 +42,11 @@ class MouvementStock extends Model
     public function achat(): BelongsTo
     {
         return $this->belongsTo(Achat::class);
+    }
+
+    public function inventaire(): BelongsTo
+    {
+        return $this->belongsTo(Inventaire::class);
     }
 
     public function mouvementCaisse(): BelongsTo
@@ -72,6 +77,11 @@ class MouvementStock extends Model
     public function scopeExterne(Builder $query): Builder
     {
         return $query->where('nature', 'externe');
+    }
+
+    public function scopeAjustement(Builder $query): Builder
+    {
+        return $query->where('nature', 'ajustement');
     }
 
     public function scopeDuMois(Builder $query, ?\DateTimeInterface $date = null): Builder

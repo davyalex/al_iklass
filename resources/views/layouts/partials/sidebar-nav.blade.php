@@ -60,6 +60,12 @@
                 <span>Sorties</span>
             </a>
         </li>
+        <li class="nav-item">
+            <a href="{{ route('stock.inventaires.index') }}" class="nav-link d-flex align-items-center gap-2 {{ request()->routeIs('stock.inventaires.*') ? 'active' : '' }}">
+                <i class="bi bi-clipboard-check"></i>
+                <span>Inventaires</span>
+            </a>
+        </li>
     @endcan
 
     @canany(['utilisateurs.voir', 'roles.voir', 'unites.voir', 'audit.voir'])
