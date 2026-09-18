@@ -83,15 +83,22 @@
                     </div>
                     <div class="modal-body">
                         <div class="mb-3">
+                            <label class="form-label">Fournisseur</label>
+                            <select id="paiement-fournisseur" class="form-select select2-fournisseur-paiement" required>
+                                <option value=""></option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
                             <label class="form-label">Achat</label>
-                            <select name="achat_id" id="paiement-achat" class="form-select select2-achat" required>
+                            <select name="achat_id" id="paiement-achat" class="form-select select2-achat" required disabled>
                                 <option value=""></option>
                                 @foreach ($achatsEnCredit as $achat)
-                                    <option value="{{ $achat->id }}" data-restant="{{ $achat->montant_restant }}">
-                                        {{ $achat->fournisseur_nom }} — reste {{ number_format($achat->montant_restant, 0, ',', ' ') }} FCFA ({{ $achat->date_achat->format('d/m/Y') }})
+                                    <option value="{{ $achat->id }}" data-restant="{{ $achat->montant_restant }}" data-fournisseur-id="{{ $achat->fournisseur_id }}" data-fournisseur-nom="{{ $achat->fournisseur_nom }}">
+                                        {{ $achat->reference ?? ('Achat #'.$achat->id) }} — {{ $achat->date_achat->format('d/m/Y') }} — reste {{ \App\Support\Money::format($achat->montant_restant) }} FCFA
                                     </option>
                                 @endforeach
                             </select>
+                            <div class="form-text" id="paiement-achat-aide">Choisissez d'abord un fournisseur.</div>
                             <div class="form-text" id="paiement-restant-info"></div>
                         </div>
                         <div class="mb-3">
@@ -132,8 +139,65 @@
         document.addEventListener('DOMContentLoaded', function () {
             const modal = new bootstrap.Modal('#modal-paiement');
 
-            $('.select2-achat').select2({ dropdownParent: $('#modal-paiement'), width: '100%' });
-            $('.select2-filtre-fournisseur').select2({ width: '100%', placeholder: 'Tous', containerCssClass: 'select2-sm' });
+            // Un achat n'apparaît dans la liste que si son fournisseur est celui choisi
+            // au-dessus : évite de devoir reconnaître le bon achat parmi plusieurs lignes
+            // qui répètent le même nom de fournisseur.
+            function matcherAchatParFournisseur(params, data) {
+                if (!data.id) {
+                    return data;
+                }
+                const fournisseurId = $('#paiement-fournisseur').val();
+                if (fournisseurId && String($(data.element).data('fournisseurId')) !== String(fournisseurId)) {
+                    return null;
+                }
+                const terme = $.trim(params.term || '');
+                if (terme === '' || data.text.toUpperCase().indexOf(terme.toUpperCase()) > -1) {
+                    return data;
+                }
+                return null;
+            }
+
+            $('.select2-achat').select2({ dropdownParent: $('#modal-paiement'), width: '100%', matcher: matcherAchatParFournisseur });
+            $('.select2-fournisseur-paiement').select2({ dropdownParent: $('#modal-paiement'), width: '100%' });
+            $('.select2-filtre-fournisseur').select2({ width: '100%', placeholder: 'Tous', selectionCssClass: 'select2-sm' });
+
+            // Liste des fournisseurs ayant au moins un achat en crédit, construite une
+            // fois à partir des options d'achat déjà rendues côté serveur.
+            const fournisseursAvecCredit = new Map();
+            $('#paiement-achat option[value!=""]').each(function () {
+                const id = $(this).data('fournisseurId');
+                const nom = $(this).data('fournisseurNom');
+                if (id && !fournisseursAvecCredit.has(id)) {
+                    fournisseursAvecCredit.set(id, nom);
+                }
+            });
+            Array.from(fournisseursAvecCredit.entries())
+                .sort((a, b) => a[1].localeCompare(b[1], 'fr'))
+                .forEach(([id, nom]) => $('#paiement-fournisseur').append(`<option value="${id}">${nom}</option>`));
+
+            $('#paiement-fournisseur').on('change', function () {
+                const fournisseurId = $(this).val();
+                $('#paiement-achat').val('').trigger('change');
+
+                if (!fournisseurId) {
+                    $('#paiement-achat').prop('disabled', true);
+                    $('#paiement-achat-aide').text("Choisissez d'abord un fournisseur.");
+                    return;
+                }
+
+                $('#paiement-achat').prop('disabled', false);
+
+                const achatsDuFournisseur = $('#paiement-achat option').filter(function () {
+                    return String($(this).data('fournisseurId')) === String(fournisseurId);
+                });
+                $('#paiement-achat-aide').text(
+                    achatsDuFournisseur.length === 1 ? '1 achat en crédit pour ce fournisseur.' : achatsDuFournisseur.length + ' achats en crédit pour ce fournisseur.'
+                );
+
+                if (achatsDuFournisseur.length === 1) {
+                    $('#paiement-achat').val(achatsDuFournisseur.first().val()).trigger('change');
+                }
+            });
 
             $('#paiement-achat').on('change', function () {
                 const restant = $(this).find(':selected').data('restant');
@@ -147,7 +211,9 @@
 
             $('#btn-nouveau-paiement').on('click', function () {
                 $('#form-paiement')[0].reset();
-                $('.select2-achat').val('').trigger('change');
+                $('.select2-fournisseur-paiement').val('').trigger('change');
+                $('#paiement-achat').prop('disabled', true).val('').trigger('change');
+                $('#paiement-achat-aide').text("Choisissez d'abord un fournisseur.");
                 $('#paiement-restant-info').text('');
                 modal.show();
             });

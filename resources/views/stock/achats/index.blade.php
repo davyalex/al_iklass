@@ -26,9 +26,9 @@
                 <div class="card-body">
                     <div class="d-flex align-items-center justify-content-between">
                         <span class="small text-muted">Achats du mois</span>
-                        <span class="badge rounded-pill bg-primary" title="Nombre d'achats ce mois-ci">{{ $kpiMois['mois_count'] }}</span>
+                        <span class="badge rounded-pill bg-primary" id="kpi-mois-count" title="Nombre d'achats ce mois-ci">{{ $kpiMois['mois_count'] }}</span>
                     </div>
-                    <div class="h5 mb-0" style="color: var(--al-navy);">{{ \App\Support\Money::format($kpiMois['mois']) }} FCFA</div>
+                    <div class="h5 mb-0" style="color: var(--al-navy);" id="kpi-mois-montant">{{ \App\Support\Money::format($kpiMois['mois']) }} FCFA</div>
                 </div>
             </div>
         </div>
@@ -467,6 +467,7 @@
                         modalAchat.hide();
                         Swal.fire({ icon: 'success', text: res.message, timer: 1800, showConfirmButton: false });
                         $('#table-achats').DataTable().ajax.reload();
+                        rafraichirKpisPeriode();
                     })
                     .fail(function (xhr) {
                         const msg = xhr.responseJSON?.message || 'Une erreur est survenue.';
@@ -564,6 +565,8 @@
                     $('#kpi-total-montant').text(formatMontant(kpis.total) + ' FCFA');
                     $('#kpi-paye-montant').text(formatMontant(kpis.paye) + ' FCFA');
                     $('#kpi-restant-montant').text(formatMontant(kpis.restant) + ' FCFA');
+                    $('#kpi-mois-count').text(kpis.mois_count);
+                    $('#kpi-mois-montant').text(formatMontant(kpis.mois) + ' FCFA');
                 });
             }
 

@@ -44,7 +44,7 @@ class AchatController extends Controller
     {
         Gate::authorize('viewAny', Achat::class);
 
-        return response()->json($this->calculerKpiPeriode($request));
+        return response()->json($this->calculerKpiPeriode($request) + $this->calculerKpiMois());
     }
 
     public function show(Achat $achat): JsonResponse
