@@ -9,68 +9,61 @@ use Spatie\Permission\Models\Role;
 class RolePermissionSeeder extends Seeder
 {
     /**
-     * Permissions du module Stock (cahier des charges §2).
-     *
-     * @var list<string>
+     * Crée les permissions et rôles définis dans config/permissions.php, et
+     * synchronise les permissions de chaque rôle. Rejouable sans risque : à
+     * exécuter chaque fois qu'une permission est ajoutée dans la config.
      */
-    private const STOCK_PERMISSIONS = [
-        'stock.tableau_bord.voir',
-        'stock.article.gerer',
-        'stock.fournisseur.gerer',
-        'stock.bon_commande.gerer',
-        'stock.achat.gerer',
-        'stock.paiement.gerer',
-        'stock.sortie.interne',
-        'stock.sortie.vente',
-        'stock.demande.creer',
-    ];
-
-    /**
-     * Permissions de gestion des utilisateurs.
-     *
-     * @var list<string>
-     */
-    private const USER_PERMISSIONS = [
-        'utilisateurs.voir',
-        'utilisateurs.gerer',
-    ];
-
-    /**
-     * Permissions de gestion des rôles/permissions et du journal d'audit.
-     *
-     * @var list<string>
-     */
-    private const ADMIN_PERMISSIONS = [
-        'roles.voir',
-        'roles.gerer',
-        'audit.voir',
-        'unites.voir',
-        'unites.gerer',
-    ];
-
     public function run(): void
     {
-        foreach ([...self::STOCK_PERMISSIONS, ...self::USER_PERMISSIONS, ...self::ADMIN_PERMISSIONS] as $permission) {
-            Permission::firstOrCreate(['name' => $permission, 'guard_name' => 'web']);
+        /** @var array<string, list<string>> $groupesPermissions */
+        $groupesPermissions = config('permissions.permissions');
+
+        foreach ($groupesPermissions as $permissions) {
+            foreach ($permissions as $permission) {
+                Permission::firstOrCreate(['name' => $permission, 'guard_name' => 'web']);
+            }
         }
 
-        // superadmin passe par Gate::before (AppServiceProvider) : pas besoin de lui assigner de permissions.
-        Role::firstOrCreate(['name' => 'superadmin', 'guard_name' => 'web']);
+        /** @var array<string, array<int|string, mixed>> $roles */
+        $roles = config('permissions.roles');
 
-        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web'])
-            ->syncPermissions([...self::STOCK_PERMISSIONS, ...self::USER_PERMISSIONS, ...self::ADMIN_PERMISSIONS]);
+        foreach ($roles as $role => $groupesDuRole) {
+            Role::firstOrCreate(['name' => $role, 'guard_name' => 'web'])
+                ->syncPermissions($this->resoudrePermissions($groupesDuRole, $groupesPermissions));
+        }
+    }
 
-        Role::firstOrCreate(['name' => 'gestionnaire_stock', 'guard_name' => 'web'])
-            ->syncPermissions([
-                ...array_diff(self::STOCK_PERMISSIONS, ['stock.demande.creer']),
-                'unites.voir',
-                'unites.gerer',
-            ]);
+    /**
+     * Résout la configuration d'un rôle (liste de groupes entiers, ou
+     * groupes filtrés via "only"/"except") en une liste plate de noms de
+     * permissions.
+     *
+     * @param  array<int|string, mixed>  $groupesDuRole
+     * @param  array<string, list<string>>  $groupesPermissions
+     * @return list<string>
+     */
+    private function resoudrePermissions(array $groupesDuRole, array $groupesPermissions): array
+    {
+        $permissions = [];
 
-        Role::firstOrCreate(['name' => 'chef_mecanicien', 'guard_name' => 'web'])
-            ->syncPermissions(['stock.demande.creer']);
+        foreach ($groupesDuRole as $cle => $valeur) {
+            if (is_int($cle)) {
+                // Entrée simple, ex. 'stock' : le groupe entier est assigné.
+                $permissions = [...$permissions, ...($groupesPermissions[$valeur] ?? [])];
 
-        // Le rôle "gestionnaire" (parc) n'a aucune permission côté module Stock.
-        Role::firstOrCreate(['name' => 'gestionnaire', 'guard_name' => 'web']);
+                continue;
+            }
+
+            // Entrée filtrée, ex. 'stock' => ['except' => [...]] ou ['only' => [...]].
+            $groupe = $groupesPermissions[$cle] ?? [];
+
+            $permissions = match (true) {
+                isset($valeur['only']) => [...$permissions, ...$valeur['only']],
+                isset($valeur['except']) => [...$permissions, ...array_diff($groupe, $valeur['except'])],
+                default => [...$permissions, ...$groupe],
+            };
+        }
+
+        return array_values(array_unique($permissions));
     }
 }
