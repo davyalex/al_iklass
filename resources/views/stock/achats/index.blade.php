@@ -109,7 +109,7 @@
                         <th>Payé</th>
                         <th>Restant</th>
                         <th>Statut</th>
-                        <th class="text-end" style="width: 70px;">Action</th>
+                        <th class="text-end" style="width: 100px;">Action</th>
                     </tr>
                 </thead>
             </table>
@@ -289,12 +289,72 @@
         </div>
     </div>
 
+    {{-- Modale paiement rapide depuis une ligne d'achat --}}
+    <div class="modal fade" id="modal-paiement-achat" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form id="form-paiement-achat">
+                    <input type="hidden" name="achat_id" id="paiement-achat-id">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Payer un achat</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row g-3 mb-3">
+                            <div class="col-sm-6">
+                                <div class="small text-muted">Achat</div>
+                                <div class="fw-semibold" id="paiement-achat-reference">—</div>
+                            </div>
+                            <div class="col-sm-6">
+                                <div class="small text-muted">Fournisseur</div>
+                                <div class="fw-semibold" id="paiement-achat-fournisseur">—</div>
+                            </div>
+                        </div>
+                        <div class="alert alert-warning py-2 px-3 mb-3">
+                            Solde restant dû : <strong id="paiement-achat-restant">—</strong>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Montant (FCFA)</label>
+                            <input type="number" name="montant" id="paiement-achat-montant" class="form-control" min="0.01" step="0.01" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Mode de paiement</label>
+                            <select name="mode_paiement_id" class="form-select" required>
+                                <option value=""></option>
+                                @foreach ($modesPaiement as $mode)
+                                    <option value="{{ $mode->id }}">{{ $mode->libelle }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="row">
+                            <div class="col-6 mb-3">
+                                <label class="form-label">Date</label>
+                                <input type="date" name="date_paiement" class="form-control" value="{{ now()->format('Y-m-d') }}">
+                            </div>
+                            <div class="col-6 mb-3">
+                                <label class="form-label">Référence</label>
+                                <input type="text" name="reference" class="form-control">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" class="btn btn-primary">Enregistrer le paiement</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     @push('scripts')
         <script>
+        window.peutPayer = @json(auth()->user()->can('create', \App\Models\PaiementFournisseur::class));
+
         document.addEventListener('DOMContentLoaded', function () {
             let ligneIndex = 0;
             const modalAchat = new bootstrap.Modal('#modal-achat');
             const modalDetailAchat = new bootstrap.Modal('#modal-detail-achat');
+            const modalPaiementAchat = new bootstrap.Modal('#modal-paiement-achat');
 
             const STATUTS_PAIEMENT = {
                 comptant: { libelle: 'Comptant', classe: 'bg-success' },
@@ -508,7 +568,13 @@
                         orderable: false,
                         searchable: false,
                         className: 'text-end',
-                        render: (achat) => `<button type="button" class="btn btn-sm btn-outline-primary btn-detail-achat" data-id="${achat.id}" title="Détail"><i class="bi bi-eye"></i></button>`,
+                        render: (achat) => {
+                            let boutons = `<button type="button" class="btn btn-sm btn-outline-primary btn-detail-achat" data-id="${achat.id}" title="Détail"><i class="bi bi-eye"></i></button>`;
+                            if (window.peutPayer && achat.statut_paiement !== 'comptant') {
+                                boutons += ` <button type="button" class="btn btn-sm btn-outline-success btn-payer-achat" data-id="${achat.id}" title="Payer"><i class="bi bi-cash-coin"></i></button>`;
+                            }
+                            return boutons;
+                        },
                     },
                 ],
                 order: [[0, 'desc']],
@@ -560,6 +626,36 @@
 
                     modalDetailAchat.show();
                 });
+            });
+
+            $('#table-achats').on('click', '.btn-payer-achat', function () {
+                const id = $(this).data('id');
+
+                $.get(`/stock/achats/${id}`, function (achat) {
+                    $('#form-paiement-achat')[0].reset();
+                    $('#paiement-achat-id').val(achat.id);
+                    $('#paiement-achat-reference').text(achat.reference ?? ('Achat #' + achat.id));
+                    $('#paiement-achat-fournisseur').text(achat.fournisseur_nom);
+                    $('#paiement-achat-restant').text(formatMontant(achat.montant_restant) + ' FCFA');
+                    $('#paiement-achat-montant').attr('max', achat.montant_restant).val(achat.montant_restant);
+                    modalPaiementAchat.show();
+                });
+            });
+
+            $('#form-paiement-achat').on('submit', function (e) {
+                e.preventDefault();
+
+                $.post('/stock/paiements', $(this).serialize())
+                    .done(function (res) {
+                        modalPaiementAchat.hide();
+                        Swal.fire({ icon: 'success', text: res.message, timer: 1800, showConfirmButton: false });
+                        tableAchats.ajax.reload(null, false);
+                        rafraichirKpisPeriode();
+                    })
+                    .fail(function (xhr) {
+                        const msg = xhr.responseJSON?.errors?.montant?.[0] || xhr.responseJSON?.message || 'Une erreur est survenue.';
+                        Swal.fire({ icon: 'error', text: msg });
+                    });
             });
 
             function rafraichirKpisPeriode() {

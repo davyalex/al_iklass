@@ -8,6 +8,7 @@ use App\Http\Requests\Stock\StoreAchatRequest;
 use App\Models\Achat;
 use App\Models\Article;
 use App\Models\Fournisseur;
+use App\Models\ModePaiement;
 use App\Services\Stock\AchatService;
 use App\Support\Money;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -32,12 +33,13 @@ class AchatController extends Controller
 
         $fournisseurs = Fournisseur::where('actif', true)->orderBy('nom')->get();
         $articles = Article::where('actif', true)->orderBy('nom')->get();
+        $modesPaiement = ModePaiement::where('actif', true)->orderBy('libelle')->get();
         // Au premier chargement, aucun filtre n'est encore appliqué : la période
         // par défaut est donc "toute la période" (tous les achats).
         $kpiPeriode = $this->calculerKpiPeriode($request);
         $kpiMois = $this->calculerKpiMois();
 
-        return view('stock.achats.index', compact('fournisseurs', 'articles', 'kpiPeriode', 'kpiMois'));
+        return view('stock.achats.index', compact('fournisseurs', 'articles', 'modesPaiement', 'kpiPeriode', 'kpiMois'));
     }
 
     public function kpis(Request $request): JsonResponse
