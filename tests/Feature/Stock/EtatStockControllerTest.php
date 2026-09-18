@@ -62,6 +62,24 @@ class EtatStockControllerTest extends TestCase
         $response->assertJsonFragment(['nom' => 'Article normal', 'en_alerte' => false]);
     }
 
+    public function test_articles_en_alerte_are_listed_before_the_others(): void
+    {
+        $user = User::factory()->create()->assignRole('gestionnaire_stock');
+        // Noms choisis pour que l'ordre alphabétique seul placerait l'article
+        // normal avant celui en alerte : le tri par alerte doit primer.
+        Article::factory()->create(['nom' => 'Zebre en alerte', 'quantite_stock' => 1, 'seuil_alerte' => 5]);
+        Article::factory()->create(['nom' => 'Alpha normal', 'quantite_stock' => 50, 'seuil_alerte' => 5]);
+
+        $response = $this->actingAs($user)->getJson(route('stock.etat-stock.data', ['order' => [['column' => 1, 'dir' => 'asc']], 'columns' => [
+            ['data' => 'reference'], ['data' => 'nom'], ['data' => 'categorie_libelle'], ['data' => 'unite_libelle'],
+            ['data' => 'quantite_stock'], ['data' => 'seuil_alerte'], ['data' => 'prix_achat'], ['data' => 'statut_badge'],
+        ]]));
+
+        $response->assertOk();
+        $noms = array_column($response->json('data'), 'nom');
+        $this->assertSame(['Zebre en alerte', 'Alpha normal'], $noms);
+    }
+
     public function test_en_alerte_filter_only_shows_articles_below_threshold(): void
     {
         $user = User::factory()->create()->assignRole('gestionnaire_stock');

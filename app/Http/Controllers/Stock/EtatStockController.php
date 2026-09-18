@@ -33,7 +33,9 @@ class EtatStockController extends Controller
     {
         Gate::authorize('viewAny', Article::class);
 
-        $query = $this->filtrer(Article::query()->with(['categorie', 'unite']), $request);
+        $query = $this->filtrer(Article::query()->with(['categorie', 'unite']), $request)
+            ->orderByRaw('(quantite_stock <= seuil_alerte) desc')
+            ->orderBy('nom');
 
         return DataTables::of($query)
             ->editColumn('prix_achat', fn (Article $a) => Money::format((float) $a->prix_achat).' FCFA')
@@ -51,7 +53,10 @@ class EtatStockController extends Controller
     {
         Gate::authorize('viewAny', Article::class);
 
-        $articles = $this->filtrer(Article::query()->with(['categorie', 'unite']), $request)->orderBy('nom')->get();
+        $articles = $this->filtrer(Article::query()->with(['categorie', 'unite']), $request)
+            ->orderByRaw('(quantite_stock <= seuil_alerte) desc')
+            ->orderBy('nom')
+            ->get();
 
         return Excel::download(new EtatStockExport($articles), 'etat-stock-'.now()->format('Y-m-d-His').'.xlsx');
     }
@@ -60,7 +65,10 @@ class EtatStockController extends Controller
     {
         Gate::authorize('viewAny', Article::class);
 
-        $articles = $this->filtrer(Article::query()->with(['categorie', 'unite']), $request)->orderBy('nom')->get();
+        $articles = $this->filtrer(Article::query()->with(['categorie', 'unite']), $request)
+            ->orderByRaw('(quantite_stock <= seuil_alerte) desc')
+            ->orderBy('nom')
+            ->get();
 
         return Pdf::loadView('exports.pdf.etat-stock', ['articles' => $articles])
             ->setPaper('a4', 'landscape')
