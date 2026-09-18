@@ -26,21 +26,21 @@
                 <th>Unité</th>
                 <th>Stock</th>
                 <th>Seuil d'alerte</th>
-                <th>Valeur stock (FCFA)</th>
+                <th>Coût moyen d'achat (FCFA)</th>
                 <th>Statut</th>
             </tr>
         </thead>
         <tbody>
             @foreach ($articles as $article)
                 @php $enAlerte = $article->quantite_stock <= $article->seuil_alerte; @endphp
-                <tr class="{{ $enAlerte ? 'alerte' : '' }}">
+                <tr>
                     <td>{{ $article->reference }}</td>
                     <td>{{ $article->nom }}</td>
                     <td>{{ $article->categorie?->libelle ?? 'Sans catégorie' }}</td>
                     <td>{{ $article->unite?->libelle ?? '—' }}</td>
-                    <td>{{ $article->quantite_stock }}{{ $enAlerte ? ' (alerte)' : '' }}</td>
+                    <td class="{{ $enAlerte ? 'alerte' : '' }}">{{ $article->quantite_stock }}</td>
                     <td>{{ $article->seuil_alerte }}</td>
-                    <td>{{ number_format((float) $article->quantite_stock * (float) $article->prix_achat, 0, ',', ' ') }}</td>
+                    <td>{{ number_format((float) $article->prix_achat, 0, ',', ' ') }}</td>
                     <td>{{ $article->actif ? 'Actif' : 'Inactif' }}</td>
                 </tr>
             @endforeach

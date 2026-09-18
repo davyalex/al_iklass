@@ -195,13 +195,48 @@ class AchatControllerTest extends TestCase
         $response = $this->actingAs($user)->get(route('stock.achats.index'));
 
         $response->assertOk();
-        $kpis = $response->viewData('kpis');
-        $this->assertEquals(1000, $kpis['jour']);
-        $this->assertSame(1, $kpis['jour_count']);
-        $this->assertEquals(3000, $kpis['mois']);
-        $this->assertSame(2, $kpis['mois_count']);
-        $this->assertEquals(2400, $kpis['paye_mois']);
-        $this->assertEquals(600, $kpis['restant_mois']);
+
+        // Sans filtre, "kpiPeriode" porte sur TOUTE la période (les 3 achats).
+        $kpiPeriode = $response->viewData('kpiPeriode');
+        $this->assertEquals(8000, $kpiPeriode['total']);
+        $this->assertSame(3, $kpiPeriode['count']);
+        $this->assertEquals(2400, $kpiPeriode['paye']);
+        $this->assertEquals(5600, $kpiPeriode['restant']);
+
+        // "kpiMois" reste fixe sur le mois en cours (2 des 3 achats).
+        $kpiMois = $response->viewData('kpiMois');
+        $this->assertEquals(3000, $kpiMois['mois']);
+        $this->assertSame(2, $kpiMois['mois_count']);
+    }
+
+    public function test_kpis_endpoint_reacts_to_filters(): void
+    {
+        $user = User::factory()->create()->assignRole('gestionnaire_stock');
+        $fournisseurCible = Fournisseur::factory()->create();
+
+        Achat::factory()->create([
+            'fournisseur_id' => $fournisseurCible->id,
+            'date_achat' => now(),
+            'montant_total' => 1000,
+            'montant_paye' => 1000,
+            'montant_restant' => 0,
+        ]);
+        Achat::factory()->create([
+            'date_achat' => now(),
+            'montant_total' => 9000,
+            'montant_paye' => 0,
+            'montant_restant' => 9000,
+        ]);
+
+        $response = $this->actingAs($user)->getJson(route('stock.achats.kpis', [
+            'fournisseur_id' => $fournisseurCible->id,
+        ]));
+
+        $response->assertOk();
+        $this->assertSame(1, $response->json('count'));
+        $this->assertEquals(1000, $response->json('total'));
+        $this->assertEquals(1000, $response->json('paye'));
+        $this->assertEquals(0, $response->json('restant'));
     }
 
     public function test_reception_liee_a_un_bon_de_commande_rejette_un_article_non_commande(): void

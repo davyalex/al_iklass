@@ -23,7 +23,7 @@ class EtatStockExport implements FromCollection, ShouldAutoSize, WithHeadings, W
 
     public function headings(): array
     {
-        return ['Référence', 'Nom', 'Catégorie', 'Unité', 'Stock', 'Seuil d\'alerte', 'Valeur stock (FCFA)', 'Statut'];
+        return ['Référence', 'Nom', 'Catégorie', 'Unité', 'Stock', 'Seuil d\'alerte', 'Coût moyen d\'achat (FCFA)', 'Statut'];
     }
 
     /**
@@ -38,7 +38,7 @@ class EtatStockExport implements FromCollection, ShouldAutoSize, WithHeadings, W
             $article->unite?->libelle ?? '—',
             $article->quantite_stock,
             $article->seuil_alerte,
-            (float) $article->quantite_stock * (float) $article->prix_achat,
+            (float) $article->prix_achat,
             $article->actif ? 'Actif' : 'Inactif',
         ];
     }

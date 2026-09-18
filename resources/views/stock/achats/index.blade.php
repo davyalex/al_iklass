@@ -14,10 +14,10 @@
             <div class="card shadow-sm border-0 bg-white h-100">
                 <div class="card-body">
                     <div class="d-flex align-items-center justify-content-between">
-                        <span class="small text-muted">Achats du jour</span>
-                        <span class="badge rounded-pill bg-primary" title="Nombre d'achats aujourd'hui">{{ $kpis['jour_count'] }}</span>
+                        <span class="small text-muted">Total achats (période)</span>
+                        <span class="badge rounded-pill bg-primary" id="kpi-total-count" title="Nombre d'achats sur la période filtrée">{{ $kpiPeriode['count'] }}</span>
                     </div>
-                    <div class="h5 mb-0" style="color: var(--al-navy);">{{ \App\Support\Money::format($kpis['jour']) }} FCFA</div>
+                    <div class="h5 mb-0" style="color: var(--al-navy);" id="kpi-total-montant">{{ \App\Support\Money::format($kpiPeriode['total']) }} FCFA</div>
                 </div>
             </div>
         </div>
@@ -26,29 +26,32 @@
                 <div class="card-body">
                     <div class="d-flex align-items-center justify-content-between">
                         <span class="small text-muted">Achats du mois</span>
-                        <span class="badge rounded-pill bg-primary" title="Nombre d'achats ce mois-ci">{{ $kpis['mois_count'] }}</span>
+                        <span class="badge rounded-pill bg-primary" title="Nombre d'achats ce mois-ci">{{ $kpiMois['mois_count'] }}</span>
                     </div>
-                    <div class="h5 mb-0" style="color: var(--al-navy);">{{ \App\Support\Money::format($kpis['mois']) }} FCFA</div>
+                    <div class="h5 mb-0" style="color: var(--al-navy);">{{ \App\Support\Money::format($kpiMois['mois']) }} FCFA</div>
                 </div>
             </div>
         </div>
         <div class="col-6 col-lg-3">
             <div class="card shadow-sm border-0 bg-white h-100">
                 <div class="card-body">
-                    <div class="small text-muted">Déjà payé (mois)</div>
-                    <div class="h5 mb-0 text-success">{{ \App\Support\Money::format($kpis['paye_mois']) }} FCFA</div>
+                    <div class="small text-muted">Déjà payé (période)</div>
+                    <div class="h5 mb-0 text-success" id="kpi-paye-montant">{{ \App\Support\Money::format($kpiPeriode['paye']) }} FCFA</div>
                 </div>
             </div>
         </div>
         <div class="col-6 col-lg-3">
             <div class="card shadow-sm border-0 bg-white h-100">
                 <div class="card-body">
-                    <div class="small text-muted">Solde dû / restant (mois)</div>
-                    <div class="h5 mb-0 text-danger">{{ \App\Support\Money::format($kpis['restant_mois']) }} FCFA</div>
+                    <div class="small text-muted">Solde dû / restant (période)</div>
+                    <div class="h5 mb-0 text-danger" id="kpi-restant-montant">{{ \App\Support\Money::format($kpiPeriode['restant']) }} FCFA</div>
                 </div>
             </div>
         </div>
     </div>
+    <p class="small text-muted mb-3">
+        <i class="bi bi-info-circle me-1"></i>« Total achats », « Déjà payé » et « Solde dû / restant » suivent le filtre ci-dessous (toute la période par défaut). Seul « Achats du mois » reste fixe sur le mois en cours.
+    </p>
 
     <div class="card shadow-sm border-0 bg-white mb-3">
         <div class="card-body">
@@ -555,12 +558,25 @@
                 });
             });
 
-            $('#btn-filtrer-achats').on('click', () => tableAchats.ajax.reload());
+            function rafraichirKpisPeriode() {
+                $.get('{{ route('stock.achats.kpis') }}', filtresAchats(), function (kpis) {
+                    $('#kpi-total-count').text(kpis.count);
+                    $('#kpi-total-montant').text(formatMontant(kpis.total) + ' FCFA');
+                    $('#kpi-paye-montant').text(formatMontant(kpis.paye) + ' FCFA');
+                    $('#kpi-restant-montant').text(formatMontant(kpis.restant) + ' FCFA');
+                });
+            }
+
+            $('#btn-filtrer-achats').on('click', function () {
+                tableAchats.ajax.reload();
+                rafraichirKpisPeriode();
+            });
 
             $('#btn-reset-achats').on('click', function () {
                 $('#filtres-achats')[0].reset();
                 $('.select2-filtre-fournisseur').val('').trigger('change');
                 tableAchats.ajax.reload();
+                rafraichirKpisPeriode();
             });
 
             function urlAvecFiltres(base) {

@@ -37,6 +37,7 @@ Route::middleware(['auth'])->prefix('stock')->name('stock.')->group(function () 
 
         Route::get('achats', [AchatController::class, 'index'])->name('achats.index');
         Route::get('achats/data', [AchatController::class, 'data'])->name('achats.data');
+        Route::get('achats/kpis', [AchatController::class, 'kpis'])->name('achats.kpis');
         Route::get('achats/export/excel', [AchatController::class, 'exportExcel'])->name('achats.export.excel');
         Route::get('achats/export/pdf', [AchatController::class, 'exportPdf'])->name('achats.export.pdf');
         Route::get('achats/{achat}/pdf', [AchatController::class, 'pdf'])->name('achats.pdf');

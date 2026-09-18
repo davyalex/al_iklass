@@ -25,30 +25,29 @@ class EtatStockController extends Controller
         Gate::authorize('viewAny', Article::class);
 
         $categories = CategorieArticle::where('actif', true)->orderBy('libelle')->get();
+        $articles = Article::where('actif', true)->orderBy('nom')->get();
         $kpis = $this->calculerKpis();
 
-        return view('stock.etat-stock.index', compact('categories', 'kpis'));
+        return view('stock.etat-stock.index', compact('categories', 'articles', 'kpis'));
     }
 
     public function data(Request $request): JsonResponse
     {
         Gate::authorize('viewAny', Article::class);
 
-        $query = $this->filtrer(Article::query()->with(['categorie', 'unite']), $request)
-            ->select('articles.*')
-            ->selectRaw('(articles.quantite_stock * articles.prix_achat) as valeur_stock');
+        $query = $this->filtrer(Article::query()->with(['categorie', 'unite']), $request);
 
         return DataTables::of($query)
-            ->editColumn('valeur_stock', fn (Article $a) => Money::format((float) $a->valeur_stock).' FCFA')
+            ->editColumn('quantite_stock', fn (Article $a) => $a->quantite_stock <= $a->seuil_alerte
+                ? '<span class="text-danger fw-bold">'.$a->quantite_stock.'</span>'
+                : (string) $a->quantite_stock)
+            ->editColumn('prix_achat', fn (Article $a) => Money::format((float) $a->prix_achat).' FCFA')
             ->addColumn('categorie_libelle', fn (Article $a) => $a->categorie?->libelle ?? 'Sans catégorie')
             ->addColumn('unite_libelle', fn (Article $a) => $a->unite?->libelle ?? '—')
-            ->addColumn('alerte_badge', fn (Article $a) => $a->quantite_stock <= $a->seuil_alerte
-                ? '<span class="badge bg-danger">En alerte</span>'
-                : '<span class="badge bg-success">OK</span>')
             ->addColumn('statut_badge', fn (Article $a) => $a->actif
                 ? '<span class="badge bg-light text-dark border">Actif</span>'
                 : '<span class="badge bg-secondary">Inactif</span>')
-            ->rawColumns(['alerte_badge', 'statut_badge'])
+            ->rawColumns(['quantite_stock', 'statut_badge'])
             ->make(true);
     }
 
@@ -76,18 +75,19 @@ class EtatStockController extends Controller
     {
         return $query
             ->when($request->filled('categorie_id'), fn (Builder $q) => $q->where('categorie_id', $request->integer('categorie_id')))
+            ->when($request->filled('article_id'), fn (Builder $q) => $q->where('id', $request->integer('article_id')))
             ->when($request->boolean('en_alerte'), fn (Builder $q) => $q->enAlerte());
     }
 
     /**
-     * @return array{valeur_stock: float, en_alerte: int, references_actives: int}
+     * @return array{valeur_stock: float, en_alerte: int, total_pieces: int}
      */
     private function calculerKpis(): array
     {
         return [
             'valeur_stock' => (float) Article::query()->selectRaw('COALESCE(SUM(quantite_stock * prix_achat), 0) as total')->value('total'),
             'en_alerte' => Article::actif()->enAlerte()->count(),
-            'references_actives' => Article::actif()->count(),
+            'total_pieces' => (int) Article::actif()->sum('quantite_stock'),
         ];
     }
 }

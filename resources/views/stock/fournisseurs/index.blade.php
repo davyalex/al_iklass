@@ -9,52 +9,48 @@
         @endcan
     </div>
 
-    <div class="card shadow-sm border-0">
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead>
-                    <tr>
-                        <th>Nom</th>
-                        <th>Téléphone</th>
-                        <th>Email</th>
-                        <th>Achats</th>
-                        <th>Statut</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse ($fournisseurs as $fournisseur)
-                        <tr>
-                            <td>{{ $fournisseur->nom }}</td>
-                            <td>{{ $fournisseur->telephone ?? '—' }}</td>
-                            <td>{{ $fournisseur->email ?? '—' }}</td>
-                            <td>{{ $fournisseur->achats_count }}</td>
-                            <td>
-                                @if ($fournisseur->actif)
-                                    <span class="badge bg-success">Actif</span>
-                                @else
-                                    <span class="badge bg-secondary">Inactif</span>
-                                @endif
-                            </td>
-                            <td class="text-end">
-                                <a href="{{ route('stock.fournisseurs.compte', $fournisseur) }}" class="btn btn-sm btn-outline-primary" title="Voir détail">
-                                    <i class="bi bi-eye"></i>
-                                </a>
-                                @can('update', $fournisseur)
-                                    <button type="button" class="btn btn-sm btn-outline-secondary btn-modifier-fournisseur" data-id="{{ $fournisseur->id }}">
-                                        <i class="bi bi-pencil"></i>
-                                    </button>
-                                @endcan
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="6" class="text-center text-muted py-4">Aucun fournisseur pour le moment.</td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
+    <div class="row g-3">
+        @forelse ($fournisseurs as $fournisseur)
+            <div class="col-12 col-sm-6 col-lg-4 col-xl-3">
+                <div class="card h-100 shadow-sm border-0 bg-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h2 class="h6 mb-0">{{ $fournisseur->nom }}</h2>
+                            @if ($fournisseur->actif)
+                                <span class="badge bg-success">Actif</span>
+                            @else
+                                <span class="badge bg-secondary">Inactif</span>
+                            @endif
+                        </div>
+                        <p class="small text-muted mb-1">{{ $fournisseur->telephone ?? '—' }}</p>
+                        <p class="small text-muted mb-3">{{ $fournisseur->email ?? '—' }}</p>
+                        <div class="d-flex justify-content-between small mb-3">
+                            <span>Achats : <strong>{{ $fournisseur->achats_count }}</strong></span>
+                            <span>
+                                Solde dû :
+                                <strong class="{{ (float) $fournisseur->solde_du > 0 ? 'text-danger' : '' }}">
+                                    {{ \App\Support\Money::format($fournisseur->solde_du ?? 0) }} FCFA
+                                </strong>
+                            </span>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <a href="{{ route('stock.fournisseurs.compte', $fournisseur) }}" class="btn btn-sm btn-outline-primary flex-fill">
+                                <i class="bi bi-eye me-1"></i>Détail
+                            </a>
+                            @can('update', $fournisseur)
+                                <button type="button" class="btn btn-sm btn-outline-secondary btn-modifier-fournisseur" data-id="{{ $fournisseur->id }}">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                            @endcan
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @empty
+            <div class="col-12">
+                <p class="text-muted">Aucun fournisseur pour le moment.</p>
+            </div>
+        @endforelse
     </div>
 
     <div class="mt-3">{{ $fournisseurs->links() }}</div>

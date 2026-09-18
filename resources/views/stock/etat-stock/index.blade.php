@@ -21,8 +21,8 @@
         <div class="col-6 col-lg-4">
             <div class="card shadow-sm border-0 bg-white h-100">
                 <div class="card-body">
-                    <div class="small text-muted">Références actives</div>
-                    <div class="h5 mb-0" style="color: var(--al-navy);">{{ $kpis['references_actives'] }}</div>
+                    <div class="small text-muted">Total pièces disponibles</div>
+                    <div class="h5 mb-0" style="color: var(--al-navy);">{{ $kpis['total_pieces'] }}</div>
                 </div>
             </div>
         </div>
@@ -31,7 +31,16 @@
     <div class="card shadow-sm border-0 bg-white mb-3">
         <div class="card-body">
             <form id="filtres-etat-stock" class="row g-2 align-items-end">
-                <div class="col-md-4">
+                <div class="col-md-3">
+                    <label class="form-label small mb-1">Article</label>
+                    <select name="article_id" class="form-select form-select-sm select2-filtre-article">
+                        <option value="">Tous</option>
+                        @foreach ($articles as $article)
+                            <option value="{{ $article->id }}">{{ $article->reference }} — {{ $article->nom }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-3">
                     <label class="form-label small mb-1">Catégorie</label>
                     <select name="categorie_id" class="form-select form-select-sm select2-filtre-categorie">
                         <option value="">Toutes</option>
@@ -40,16 +49,14 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-md-3 d-flex align-items-center">
-                    <div class="form-check form-switch mb-0">
+                <div class="col-6 col-md-2">
+                    <label class="form-label small mb-1 d-none d-md-block">&nbsp;</label>
+                    <div class="form-check form-switch mb-0 pt-md-1">
                         <input class="form-check-input" type="checkbox" role="switch" name="en_alerte" id="filtre-en-alerte-etat">
-                        <label class="form-check-label" for="filtre-en-alerte-etat">En alerte uniquement</label>
+                        <label class="form-check-label" for="filtre-en-alerte-etat">En alerte</label>
                     </div>
                 </div>
-                <div class="col-12 col-md-5 d-flex flex-wrap gap-2">
-                    <button type="button" class="btn btn-sm btn-primary" id="btn-filtrer-etat-stock">
-                        <i class="bi bi-funnel me-1"></i>Filtrer
-                    </button>
+                <div class="col-12 col-md-4 d-flex flex-wrap gap-2">
                     <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-reset-etat-stock">
                         Réinitialiser
                     </button>
@@ -72,8 +79,7 @@
                         <th>Unité</th>
                         <th>Stock</th>
                         <th>Seuil</th>
-                        <th>Valeur stock</th>
-                        <th>Alerte</th>
+                        <th>Coût moyen d'achat</th>
                         <th>Statut</th>
                     </tr>
                 </thead>
@@ -84,10 +90,12 @@
     @push('scripts')
         <script>
         document.addEventListener('DOMContentLoaded', function () {
+            $('.select2-filtre-article').select2({ width: '100%', placeholder: 'Tous' });
             $('.select2-filtre-categorie').select2({ width: '100%', placeholder: 'Toutes' });
 
             function filtresEtatStock() {
                 return {
+                    article_id: $('#filtres-etat-stock [name=article_id]').val(),
                     categorie_id: $('#filtres-etat-stock [name=categorie_id]').val(),
                     en_alerte: $('#filtres-etat-stock [name=en_alerte]').is(':checked') ? 1 : '',
                 };
@@ -108,18 +116,18 @@
                     { data: 'unite_libelle', name: 'unite.libelle', orderable: false },
                     { data: 'quantite_stock', name: 'quantite_stock' },
                     { data: 'seuil_alerte', name: 'seuil_alerte' },
-                    { data: 'valeur_stock', name: 'valeur_stock' },
-                    { data: 'alerte_badge', name: 'quantite_stock', orderable: false },
+                    { data: 'prix_achat', name: 'prix_achat' },
                     { data: 'statut_badge', name: 'actif', orderable: false },
                 ],
                 order: [[1, 'asc']],
             });
 
-            $('#btn-filtrer-etat-stock').on('click', () => tableEtatStock.ajax.reload());
+            $('.select2-filtre-article, .select2-filtre-categorie').on('change', () => tableEtatStock.ajax.reload());
+            $('#filtre-en-alerte-etat').on('change', () => tableEtatStock.ajax.reload());
 
             $('#btn-reset-etat-stock').on('click', function () {
                 $('#filtres-etat-stock')[0].reset();
-                $('.select2-filtre-categorie').val('').trigger('change');
+                $('.select2-filtre-article, .select2-filtre-categorie').val('').trigger('change');
                 tableEtatStock.ajax.reload();
             });
 

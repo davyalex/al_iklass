@@ -38,7 +38,7 @@ class EtatStockControllerTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_data_endpoint_returns_valeur_stock_computed_from_quantite_and_prix_achat(): void
+    public function test_data_endpoint_returns_cout_moyen_achat_per_unit(): void
     {
         $user = User::factory()->create()->assignRole('gestionnaire_stock');
         Article::factory()->create(['nom' => 'Filtre à huile', 'quantite_stock' => 10, 'prix_achat' => 1500]);
@@ -46,7 +46,18 @@ class EtatStockControllerTest extends TestCase
         $response = $this->actingAs($user)->getJson(route('stock.etat-stock.data'));
 
         $response->assertOk();
-        $response->assertJsonFragment(['valeur_stock' => '15 000 FCFA']);
+        $response->assertJsonFragment(['prix_achat' => '1 500 FCFA']);
+    }
+
+    public function test_data_endpoint_highlights_quantity_in_red_when_below_threshold(): void
+    {
+        $user = User::factory()->create()->assignRole('gestionnaire_stock');
+        Article::factory()->create(['nom' => 'Article en alerte', 'quantite_stock' => 1, 'seuil_alerte' => 5]);
+
+        $response = $this->actingAs($user)->getJson(route('stock.etat-stock.data'));
+
+        $response->assertOk();
+        $response->assertJsonFragment(['quantite_stock' => '<span class="text-danger fw-bold">1</span>']);
     }
 
     public function test_en_alerte_filter_only_shows_articles_below_threshold(): void
@@ -60,6 +71,32 @@ class EtatStockControllerTest extends TestCase
         $response->assertOk();
         $response->assertJsonFragment(['nom' => $enAlerte->nom]);
         $response->assertJsonMissing(['nom' => $normal->nom]);
+    }
+
+    public function test_article_id_filter_shows_only_the_selected_product(): void
+    {
+        $user = User::factory()->create()->assignRole('gestionnaire_stock');
+        $cible = Article::factory()->create(['nom' => 'Filtre à huile']);
+        $autre = Article::factory()->create(['nom' => 'Bougie']);
+
+        $response = $this->actingAs($user)->getJson(route('stock.etat-stock.data', ['article_id' => $cible->id]));
+
+        $response->assertOk();
+        $response->assertJsonFragment(['nom' => $cible->nom]);
+        $response->assertJsonMissing(['nom' => $autre->nom]);
+    }
+
+    public function test_kpis_expose_total_pieces_disponibles(): void
+    {
+        $user = User::factory()->create()->assignRole('gestionnaire_stock');
+        Article::factory()->create(['quantite_stock' => 10, 'actif' => true]);
+        Article::factory()->create(['quantite_stock' => 5, 'actif' => true]);
+        Article::factory()->create(['quantite_stock' => 100, 'actif' => false]);
+
+        $response = $this->actingAs($user)->get(route('stock.etat-stock.index'));
+
+        $response->assertOk();
+        $response->assertViewHas('kpis', fn ($kpis) => $kpis['total_pieces'] === 15);
     }
 
     public function test_export_excel_requires_view_permission(): void

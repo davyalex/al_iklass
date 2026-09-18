@@ -24,6 +24,7 @@ class FournisseurController extends Controller
 
         $fournisseurs = Fournisseur::query()
             ->withCount('achats')
+            ->withSum('achats as solde_du', 'montant_restant')
             ->orderBy('nom')
             ->paginate(20);
 

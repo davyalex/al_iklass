@@ -26,15 +26,25 @@ class AchatController extends Controller
 {
     public function __construct(private readonly AchatService $achatService) {}
 
-    public function index(): View
+    public function index(Request $request): View
     {
         Gate::authorize('viewAny', Achat::class);
 
         $fournisseurs = Fournisseur::where('actif', true)->orderBy('nom')->get();
         $articles = Article::where('actif', true)->orderBy('nom')->get();
-        $kpis = $this->calculerKpis();
+        // Au premier chargement, aucun filtre n'est encore appliqué : la période
+        // par défaut est donc "toute la période" (tous les achats).
+        $kpiPeriode = $this->calculerKpiPeriode($request);
+        $kpiMois = $this->calculerKpiMois();
 
-        return view('stock.achats.index', compact('fournisseurs', 'articles', 'kpis'));
+        return view('stock.achats.index', compact('fournisseurs', 'articles', 'kpiPeriode', 'kpiMois'));
+    }
+
+    public function kpis(Request $request): JsonResponse
+    {
+        Gate::authorize('viewAny', Achat::class);
+
+        return response()->json($this->calculerKpiPeriode($request));
     }
 
     public function show(Achat $achat): JsonResponse
@@ -133,22 +143,35 @@ class AchatController extends Controller
     }
 
     /**
-     * @return array{jour: float, jour_count: int, mois: float, mois_count: int, paye_mois: float, restant_mois: float}
+     * KPI réactifs au filtre (date/fournisseur/statut) : par défaut, sans filtre
+     * appliqué, ils portent sur toute la période (tous les achats).
+     *
+     * @return array{total: float, count: int, paye: float, restant: float}
      */
-    private function calculerKpis(): array
+    private function calculerKpiPeriode(Request $request): array
     {
-        $aujourdhui = now();
-
-        $duJour = Achat::whereDate('date_achat', $aujourdhui->toDateString());
-        $duMois = Achat::duMois($aujourdhui);
+        $query = $this->filtrer(Achat::query(), $request);
 
         return [
-            'jour' => (float) (clone $duJour)->sum('montant_total'),
-            'jour_count' => (clone $duJour)->count(),
+            'total' => (float) (clone $query)->sum('montant_total'),
+            'count' => (clone $query)->count(),
+            'paye' => (float) (clone $query)->sum('montant_paye'),
+            'restant' => (float) (clone $query)->sum('montant_restant'),
+        ];
+    }
+
+    /**
+     * KPI fixe, toujours sur le mois en cours — n'est jamais affecté par le filtre.
+     *
+     * @return array{mois: float, mois_count: int}
+     */
+    private function calculerKpiMois(): array
+    {
+        $duMois = Achat::duMois(now());
+
+        return [
             'mois' => (float) (clone $duMois)->sum('montant_total'),
             'mois_count' => (clone $duMois)->count(),
-            'paye_mois' => (float) (clone $duMois)->sum('montant_paye'),
-            'restant_mois' => (float) (clone $duMois)->sum('montant_restant'),
         ];
     }
 }
