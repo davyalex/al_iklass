@@ -42,8 +42,8 @@
         </div>
     </div>
 
-    <div class="row g-3 mb-3">
-        <div class="col-6 col-lg-4">
+    <div class="row g-3 mb-3 row-cols-2 row-cols-lg-5">
+        <div class="col">
             <div class="card shadow-sm border-0 bg-white h-100">
                 <div class="card-body">
                     <div class="small text-muted">Total achats</div>
@@ -51,7 +51,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-6 col-lg-4">
+        <div class="col">
             <div class="card shadow-sm border-0 bg-white h-100">
                 <div class="card-body">
                     <div class="small text-muted">Total bons de commande</div>
@@ -59,7 +59,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-6 col-lg-4">
+        <div class="col">
             <div class="card shadow-sm border-0 bg-white h-100">
                 <div class="card-body">
                     <div class="small text-muted">Solde dû</div>
@@ -67,7 +67,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-6 col-lg-4">
+        <div class="col">
             <div class="card shadow-sm border-0 bg-white h-100">
                 <div class="card-body">
                     <div class="small text-muted">Déjà réglé</div>
@@ -75,7 +75,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-6 col-lg-4">
+        <div class="col">
             <div class="card shadow-sm border-0 bg-white h-100">
                 <div class="card-body">
                     <div class="small text-muted">Reste à régler</div>
