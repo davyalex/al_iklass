@@ -17,16 +17,16 @@
                         <th>Date</th>
                         <th>Référence</th>
                         <th>Fournisseur</th>
-                        <th>Réception</th>
+                        <th class="text-center">Réception</th>
                         <th>Statut</th>
-                        <th class="text-end">Actions</th>
+                        <th class="text-end" style="width: 90px;">Détail</th>
                     </tr>
                 </thead>
             </table>
         </div>
     </div>
 
-    {{-- Modale nouveau bon de commande --}}
+    {{-- Modale création --}}
     <div class="modal fade" id="modal-bon-commande" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
@@ -89,7 +89,7 @@
         </div>
     </div>
 
-    {{-- Gabarit d'une ligne de bon de commande --}}
+    {{-- Gabarit d'une ligne de bon de commande (formulaire de création) --}}
     <template id="gabarit-ligne-bc">
         <div class="row align-items-end ligne-bc mb-2">
             <div class="col-6">
@@ -115,11 +115,99 @@
         </div>
     </template>
 
+    {{-- Modale détail --}}
+    <div class="modal fade" id="modal-detail-bc" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div>
+                        <h5 class="modal-title mb-1" id="detail-bc-reference">—</h5>
+                        <span id="detail-bc-statut"></span>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3 mb-3">
+                        <div class="col-sm-6">
+                            <div class="small text-muted">Fournisseur</div>
+                            <div class="fw-semibold" id="detail-bc-fournisseur">—</div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="small text-muted">Date de commande</div>
+                            <div class="fw-semibold" id="detail-bc-date">—</div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between small text-muted mb-1">
+                            <span>Avancement de la réception</span>
+                            <span id="detail-bc-taux">0 / 0</span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-success" id="detail-bc-progress" role="progressbar" style="width: 0%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Article</th>
+                                    <th class="text-end">Commandé</th>
+                                    <th class="text-end">Reçu</th>
+                                    <th class="text-end">Prix estimé</th>
+                                    <th class="text-end">Montant estimé</th>
+                                </tr>
+                            </thead>
+                            <tbody id="detail-bc-lignes"></tbody>
+                            <tfoot>
+                                <tr class="fw-semibold">
+                                    <td colspan="4">Total estimé</td>
+                                    <td class="text-end" id="detail-bc-total">0 FCFA</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+
+                    <div id="detail-bc-commentaire-bloc" class="d-none">
+                        <div class="small text-muted">Commentaire</div>
+                        <div id="detail-bc-commentaire"></div>
+                    </div>
+                </div>
+                <div class="modal-footer justify-content-between flex-wrap gap-2">
+                    <a href="#" id="detail-bc-export" target="_blank" class="btn btn-outline-secondary">
+                        <i class="bi bi-printer me-1"></i>Exporter
+                    </a>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <button type="button" class="btn btn-outline-danger d-none" id="detail-bc-supprimer">
+                            <i class="bi bi-trash me-1"></i>Supprimer
+                        </button>
+                        <button type="button" class="btn btn-outline-danger d-none" id="detail-bc-annuler">
+                            Annuler le bon
+                        </button>
+                        <a href="#" class="btn btn-primary d-none" id="detail-bc-recevoir">
+                            Recevoir
+                        </a>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     @push('scripts')
         <script>
         document.addEventListener('DOMContentLoaded', function () {
             let ligneIndex = 0;
             const modalBc = new bootstrap.Modal('#modal-bon-commande');
+            const modalDetail = new bootstrap.Modal('#modal-detail-bc');
+
+            const STATUTS = {
+                en_attente: { libelle: 'En attente', classe: 'bg-secondary' },
+                partiellement_recu: { libelle: 'Partiellement reçu', classe: 'bg-warning text-dark' },
+                recu: { libelle: 'Reçu', classe: 'bg-success' },
+                annule: { libelle: 'Annulé', classe: 'bg-danger' },
+            };
 
             $('.select2-fournisseur-bc').select2({ dropdownParent: $('#modal-bon-commande'), width: '100%' });
 
@@ -187,9 +275,7 @@
                     });
             });
 
-            $('#table-bons-commande').on('click', '.btn-annuler-bc', function () {
-                const id = $(this).data('id');
-
+            function annulerBonCommande(id) {
                 Swal.fire({
                     icon: 'warning',
                     title: 'Annuler ce bon de commande ?',
@@ -201,6 +287,7 @@
 
                     $.post(`/stock/bons-commande/${id}/annuler`)
                         .done(function (res) {
+                            modalDetail.hide();
                             Swal.fire({ icon: 'success', text: res.message, timer: 1800, showConfirmButton: false });
                             $('#table-bons-commande').DataTable().ajax.reload();
                         })
@@ -208,11 +295,9 @@
                             Swal.fire({ icon: 'error', text: xhr.responseJSON?.message || 'Une erreur est survenue.' });
                         });
                 });
-            });
+            }
 
-            $('#table-bons-commande').on('click', '.btn-supprimer-bc', function () {
-                const id = $(this).data('id');
-
+            function supprimerBonCommande(id) {
                 Swal.fire({
                     icon: 'warning',
                     title: 'Supprimer ce bon de commande ?',
@@ -225,12 +310,67 @@
 
                     $.post(`/stock/bons-commande/${id}`, { _method: 'DELETE' })
                         .done(function (res) {
+                            modalDetail.hide();
                             Swal.fire({ icon: 'success', text: res.message, timer: 1800, showConfirmButton: false });
                             $('#table-bons-commande').DataTable().ajax.reload();
                         })
                         .fail(function (xhr) {
                             Swal.fire({ icon: 'error', text: xhr.responseJSON?.message || 'Une erreur est survenue.' });
                         });
+                });
+            }
+
+            $('#detail-bc-annuler').on('click', function () { annulerBonCommande($(this).data('id')); });
+            $('#detail-bc-supprimer').on('click', function () { supprimerBonCommande($(this).data('id')); });
+
+            $('#table-bons-commande').on('click', '.btn-detail-bc', function () {
+                const id = $(this).data('id');
+
+                $.get(`/stock/bons-commande/${id}`, function (bc) {
+                    const statutInfo = STATUTS[bc.statut] ?? { libelle: bc.statut, classe: 'bg-secondary' };
+                    const recevable = bc.statut === 'en_attente' || bc.statut === 'partiellement_recu';
+                    const supprimable = bc.statut === 'en_attente' || bc.statut === 'annule';
+
+                    $('#detail-bc-reference').text(bc.reference ?? ('Bon de commande #' + bc.id));
+                    $('#detail-bc-statut').html(`<span class="badge ${statutInfo.classe}">${statutInfo.libelle}</span>`);
+                    $('#detail-bc-fournisseur').text(bc.fournisseur_nom);
+                    $('#detail-bc-date').text(new Date(bc.date_commande).toLocaleDateString('fr-FR'));
+
+                    const totalCommande = bc.lignes.reduce((s, l) => s + l.quantite_commandee, 0);
+                    const totalRecu = bc.lignes.reduce((s, l) => s + l.quantite_recue, 0);
+                    const pourcentage = totalCommande > 0 ? Math.round((totalRecu / totalCommande) * 100) : 0;
+                    $('#detail-bc-taux').text(`${totalRecu} / ${totalCommande} articles`);
+                    $('#detail-bc-progress').css('width', pourcentage + '%');
+
+                    let totalEstime = 0;
+                    const $lignes = $('#detail-bc-lignes').empty();
+                    bc.lignes.forEach(function (ligne) {
+                        totalEstime += parseFloat(ligne.montant_estime);
+                        $lignes.append(`
+                            <tr>
+                                <td>${ligne.article_reference} — ${ligne.article_nom}</td>
+                                <td class="text-end">${ligne.quantite_commandee}</td>
+                                <td class="text-end">${ligne.quantite_recue}</td>
+                                <td class="text-end">${Number(ligne.prix_unitaire_estime).toLocaleString('fr-FR')} FCFA</td>
+                                <td class="text-end">${Number(ligne.montant_estime).toLocaleString('fr-FR')} FCFA</td>
+                            </tr>
+                        `);
+                    });
+                    $('#detail-bc-total').text(totalEstime.toLocaleString('fr-FR') + ' FCFA');
+
+                    if (bc.commentaire) {
+                        $('#detail-bc-commentaire-bloc').removeClass('d-none');
+                        $('#detail-bc-commentaire').text(bc.commentaire);
+                    } else {
+                        $('#detail-bc-commentaire-bloc').addClass('d-none');
+                    }
+
+                    $('#detail-bc-export').attr('href', `/stock/bons-commande/${bc.id}/pdf`);
+                    $('#detail-bc-recevoir').attr('href', `/stock/achats?bon_commande_id=${bc.id}`).toggleClass('d-none', !recevable);
+                    $('#detail-bc-annuler').data('id', bc.id).toggleClass('d-none', bc.statut !== 'en_attente');
+                    $('#detail-bc-supprimer').data('id', bc.id).toggleClass('d-none', !supprimable);
+
+                    modalDetail.show();
                 });
             });
 
@@ -243,29 +383,14 @@
                     { data: 'date_commande', name: 'date_commande' },
                     { data: 'reference', name: 'reference', defaultContent: '—' },
                     { data: 'fournisseur_nom', name: 'fournisseur_nom' },
-                    { data: 'taux_reception', name: 'taux_reception', orderable: false },
+                    { data: 'taux_reception', name: 'taux_reception', orderable: false, className: 'text-center' },
                     { data: 'statut_badge', name: 'statut', orderable: false },
                     {
                         data: null,
                         orderable: false,
                         searchable: false,
-                        render: function (bc) {
-                            const recevable = bc.statut === 'en_attente' || bc.statut === 'partiellement_recu';
-                            const supprimable = bc.statut === 'en_attente' || bc.statut === 'annule';
-
-                            let boutons = '';
-                            if (recevable) {
-                                boutons += `<a href="/stock/achats?bon_commande_id=${bc.id}" class="btn btn-sm btn-outline-primary">Recevoir</a> `;
-                            }
-                            boutons += `<a href="/stock/bons-commande/${bc.id}/pdf" target="_blank" class="btn btn-sm btn-outline-secondary" title="Imprimer"><i class="bi bi-printer"></i></a> `;
-                            if (bc.statut === 'en_attente') {
-                                boutons += `<button type="button" class="btn btn-sm btn-outline-danger btn-annuler-bc" data-id="${bc.id}">Annuler</button> `;
-                            }
-                            if (supprimable) {
-                                boutons += `<button type="button" class="btn btn-sm btn-outline-danger btn-supprimer-bc" data-id="${bc.id}" title="Supprimer"><i class="bi bi-trash"></i></button>`;
-                            }
-                            return boutons;
-                        },
+                        className: 'text-end',
+                        render: (bc) => `<button type="button" class="btn btn-sm btn-outline-primary btn-detail-bc" data-id="${bc.id}">Détail</button>`,
                     },
                 ],
                 order: [[0, 'desc']],

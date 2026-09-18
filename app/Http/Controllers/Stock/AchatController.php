@@ -34,6 +34,13 @@ class AchatController extends Controller
         return view('stock.achats.index', compact('fournisseurs', 'articles'));
     }
 
+    public function show(Achat $achat): JsonResponse
+    {
+        Gate::authorize('view', $achat);
+
+        return response()->json($achat->load('lignes', 'bonCommande'));
+    }
+
     public function data(Request $request): JsonResponse
     {
         Gate::authorize('viewAny', Achat::class);

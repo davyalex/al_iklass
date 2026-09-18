@@ -65,7 +65,7 @@
                         <th>Payé</th>
                         <th>Restant</th>
                         <th>Statut</th>
-                        <th class="text-end">Actions</th>
+                        <th class="text-end" style="width: 90px;">Détail</th>
                     </tr>
                 </thead>
             </table>
@@ -166,11 +166,86 @@
         </div>
     </template>
 
+    {{-- Modale détail --}}
+    <div class="modal fade" id="modal-detail-achat" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div>
+                        <h5 class="modal-title mb-1" id="detail-achat-reference">—</h5>
+                        <span id="detail-achat-statut"></span>
+                        <span id="detail-achat-bc-badge" class="d-none"></span>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3 mb-3">
+                        <div class="col-sm-6">
+                            <div class="small text-muted">Fournisseur</div>
+                            <div class="fw-semibold" id="detail-achat-fournisseur">—</div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="small text-muted">Date</div>
+                            <div class="fw-semibold" id="detail-achat-date">—</div>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Article</th>
+                                    <th class="text-end">Quantité</th>
+                                    <th class="text-end">Prix unitaire</th>
+                                    <th class="text-end">Montant</th>
+                                </tr>
+                            </thead>
+                            <tbody id="detail-achat-lignes"></tbody>
+                        </table>
+                    </div>
+
+                    <div class="row g-3 justify-content-end text-end">
+                        <div class="col-sm-4">
+                            <div class="small text-muted">Total</div>
+                            <div class="fw-semibold" id="detail-achat-total">—</div>
+                        </div>
+                        <div class="col-sm-4">
+                            <div class="small text-muted">Payé</div>
+                            <div class="fw-semibold" id="detail-achat-paye">—</div>
+                        </div>
+                        <div class="col-sm-4">
+                            <div class="small text-muted">Restant dû</div>
+                            <div class="fw-semibold" id="detail-achat-restant">—</div>
+                        </div>
+                    </div>
+
+                    <div id="detail-achat-commentaire-bloc" class="d-none mt-3">
+                        <div class="small text-muted">Commentaire</div>
+                        <div id="detail-achat-commentaire"></div>
+                    </div>
+                </div>
+                <div class="modal-footer justify-content-between">
+                    <a href="#" id="detail-achat-export" target="_blank" class="btn btn-outline-secondary">
+                        <i class="bi bi-printer me-1"></i>Exporter
+                    </a>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     @push('scripts')
         <script>
         document.addEventListener('DOMContentLoaded', function () {
             let ligneIndex = 0;
             const modalAchat = new bootstrap.Modal('#modal-achat');
+            const modalDetailAchat = new bootstrap.Modal('#modal-detail-achat');
+
+            const STATUTS_PAIEMENT = {
+                comptant: { libelle: 'Comptant', classe: 'bg-success' },
+                partiel: { libelle: 'Partiel', classe: 'bg-warning text-dark' },
+                credit: { libelle: 'Crédit', classe: 'bg-danger' },
+            };
 
             $('.select2-fournisseur').select2({ dropdownParent: $('#modal-achat'), width: '100%' });
             $('.select2-filtre-fournisseur').select2({ width: '100%', placeholder: 'Tous' });
@@ -316,10 +391,57 @@
                         data: null,
                         orderable: false,
                         searchable: false,
-                        render: (achat) => `<a href="/stock/achats/${achat.id}/pdf" target="_blank" class="btn btn-sm btn-outline-secondary" title="Imprimer"><i class="bi bi-printer"></i></a>`,
+                        className: 'text-end',
+                        render: (achat) => `<button type="button" class="btn btn-sm btn-outline-primary btn-detail-achat" data-id="${achat.id}">Détail</button>`,
                     },
                 ],
                 order: [[0, 'desc']],
+            });
+
+            $('#table-achats').on('click', '.btn-detail-achat', function () {
+                const id = $(this).data('id');
+
+                $.get(`/stock/achats/${id}`, function (achat) {
+                    const statutInfo = STATUTS_PAIEMENT[achat.statut_paiement] ?? { libelle: achat.statut_paiement, classe: 'bg-secondary' };
+
+                    $('#detail-achat-reference').text(achat.reference ?? ('Achat #' + achat.id));
+                    $('#detail-achat-statut').html(`<span class="badge ${statutInfo.classe}">${statutInfo.libelle}</span>`);
+                    if (achat.bon_commande) {
+                        $('#detail-achat-bc-badge').removeClass('d-none')
+                            .html(`<span class="badge bg-light text-dark border ms-1">BC : ${achat.bon_commande.reference}</span>`);
+                    } else {
+                        $('#detail-achat-bc-badge').addClass('d-none').empty();
+                    }
+                    $('#detail-achat-fournisseur').text(achat.fournisseur_nom);
+                    $('#detail-achat-date').text(new Date(achat.date_achat).toLocaleDateString('fr-FR'));
+
+                    const $lignes = $('#detail-achat-lignes').empty();
+                    achat.lignes.forEach(function (ligne) {
+                        $lignes.append(`
+                            <tr>
+                                <td>${ligne.article_reference} — ${ligne.article_nom}</td>
+                                <td class="text-end">${ligne.quantite}</td>
+                                <td class="text-end">${Number(ligne.prix_unitaire).toLocaleString('fr-FR')} FCFA</td>
+                                <td class="text-end">${Number(ligne.montant).toLocaleString('fr-FR')} FCFA</td>
+                            </tr>
+                        `);
+                    });
+
+                    $('#detail-achat-total').text(Number(achat.montant_total).toLocaleString('fr-FR') + ' FCFA');
+                    $('#detail-achat-paye').text(Number(achat.montant_paye).toLocaleString('fr-FR') + ' FCFA');
+                    $('#detail-achat-restant').text(Number(achat.montant_restant).toLocaleString('fr-FR') + ' FCFA');
+
+                    if (achat.commentaire) {
+                        $('#detail-achat-commentaire-bloc').removeClass('d-none');
+                        $('#detail-achat-commentaire').text(achat.commentaire);
+                    } else {
+                        $('#detail-achat-commentaire-bloc').addClass('d-none');
+                    }
+
+                    $('#detail-achat-export').attr('href', `/stock/achats/${achat.id}/pdf`);
+
+                    modalDetailAchat.show();
+                });
             });
 
             $('#btn-filtrer-achats').on('click', () => tableAchats.ajax.reload());

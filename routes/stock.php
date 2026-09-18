@@ -29,6 +29,7 @@ Route::middleware(['auth'])->prefix('stock')->name('stock.')->group(function () 
         Route::get('achats/export/excel', [AchatController::class, 'exportExcel'])->name('achats.export.excel');
         Route::get('achats/export/pdf', [AchatController::class, 'exportPdf'])->name('achats.export.pdf');
         Route::get('achats/{achat}/pdf', [AchatController::class, 'pdf'])->name('achats.pdf');
+        Route::get('achats/{achat}', [AchatController::class, 'show'])->name('achats.show');
 
         Route::get('paiements', [PaiementFournisseurController::class, 'index'])->name('paiements.index');
         Route::get('paiements/data', [PaiementFournisseurController::class, 'data'])->name('paiements.data');
