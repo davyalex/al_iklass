@@ -21,6 +21,10 @@ class DatabaseSeeder extends Seeder
             VehiculeSeeder::class,
             StockReferenceSeeder::class,
             ArticleSeeder::class,
+            FournisseurSeeder::class,
+            AchatSeeder::class,
+            SortieStockSeeder::class,
+            InventaireSeeder::class,
         ]);
     }
 }
