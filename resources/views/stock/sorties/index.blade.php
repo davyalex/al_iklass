@@ -174,7 +174,7 @@
 
             $('.select2-article-sortie').select2({ dropdownParent: $('#modal-sortie'), width: '100%' });
             $('.select2-vehicule').select2({ dropdownParent: $('#modal-sortie'), width: '100%' });
-            $('.select2-filtre-article').select2({ width: '100%', placeholder: 'Tous' });
+            $('.select2-filtre-article').select2({ width: '100%', placeholder: 'Tous', containerCssClass: 'select2-sm' });
 
             $('#form-sortie').on('submit', function (e) {
                 e.preventDefault();

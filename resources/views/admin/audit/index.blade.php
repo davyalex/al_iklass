@@ -53,7 +53,7 @@
     @push('scripts')
         <script>
         document.addEventListener('DOMContentLoaded', function () {
-            $('.select2-filtre-utilisateur').select2({ width: '100%', placeholder: 'Tous' });
+            $('.select2-filtre-utilisateur').select2({ width: '100%', placeholder: 'Tous', containerCssClass: 'select2-sm' });
 
             function filtresAudit() {
                 return {

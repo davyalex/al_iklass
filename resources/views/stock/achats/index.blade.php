@@ -118,7 +118,7 @@
 
     {{-- Modale nouvel achat --}}
     <div class="modal fade" id="modal-achat" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
+        <div class="modal-dialog modal-xl">
             <div class="modal-content">
                 <form id="form-achat">
                     <input type="hidden" name="bon_commande_id" id="achat-bon-commande-id">
@@ -187,7 +187,7 @@
     <template id="gabarit-ligne-achat">
         <div class="row align-items-end ligne-achat mb-2">
             <input type="hidden" name="lignes[__index__][bon_commande_ligne_id]" class="ligne-bon-commande-ligne-id">
-            <div class="col-6">
+            <div class="col-12 col-md-5">
                 <label class="form-label small">Article</label>
                 <select name="lignes[__index__][article_id]" class="form-select select2-article" required>
                     <option value=""></option>
@@ -196,7 +196,7 @@
                     @endforeach
                 </select>
             </div>
-            <div class="col-2">
+            <div class="col-6 col-md-3">
                 <label class="form-label small">Quantité</label>
                 <div class="input-group">
                     <button type="button" class="btn btn-outline-secondary btn-quantite-moins" tabindex="-1">−</button>
@@ -204,7 +204,7 @@
                     <button type="button" class="btn btn-outline-secondary btn-quantite-plus" tabindex="-1">+</button>
                 </div>
             </div>
-            <div class="col-3">
+            <div class="col-5 col-md-3">
                 <label class="form-label small">Prix unitaire</label>
                 <input type="number" name="lignes[__index__][prix_unitaire]" class="form-control ligne-prix" min="0" step="0.01" required>
             </div>
@@ -303,7 +303,7 @@
             };
 
             $('.select2-fournisseur').select2({ dropdownParent: $('#modal-achat'), width: '100%' });
-            $('.select2-filtre-fournisseur').select2({ width: '100%', placeholder: 'Tous' });
+            $('.select2-filtre-fournisseur').select2({ width: '100%', placeholder: 'Tous', containerCssClass: 'select2-sm' });
 
             function recalculerTotal() {
                 let total = 0;

@@ -31,21 +31,12 @@
     <div class="card shadow-sm border-0 bg-white mb-3">
         <div class="card-body">
             <form id="filtres-etat-stock" class="row g-2 align-items-end">
-                <div class="col-md-3">
+                <div class="col-md-6">
                     <label class="form-label small mb-1">Article</label>
                     <select name="article_id" class="form-select form-select-sm select2-filtre-article">
                         <option value="">Tous</option>
                         @foreach ($articles as $article)
                             <option value="{{ $article->id }}">{{ $article->reference }} — {{ $article->nom }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label small mb-1">Catégorie</label>
-                    <select name="categorie_id" class="form-select form-select-sm select2-filtre-categorie">
-                        <option value="">Toutes</option>
-                        @foreach ($categories as $categorie)
-                            <option value="{{ $categorie->id }}">{{ $categorie->libelle }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -91,12 +82,10 @@
         <script>
         document.addEventListener('DOMContentLoaded', function () {
             $('.select2-filtre-article').select2({ width: '100%', placeholder: 'Tous' });
-            $('.select2-filtre-categorie').select2({ width: '100%', placeholder: 'Toutes' });
 
             function filtresEtatStock() {
                 return {
                     article_id: $('#filtres-etat-stock [name=article_id]').val(),
-                    categorie_id: $('#filtres-etat-stock [name=categorie_id]').val(),
                     en_alerte: $('#filtres-etat-stock [name=en_alerte]').is(':checked') ? 1 : '',
                 };
             }
@@ -120,14 +109,19 @@
                     { data: 'statut_badge', name: 'actif', orderable: false },
                 ],
                 order: [[1, 'asc']],
+                createdRow: function (row, data) {
+                    if (data.en_alerte) {
+                        $(row).addClass('table-danger');
+                    }
+                },
             });
 
-            $('.select2-filtre-article, .select2-filtre-categorie').on('change', () => tableEtatStock.ajax.reload());
+            $('.select2-filtre-article').on('change', () => tableEtatStock.ajax.reload());
             $('#filtre-en-alerte-etat').on('change', () => tableEtatStock.ajax.reload());
 
             $('#btn-reset-etat-stock').on('click', function () {
                 $('#filtres-etat-stock')[0].reset();
-                $('.select2-filtre-article, .select2-filtre-categorie').val('').trigger('change');
+                $('.select2-filtre-article').val('').trigger('change');
                 tableEtatStock.ajax.reload();
             });
 

@@ -90,3 +90,15 @@ body {
     border-color: $input-focus-border-color;
     box-shadow: $input-focus-box-shadow;
 }
+
+// Variante "sm" : pour les barres de filtre (form-control-sm / form-select-sm / btn-sm
+// voisins), afin que tous les champs d'une même ligne aient la même hauteur.
+.select2-container--default.select2-sm .select2-selection--single {
+    height: $input-height-sm;
+    padding: 0 0.4rem;
+    font-size: $font-size-sm;
+}
+
+.select2-container--default.select2-sm .select2-selection--single .select2-selection__arrow {
+    right: 0.4rem;
+}

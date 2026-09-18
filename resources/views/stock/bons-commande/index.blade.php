@@ -28,7 +28,7 @@
 
     {{-- Modale création --}}
     <div class="modal fade" id="modal-bon-commande" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
+        <div class="modal-dialog modal-xl">
             <div class="modal-content">
                 <form id="form-bon-commande">
                     <div class="modal-header">
@@ -92,7 +92,7 @@
     {{-- Gabarit d'une ligne de bon de commande (formulaire de création) --}}
     <template id="gabarit-ligne-bc">
         <div class="row align-items-end ligne-bc mb-2">
-            <div class="col-6">
+            <div class="col-12 col-md-5">
                 <label class="form-label small">Article</label>
                 <select name="lignes[__index__][article_id]" class="form-select select2-article-bc" required>
                     <option value=""></option>
@@ -101,7 +101,7 @@
                     @endforeach
                 </select>
             </div>
-            <div class="col-2">
+            <div class="col-6 col-md-3">
                 <label class="form-label small">Quantité</label>
                 <div class="input-group">
                     <button type="button" class="btn btn-outline-secondary btn-quantite-bc-moins" tabindex="-1">−</button>
@@ -109,7 +109,7 @@
                     <button type="button" class="btn btn-outline-secondary btn-quantite-bc-plus" tabindex="-1">+</button>
                 </div>
             </div>
-            <div class="col-3">
+            <div class="col-5 col-md-3">
                 <label class="form-label small">Prix unitaire estimé</label>
                 <input type="number" name="lignes[__index__][prix_unitaire_estime]" class="form-control ligne-bc-prix" min="0" step="0.01" required>
             </div>

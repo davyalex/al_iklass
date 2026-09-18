@@ -133,7 +133,7 @@
             const modal = new bootstrap.Modal('#modal-paiement');
 
             $('.select2-achat').select2({ dropdownParent: $('#modal-paiement'), width: '100%' });
-            $('.select2-filtre-fournisseur').select2({ width: '100%', placeholder: 'Tous' });
+            $('.select2-filtre-fournisseur').select2({ width: '100%', placeholder: 'Tous', containerCssClass: 'select2-sm' });
 
             $('#paiement-achat').on('change', function () {
                 const restant = $(this).find(':selected').data('restant');

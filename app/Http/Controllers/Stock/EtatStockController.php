@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Stock;
 use App\Exports\Stock\EtatStockExport;
 use App\Http\Controllers\Controller;
 use App\Models\Article;
-use App\Models\CategorieArticle;
 use App\Support\Money;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
@@ -24,11 +23,10 @@ class EtatStockController extends Controller
     {
         Gate::authorize('viewAny', Article::class);
 
-        $categories = CategorieArticle::where('actif', true)->orderBy('libelle')->get();
         $articles = Article::where('actif', true)->orderBy('nom')->get();
         $kpis = $this->calculerKpis();
 
-        return view('stock.etat-stock.index', compact('categories', 'articles', 'kpis'));
+        return view('stock.etat-stock.index', compact('articles', 'kpis'));
     }
 
     public function data(Request $request): JsonResponse
@@ -38,16 +36,14 @@ class EtatStockController extends Controller
         $query = $this->filtrer(Article::query()->with(['categorie', 'unite']), $request);
 
         return DataTables::of($query)
-            ->editColumn('quantite_stock', fn (Article $a) => $a->quantite_stock <= $a->seuil_alerte
-                ? '<span class="text-danger fw-bold">'.$a->quantite_stock.'</span>'
-                : (string) $a->quantite_stock)
             ->editColumn('prix_achat', fn (Article $a) => Money::format((float) $a->prix_achat).' FCFA')
             ->addColumn('categorie_libelle', fn (Article $a) => $a->categorie?->libelle ?? 'Sans catégorie')
             ->addColumn('unite_libelle', fn (Article $a) => $a->unite?->libelle ?? '—')
             ->addColumn('statut_badge', fn (Article $a) => $a->actif
                 ? '<span class="badge bg-light text-dark border">Actif</span>'
                 : '<span class="badge bg-secondary">Inactif</span>')
-            ->rawColumns(['quantite_stock', 'statut_badge'])
+            ->addColumn('en_alerte', fn (Article $a) => $a->quantite_stock <= $a->seuil_alerte)
+            ->rawColumns(['statut_badge'])
             ->make(true);
     }
 
@@ -74,7 +70,6 @@ class EtatStockController extends Controller
     private function filtrer(Builder $query, Request $request): Builder
     {
         return $query
-            ->when($request->filled('categorie_id'), fn (Builder $q) => $q->where('categorie_id', $request->integer('categorie_id')))
             ->when($request->filled('article_id'), fn (Builder $q) => $q->where('id', $request->integer('article_id')))
             ->when($request->boolean('en_alerte'), fn (Builder $q) => $q->enAlerte());
     }

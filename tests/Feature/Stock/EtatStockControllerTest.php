@@ -49,15 +49,17 @@ class EtatStockControllerTest extends TestCase
         $response->assertJsonFragment(['prix_achat' => '1 500 FCFA']);
     }
 
-    public function test_data_endpoint_highlights_quantity_in_red_when_below_threshold(): void
+    public function test_data_endpoint_flags_articles_below_threshold_as_en_alerte(): void
     {
         $user = User::factory()->create()->assignRole('gestionnaire_stock');
         Article::factory()->create(['nom' => 'Article en alerte', 'quantite_stock' => 1, 'seuil_alerte' => 5]);
+        Article::factory()->create(['nom' => 'Article normal', 'quantite_stock' => 50, 'seuil_alerte' => 5]);
 
         $response = $this->actingAs($user)->getJson(route('stock.etat-stock.data'));
 
         $response->assertOk();
-        $response->assertJsonFragment(['quantite_stock' => '<span class="text-danger fw-bold">1</span>']);
+        $response->assertJsonFragment(['nom' => 'Article en alerte', 'en_alerte' => true]);
+        $response->assertJsonFragment(['nom' => 'Article normal', 'en_alerte' => false]);
     }
 
     public function test_en_alerte_filter_only_shows_articles_below_threshold(): void
