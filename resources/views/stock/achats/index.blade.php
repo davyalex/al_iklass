@@ -86,7 +86,7 @@
                     <button type="button" class="btn btn-sm btn-primary" id="btn-filtrer-achats">
                         <i class="bi bi-funnel me-1"></i>Filtrer
                     </button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-reset-achats">
+                    <button type="button" class="btn btn-sm btn-outline-secondary d-none" id="btn-reset-achats">
                         Réinitialiser
                     </button>
                     <div class="ms-md-auto">
@@ -312,6 +312,15 @@
                         </div>
                         <div class="alert alert-warning py-2 px-3 mb-3">
                             Solde restant dû : <strong id="paiement-achat-restant">—</strong>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label d-block">Type de paiement</label>
+                            <div class="btn-group w-100" role="group">
+                                <input type="radio" class="btn-check" name="type_paiement_achat" id="paiement-achat-type-total" checked>
+                                <label class="btn btn-outline-primary" for="paiement-achat-type-total">Paiement total</label>
+                                <input type="radio" class="btn-check" name="type_paiement_achat" id="paiement-achat-type-partiel">
+                                <label class="btn btn-outline-primary" for="paiement-achat-type-partiel">Paiement partiel</label>
+                            </div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Montant (FCFA)</label>
@@ -628,16 +637,32 @@
                 });
             });
 
+            // Bascule Paiement total / partiel : en "total", le montant est verrouillé
+            // sur le solde restant (sans decimale superflue) ; en "partiel", le champ
+            // se vide et devient modifiable pour une saisie libre (plafonnee a max).
+            function appliquerTypePaiementAchat() {
+                const restant = parseFloat($('#paiement-achat-id').data('restant')) || 0;
+
+                if ($('#paiement-achat-type-total').is(':checked')) {
+                    $('#paiement-achat-montant').val(restant).prop('readonly', true);
+                } else {
+                    $('#paiement-achat-montant').val('').prop('readonly', false).trigger('focus');
+                }
+            }
+
+            $('#modal-paiement-achat input[name=type_paiement_achat]').on('change', appliquerTypePaiementAchat);
+
             $('#table-achats').on('click', '.btn-payer-achat', function () {
                 const id = $(this).data('id');
 
                 $.get(`/stock/achats/${id}`, function (achat) {
                     $('#form-paiement-achat')[0].reset();
-                    $('#paiement-achat-id').val(achat.id);
+                    $('#paiement-achat-id').val(achat.id).data('restant', achat.montant_restant);
                     $('#paiement-achat-reference').text(achat.reference ?? ('Achat #' + achat.id));
                     $('#paiement-achat-fournisseur').text(achat.fournisseur_nom);
                     $('#paiement-achat-restant').text(formatMontant(achat.montant_restant) + ' FCFA');
-                    $('#paiement-achat-montant').attr('max', achat.montant_restant).val(achat.montant_restant);
+                    $('#paiement-achat-montant').attr('max', parseFloat(achat.montant_restant) || 0);
+                    appliquerTypePaiementAchat();
                     modalPaiementAchat.show();
                 });
             });
