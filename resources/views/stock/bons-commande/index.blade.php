@@ -256,8 +256,11 @@
             $('#btn-ajouter-ligne-bc').on('click', ajouterLigneBc);
 
             $('#lignes-bon-commande').on('change', '.select2-article-bc', function () {
-                const prix = $(this).find(':selected').data('prix');
-                if (prix !== undefined) {
+                // Ne préremplir que si l'article a déjà un prix d'achat connu (achat
+                // précédent) : sinon prix_achat vaut 0 par défaut et on laisse le champ
+                // vide pour forcer une saisie plutôt que de suggérer un prix à 0.
+                const prix = parseFloat($(this).find(':selected').data('prix'));
+                if (prix > 0) {
                     $(this).closest('.ligne-bc').find('.ligne-bc-prix').val(prix);
                 }
                 actualiserOptionsArticlesDisponiblesBc();
