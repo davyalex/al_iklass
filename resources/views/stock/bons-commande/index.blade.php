@@ -19,7 +19,7 @@
                         <th>Fournisseur</th>
                         <th class="text-center">Réception</th>
                         <th>Statut</th>
-                        <th class="text-end" style="width: 90px;">Détail</th>
+                        <th class="text-end" style="width: 70px;">Action</th>
                     </tr>
                 </thead>
             </table>
@@ -103,7 +103,11 @@
             </div>
             <div class="col-2">
                 <label class="form-label small">Quantité</label>
-                <input type="number" name="lignes[__index__][quantite_commandee]" class="form-control ligne-bc-quantite" min="1" value="1" required>
+                <div class="input-group">
+                    <button type="button" class="btn btn-outline-secondary btn-quantite-bc-moins" tabindex="-1">−</button>
+                    <input type="number" name="lignes[__index__][quantite_commandee]" class="form-control text-center ligne-bc-quantite" min="1" value="1" required>
+                    <button type="button" class="btn btn-outline-secondary btn-quantite-bc-plus" tabindex="-1">+</button>
+                </div>
             </div>
             <div class="col-3">
                 <label class="form-label small">Prix unitaire estimé</label>
@@ -175,9 +179,16 @@
                     </div>
                 </div>
                 <div class="modal-footer justify-content-between flex-wrap gap-2">
-                    <a href="#" id="detail-bc-export" target="_blank" class="btn btn-outline-secondary">
-                        <i class="bi bi-printer me-1"></i>Exporter
-                    </a>
+                    <div class="dropdown">
+                        <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                            <i class="bi bi-download me-1"></i>Exporter
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" id="detail-bc-imprimer" href="#" target="_blank"><i class="bi bi-printer me-2"></i>Imprimer</a></li>
+                            <li><a class="dropdown-item" id="detail-bc-pdf" href="#"><i class="bi bi-file-earmark-pdf me-2"></i>Télécharger PDF</a></li>
+                            <li><a class="dropdown-item" id="detail-bc-excel" href="#"><i class="bi bi-file-earmark-excel me-2"></i>Télécharger Excel</a></li>
+                        </ul>
+                    </div>
                     <div class="d-flex gap-2 flex-wrap">
                         <button type="button" class="btn btn-outline-danger d-none" id="detail-bc-supprimer">
                             <i class="bi bi-trash me-1"></i>Supprimer
@@ -218,7 +229,20 @@
                     const p = parseFloat($(this).find('.ligne-bc-prix').val()) || 0;
                     total += q * p;
                 });
-                $('#bc-total').text(total.toLocaleString('fr-FR') + ' FCFA');
+                $('#bc-total').text(formatMontant(total) + ' FCFA');
+            }
+
+            // Un même article ne doit pas pouvoir être choisi sur deux lignes différentes :
+            // on grise (disabled) ses options dans tous les autres select2-article-bc.
+            function actualiserOptionsArticlesDisponiblesBc() {
+                const selectionnes = $('.select2-article-bc').map(function () { return $(this).val(); }).get().filter(Boolean);
+
+                $('.select2-article-bc').each(function () {
+                    const valeurActuelle = $(this).val();
+                    $(this).find('option').each(function () {
+                        $(this).prop('disabled', this.value !== '' && this.value !== valeurActuelle && selectionnes.includes(this.value));
+                    });
+                });
             }
 
             function ajouterLigneBc() {
@@ -226,6 +250,7 @@
                 const $ligne = $(html);
                 $('#lignes-bon-commande').append($ligne);
                 $ligne.find('.select2-article-bc').select2({ dropdownParent: $('#modal-bon-commande'), width: '100%' });
+                actualiserOptionsArticlesDisponiblesBc();
             }
 
             $('#btn-ajouter-ligne-bc').on('click', ajouterLigneBc);
@@ -235,13 +260,25 @@
                 if (prix !== undefined) {
                     $(this).closest('.ligne-bc').find('.ligne-bc-prix').val(prix);
                 }
+                actualiserOptionsArticlesDisponiblesBc();
                 recalculerTotalBc();
             });
 
             $('#lignes-bon-commande').on('input', '.ligne-bc-quantite, .ligne-bc-prix', recalculerTotalBc);
 
+            $('#lignes-bon-commande').on('click', '.btn-quantite-bc-plus', function () {
+                const $input = $(this).closest('.input-group').find('.ligne-bc-quantite');
+                $input.val((parseInt($input.val(), 10) || 0) + 1).trigger('input');
+            });
+
+            $('#lignes-bon-commande').on('click', '.btn-quantite-bc-moins', function () {
+                const $input = $(this).closest('.input-group').find('.ligne-bc-quantite');
+                $input.val(Math.max(1, (parseInt($input.val(), 10) || 0) - 1)).trigger('input');
+            });
+
             $('#lignes-bon-commande').on('click', '.btn-supprimer-ligne-bc', function () {
                 $(this).closest('.ligne-bc').remove();
+                actualiserOptionsArticlesDisponiblesBc();
                 recalculerTotalBc();
             });
 
@@ -351,12 +388,12 @@
                                 <td>${ligne.article_reference} — ${ligne.article_nom}</td>
                                 <td class="text-end">${ligne.quantite_commandee}</td>
                                 <td class="text-end">${ligne.quantite_recue}</td>
-                                <td class="text-end">${Number(ligne.prix_unitaire_estime).toLocaleString('fr-FR')} FCFA</td>
-                                <td class="text-end">${Number(ligne.montant_estime).toLocaleString('fr-FR')} FCFA</td>
+                                <td class="text-end">${formatMontant(ligne.prix_unitaire_estime)} FCFA</td>
+                                <td class="text-end">${formatMontant(ligne.montant_estime)} FCFA</td>
                             </tr>
                         `);
                     });
-                    $('#detail-bc-total').text(totalEstime.toLocaleString('fr-FR') + ' FCFA');
+                    $('#detail-bc-total').text(formatMontant(totalEstime) + ' FCFA');
 
                     if (bc.commentaire) {
                         $('#detail-bc-commentaire-bloc').removeClass('d-none');
@@ -365,7 +402,9 @@
                         $('#detail-bc-commentaire-bloc').addClass('d-none');
                     }
 
-                    $('#detail-bc-export').attr('href', `/stock/bons-commande/${bc.id}/pdf`);
+                    $('#detail-bc-imprimer').attr('href', `/stock/bons-commande/${bc.id}/pdf`);
+                    $('#detail-bc-pdf').attr('href', `/stock/bons-commande/${bc.id}/pdf?download=1`);
+                    $('#detail-bc-excel').attr('href', `/stock/bons-commande/${bc.id}/excel`);
                     $('#detail-bc-recevoir').attr('href', `/stock/achats?bon_commande_id=${bc.id}`).toggleClass('d-none', !recevable);
                     $('#detail-bc-annuler').data('id', bc.id).toggleClass('d-none', bc.statut !== 'en_attente');
                     $('#detail-bc-supprimer').data('id', bc.id).toggleClass('d-none', !supprimable);
@@ -390,7 +429,7 @@
                         orderable: false,
                         searchable: false,
                         className: 'text-end',
-                        render: (bc) => `<button type="button" class="btn btn-sm btn-outline-primary btn-detail-bc" data-id="${bc.id}">Détail</button>`,
+                        render: (bc) => `<button type="button" class="btn btn-sm btn-outline-primary btn-detail-bc" data-id="${bc.id}" title="Détail"><i class="bi bi-eye"></i></button>`,
                     },
                 ],
                 order: [[0, 'desc']],

@@ -9,12 +9,14 @@ use App\Models\Achat;
 use App\Models\Article;
 use App\Models\Fournisseur;
 use App\Services\Stock\AchatService;
+use App\Support\Money;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -30,8 +32,9 @@ class AchatController extends Controller
 
         $fournisseurs = Fournisseur::where('actif', true)->orderBy('nom')->get();
         $articles = Article::where('actif', true)->orderBy('nom')->get();
+        $kpis = $this->calculerKpis();
 
-        return view('stock.achats.index', compact('fournisseurs', 'articles'));
+        return view('stock.achats.index', compact('fournisseurs', 'articles', 'kpis'));
     }
 
     public function show(Achat $achat): JsonResponse
@@ -49,9 +52,9 @@ class AchatController extends Controller
 
         return DataTables::of($query)
             ->editColumn('date_achat', fn (Achat $achat) => $achat->date_achat->format('d/m/Y'))
-            ->editColumn('montant_total', fn (Achat $achat) => number_format((float) $achat->montant_total, 0, ',', ' ').' FCFA')
-            ->editColumn('montant_paye', fn (Achat $achat) => number_format((float) $achat->montant_paye, 0, ',', ' ').' FCFA')
-            ->editColumn('montant_restant', fn (Achat $achat) => number_format((float) $achat->montant_restant, 0, ',', ' ').' FCFA')
+            ->editColumn('montant_total', fn (Achat $achat) => Money::format($achat->montant_total).' FCFA')
+            ->editColumn('montant_paye', fn (Achat $achat) => Money::format($achat->montant_paye).' FCFA')
+            ->editColumn('montant_restant', fn (Achat $achat) => Money::format($achat->montant_restant).' FCFA')
             ->addColumn('statut_badge', function (Achat $achat) {
                 $classes = [
                     'comptant' => 'bg-success',
@@ -67,7 +70,11 @@ class AchatController extends Controller
 
     public function store(StoreAchatRequest $request): JsonResponse
     {
-        $achat = $this->achatService->creer($request->validated() + ['user_id' => $request->user()->id]);
+        try {
+            $achat = $this->achatService->creer($request->validated() + ['user_id' => $request->user()->id]);
+        } catch (ValidationException $e) {
+            return response()->json(['message' => collect($e->errors())->flatten()->first()], 422);
+        }
 
         return response()->json([
             'message' => "Achat #{$achat->id} enregistré.",
@@ -95,16 +102,25 @@ class AchatController extends Controller
             ->download('achats-'.now()->format('Y-m-d-His').'.pdf');
     }
 
-    public function pdf(Achat $achat): Response
+    public function pdf(Request $request, Achat $achat): Response
     {
         Gate::authorize('view', $achat);
 
         $achat->load('lignes', 'bonCommande');
 
-        // stream() : aperçu dans le navigateur pour impression, pas un téléchargement forcé.
-        return Pdf::loadView('exports.pdf.achat', ['achat' => $achat])
-            ->setPaper('a4', 'portrait')
-            ->stream("achat-{$achat->reference}.pdf");
+        $pdf = Pdf::loadView('exports.pdf.achat', ['achat' => $achat])->setPaper('a4', 'portrait');
+
+        // download=1 force le téléchargement ; sinon aperçu navigateur (impression) via stream().
+        return $request->boolean('download')
+            ? $pdf->download("achat-{$achat->reference}.pdf")
+            : $pdf->stream("achat-{$achat->reference}.pdf");
+    }
+
+    public function exportExcelSingle(Achat $achat): BinaryFileResponse
+    {
+        Gate::authorize('view', $achat);
+
+        return Excel::download(new AchatsExport(collect([$achat])), "achat-{$achat->reference}.xlsx");
     }
 
     private function filtrer(Builder $query, Request $request): Builder
@@ -114,5 +130,20 @@ class AchatController extends Controller
             ->when($request->filled('date_fin'), fn (Builder $q) => $q->whereDate('date_achat', '<=', $request->string('date_fin')))
             ->when($request->filled('fournisseur_id'), fn (Builder $q) => $q->where('fournisseur_id', $request->integer('fournisseur_id')))
             ->when($request->filled('statut_paiement'), fn (Builder $q) => $q->where('statut_paiement', $request->string('statut_paiement')));
+    }
+
+    /**
+     * @return array{jour: float, mois: float, paye_mois: float, restant_mois: float}
+     */
+    private function calculerKpis(): array
+    {
+        $aujourdhui = now();
+
+        return [
+            'jour' => (float) Achat::whereDate('date_achat', $aujourdhui->toDateString())->sum('montant_total'),
+            'mois' => (float) Achat::duMois($aujourdhui)->sum('montant_total'),
+            'paye_mois' => (float) Achat::duMois($aujourdhui)->sum('montant_paye'),
+            'restant_mois' => (float) Achat::duMois($aujourdhui)->sum('montant_restant'),
+        ];
     }
 }

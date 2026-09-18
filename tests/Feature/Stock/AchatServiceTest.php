@@ -7,7 +7,9 @@ use App\Models\Fournisseur;
 use App\Models\MouvementStock;
 use App\Models\User;
 use App\Services\Stock\AchatService;
+use App\Services\Stock\BonCommandeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 class AchatServiceTest extends TestCase
@@ -123,5 +125,100 @@ class AchatServiceTest extends TestCase
 
         $this->assertSame(4, $articleA->fresh()->quantite_stock);
         $this->assertSame(7, $articleB->fresh()->quantite_stock);
+    }
+
+    public function test_reception_cannot_exceed_quantite_restante_du_bon_de_commande(): void
+    {
+        $user = User::factory()->create();
+        $fournisseur = Fournisseur::factory()->create();
+        $article = Article::factory()->create(['quantite_stock' => 0]);
+        $bonCommandeService = app(BonCommandeService::class);
+
+        $bonCommande = $bonCommandeService->creer([
+            'fournisseur_id' => $fournisseur->id,
+            'date_commande' => now(),
+            'user_id' => $user->id,
+            'lignes' => [['article_id' => $article->id, 'quantite_commandee' => 5, 'prix_unitaire_estime' => 200]],
+        ]);
+        $ligneId = $bonCommande->lignes->first()->id;
+
+        $this->expectException(ValidationException::class);
+
+        $this->service->creer([
+            'fournisseur_id' => $fournisseur->id,
+            'bon_commande_id' => $bonCommande->id,
+            'date_achat' => now(),
+            'user_id' => $user->id,
+            'lignes' => [
+                ['article_id' => $article->id, 'quantite' => 6, 'prix_unitaire' => 200, 'bon_commande_ligne_id' => $ligneId],
+            ],
+        ]);
+
+        $this->assertSame(0, $article->fresh()->quantite_stock);
+        $this->assertSame(0, $bonCommande->fresh()->lignes->first()->quantite_recue);
+    }
+
+    public function test_reception_ligne_ne_peut_pas_appartenir_a_un_autre_bon_de_commande(): void
+    {
+        $user = User::factory()->create();
+        $fournisseur = Fournisseur::factory()->create();
+        $article = Article::factory()->create(['quantite_stock' => 0]);
+        $bonCommandeService = app(BonCommandeService::class);
+
+        $bonCommandeA = $bonCommandeService->creer([
+            'fournisseur_id' => $fournisseur->id,
+            'date_commande' => now(),
+            'user_id' => $user->id,
+            'lignes' => [['article_id' => $article->id, 'quantite_commandee' => 5, 'prix_unitaire_estime' => 200]],
+        ]);
+        $bonCommandeB = $bonCommandeService->creer([
+            'fournisseur_id' => $fournisseur->id,
+            'date_commande' => now(),
+            'user_id' => $user->id,
+            'lignes' => [['article_id' => $article->id, 'quantite_commandee' => 5, 'prix_unitaire_estime' => 200]],
+        ]);
+        $ligneDeA = $bonCommandeA->lignes->first()->id;
+
+        $this->expectException(ValidationException::class);
+
+        $this->service->creer([
+            'fournisseur_id' => $fournisseur->id,
+            'bon_commande_id' => $bonCommandeB->id,
+            'date_achat' => now(),
+            'user_id' => $user->id,
+            'lignes' => [
+                ['article_id' => $article->id, 'quantite' => 1, 'prix_unitaire' => 200, 'bon_commande_ligne_id' => $ligneDeA],
+            ],
+        ]);
+    }
+
+    public function test_reception_liee_a_un_bon_de_commande_refuse_un_article_non_commande(): void
+    {
+        $user = User::factory()->create();
+        $fournisseur = Fournisseur::factory()->create();
+        $articleCommande = Article::factory()->create();
+        $articleNonCommande = Article::factory()->create(['quantite_stock' => 0]);
+        $bonCommandeService = app(BonCommandeService::class);
+
+        $bonCommande = $bonCommandeService->creer([
+            'fournisseur_id' => $fournisseur->id,
+            'date_commande' => now(),
+            'user_id' => $user->id,
+            'lignes' => [['article_id' => $articleCommande->id, 'quantite_commandee' => 5, 'prix_unitaire_estime' => 200]],
+        ]);
+
+        $this->expectException(ValidationException::class);
+
+        $this->service->creer([
+            'fournisseur_id' => $fournisseur->id,
+            'bon_commande_id' => $bonCommande->id,
+            'date_achat' => now(),
+            'user_id' => $user->id,
+            'lignes' => [
+                ['article_id' => $articleNonCommande->id, 'quantite' => 1, 'prix_unitaire' => 200],
+            ],
+        ]);
+
+        $this->assertSame(0, $articleNonCommande->fresh()->quantite_stock);
     }
 }

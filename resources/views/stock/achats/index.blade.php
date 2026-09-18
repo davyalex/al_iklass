@@ -9,6 +9,41 @@
         @endcan
     </div>
 
+    <div class="row g-3 mb-3">
+        <div class="col-6 col-lg-3">
+            <div class="card shadow-sm border-0 bg-white h-100">
+                <div class="card-body">
+                    <div class="small text-muted">Achats du jour</div>
+                    <div class="h5 mb-0" style="color: var(--al-navy);">{{ \App\Support\Money::format($kpis['jour']) }} FCFA</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card shadow-sm border-0 bg-white h-100">
+                <div class="card-body">
+                    <div class="small text-muted">Achats du mois</div>
+                    <div class="h5 mb-0" style="color: var(--al-navy);">{{ \App\Support\Money::format($kpis['mois']) }} FCFA</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card shadow-sm border-0 bg-white h-100">
+                <div class="card-body">
+                    <div class="small text-muted">Déjà payé (mois)</div>
+                    <div class="h5 mb-0 text-success">{{ \App\Support\Money::format($kpis['paye_mois']) }} FCFA</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card shadow-sm border-0 bg-white h-100">
+                <div class="card-body">
+                    <div class="small text-muted">Solde dû / restant (mois)</div>
+                    <div class="h5 mb-0 text-danger">{{ \App\Support\Money::format($kpis['restant_mois']) }} FCFA</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="card shadow-sm border-0 bg-white mb-3">
         <div class="card-body">
             <form id="filtres-achats" class="row g-2 align-items-end">
@@ -65,7 +100,7 @@
                         <th>Payé</th>
                         <th>Restant</th>
                         <th>Statut</th>
-                        <th class="text-end" style="width: 90px;">Détail</th>
+                        <th class="text-end" style="width: 70px;">Action</th>
                     </tr>
                 </thead>
             </table>
@@ -154,7 +189,11 @@
             </div>
             <div class="col-2">
                 <label class="form-label small">Quantité</label>
-                <input type="number" name="lignes[__index__][quantite]" class="form-control ligne-quantite" min="1" value="1" required>
+                <div class="input-group">
+                    <button type="button" class="btn btn-outline-secondary btn-quantite-moins" tabindex="-1">−</button>
+                    <input type="number" name="lignes[__index__][quantite]" class="form-control text-center ligne-quantite" min="1" value="1" required>
+                    <button type="button" class="btn btn-outline-secondary btn-quantite-plus" tabindex="-1">+</button>
+                </div>
             </div>
             <div class="col-3">
                 <label class="form-label small">Prix unitaire</label>
@@ -225,9 +264,16 @@
                     </div>
                 </div>
                 <div class="modal-footer justify-content-between">
-                    <a href="#" id="detail-achat-export" target="_blank" class="btn btn-outline-secondary">
-                        <i class="bi bi-printer me-1"></i>Exporter
-                    </a>
+                    <div class="dropdown">
+                        <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                            <i class="bi bi-download me-1"></i>Exporter
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" id="detail-achat-imprimer" href="#" target="_blank"><i class="bi bi-printer me-2"></i>Imprimer</a></li>
+                            <li><a class="dropdown-item" id="detail-achat-pdf" href="#"><i class="bi bi-file-earmark-pdf me-2"></i>Télécharger PDF</a></li>
+                            <li><a class="dropdown-item" id="detail-achat-excel" href="#"><i class="bi bi-file-earmark-excel me-2"></i>Télécharger Excel</a></li>
+                        </ul>
+                    </div>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
                 </div>
             </div>
@@ -257,7 +303,20 @@
                     const p = parseFloat($(this).find('.ligne-prix').val()) || 0;
                     total += q * p;
                 });
-                $('#achat-total').text(total.toLocaleString('fr-FR') + ' FCFA');
+                $('#achat-total').text(formatMontant(total) + ' FCFA');
+            }
+
+            // Un même article ne doit pas pouvoir être choisi sur deux lignes différentes :
+            // on grise (disabled) ses options dans tous les autres select2-article.
+            function actualiserOptionsArticlesDisponibles() {
+                const selectionnes = $('.select2-article').map(function () { return $(this).val(); }).get().filter(Boolean);
+
+                $('.select2-article').each(function () {
+                    const valeurActuelle = $(this).val();
+                    $(this).find('option').each(function () {
+                        $(this).prop('disabled', this.value !== '' && this.value !== valeurActuelle && selectionnes.includes(this.value));
+                    });
+                });
             }
 
             function ajouterLigne(prefill) {
@@ -271,12 +330,48 @@
                     $ligne.find('.select2-article').val(prefill.article_id).trigger('change');
                     $ligne.find('.ligne-quantite').val(prefill.quantite);
                     $ligne.find('.ligne-prix').val(prefill.prix_unitaire);
+
+                    if (prefill.bon_commande_ligne_id) {
+                        // Ligne issue d'un bon de commande : on ne peut recevoir que l'article
+                        // commandé, et jamais plus que la quantité restant à recevoir. Le select
+                        // reste "enabled" (un select disabled n'est pas envoyé par serialize())
+                        // mais son ouverture est bloquée pour empêcher de changer l'article.
+                        $ligne.find('.select2-article')
+                            .prop('disabled', false)
+                            .on('select2:opening', (e) => e.preventDefault());
+                        $ligne.find('.select2-container').css({ opacity: 0.65, cursor: 'not-allowed' });
+                        $ligne.find('.ligne-quantite').attr('max', prefill.restant);
+                        $ligne.find('.btn-supprimer-ligne').attr('title', "Ne rien recevoir pour cet article cette fois-ci");
+                    }
                 }
+
+                actualiserOptionsArticlesDisponibles();
 
                 return $ligne;
             }
 
             $('#btn-ajouter-ligne').on('click', () => ajouterLigne());
+
+            $('#lignes-achat').on('input', '.ligne-quantite', function () {
+                const max = parseInt($(this).attr('max'), 10);
+                if (max && parseInt($(this).val(), 10) > max) {
+                    $(this).val(max);
+                }
+            });
+
+            $('#lignes-achat').on('click', '.btn-quantite-plus', function () {
+                const $input = $(this).closest('.input-group').find('.ligne-quantite');
+                const max = parseInt($input.attr('max'), 10);
+                let valeur = (parseInt($input.val(), 10) || 0) + 1;
+                if (max && valeur > max) valeur = max;
+                $input.val(valeur).trigger('input');
+            });
+
+            $('#lignes-achat').on('click', '.btn-quantite-moins', function () {
+                const $input = $(this).closest('.input-group').find('.ligne-quantite');
+                const valeur = Math.max(1, (parseInt($input.val(), 10) || 0) - 1);
+                $input.val(valeur).trigger('input');
+            });
 
             // Réception depuis un bon de commande (arrivée via /stock/achats?bon_commande_id=X)
             const bonCommandeId = new URLSearchParams(window.location.search).get('bon_commande_id');
@@ -303,8 +398,13 @@
                             article_id: ligne.article_id,
                             quantite: restant,
                             prix_unitaire: ligne.prix_unitaire_estime,
+                            restant: restant,
                         });
                     });
+
+                    // Une réception liée à un bon de commande ne peut porter que sur les
+                    // articles commandés : impossible d'en ajouter d'autres.
+                    $('#btn-ajouter-ligne').addClass('d-none');
 
                     recalculerTotal();
                     modalAchat.show();
@@ -319,6 +419,7 @@
                 if (prix !== undefined) {
                     $(this).closest('.ligne-achat').find('.ligne-prix').val(prix);
                 }
+                actualiserOptionsArticlesDisponibles();
                 recalculerTotal();
             });
 
@@ -326,6 +427,7 @@
 
             $('#lignes-achat').on('click', '.btn-supprimer-ligne', function () {
                 $(this).closest('.ligne-achat').remove();
+                actualiserOptionsArticlesDisponibles();
                 recalculerTotal();
             });
 
@@ -337,6 +439,7 @@
                 $('#achat-bon-commande-id').val('');
                 $('#achat-info-bc').addClass('d-none').text('');
                 $('.select2-fournisseur').val('').trigger('change');
+                $('#btn-ajouter-ligne').removeClass('d-none');
                 ajouterLigne();
                 recalculerTotal();
                 modalAchat.show();
@@ -392,7 +495,7 @@
                         orderable: false,
                         searchable: false,
                         className: 'text-end',
-                        render: (achat) => `<button type="button" class="btn btn-sm btn-outline-primary btn-detail-achat" data-id="${achat.id}">Détail</button>`,
+                        render: (achat) => `<button type="button" class="btn btn-sm btn-outline-primary btn-detail-achat" data-id="${achat.id}" title="Détail"><i class="bi bi-eye"></i></button>`,
                     },
                 ],
                 order: [[0, 'desc']],
@@ -421,15 +524,15 @@
                             <tr>
                                 <td>${ligne.article_reference} — ${ligne.article_nom}</td>
                                 <td class="text-end">${ligne.quantite}</td>
-                                <td class="text-end">${Number(ligne.prix_unitaire).toLocaleString('fr-FR')} FCFA</td>
-                                <td class="text-end">${Number(ligne.montant).toLocaleString('fr-FR')} FCFA</td>
+                                <td class="text-end">${formatMontant(ligne.prix_unitaire)} FCFA</td>
+                                <td class="text-end">${formatMontant(ligne.montant)} FCFA</td>
                             </tr>
                         `);
                     });
 
-                    $('#detail-achat-total').text(Number(achat.montant_total).toLocaleString('fr-FR') + ' FCFA');
-                    $('#detail-achat-paye').text(Number(achat.montant_paye).toLocaleString('fr-FR') + ' FCFA');
-                    $('#detail-achat-restant').text(Number(achat.montant_restant).toLocaleString('fr-FR') + ' FCFA');
+                    $('#detail-achat-total').text(formatMontant(achat.montant_total) + ' FCFA');
+                    $('#detail-achat-paye').text(formatMontant(achat.montant_paye) + ' FCFA');
+                    $('#detail-achat-restant').text(formatMontant(achat.montant_restant) + ' FCFA');
 
                     if (achat.commentaire) {
                         $('#detail-achat-commentaire-bloc').removeClass('d-none');
@@ -438,7 +541,9 @@
                         $('#detail-achat-commentaire-bloc').addClass('d-none');
                     }
 
-                    $('#detail-achat-export').attr('href', `/stock/achats/${achat.id}/pdf`);
+                    $('#detail-achat-imprimer').attr('href', `/stock/achats/${achat.id}/pdf`);
+                    $('#detail-achat-pdf').attr('href', `/stock/achats/${achat.id}/pdf?download=1`);
+                    $('#detail-achat-excel').attr('href', `/stock/achats/${achat.id}/excel`);
 
                     modalDetailAchat.show();
                 });

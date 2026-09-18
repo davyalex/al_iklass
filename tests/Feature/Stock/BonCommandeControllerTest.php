@@ -107,4 +107,22 @@ class BonCommandeControllerTest extends TestCase
             ->assertOk()
             ->assertHeader('content-type', 'application/pdf');
     }
+
+    public function test_excel_endpoint_returns_single_row_export(): void
+    {
+        $user = User::factory()->create()->assignRole('gestionnaire_stock');
+        $fournisseur = Fournisseur::factory()->create();
+        $article = Article::factory()->create();
+
+        $create = $this->actingAs($user)->postJson(route('stock.bons-commande.store'), [
+            'fournisseur_id' => $fournisseur->id,
+            'lignes' => [['article_id' => $article->id, 'quantite_commandee' => 1, 'prix_unitaire_estime' => 100]],
+        ]);
+
+        $bonCommandeId = $create->json('bonCommande.id');
+
+        $this->actingAs($user)->get(route('stock.bons-commande.export.excel.single', $bonCommandeId))
+            ->assertOk()
+            ->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    }
 }

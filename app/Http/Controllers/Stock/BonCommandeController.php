@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Stock;
 
+use App\Exports\Stock\BonsCommandeExport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Stock\StoreBonCommandeRequest;
 use App\Models\Article;
@@ -10,10 +11,13 @@ use App\Models\Fournisseur;
 use App\Services\Stock\BonCommandeService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Yajra\DataTables\Facades\DataTables;
 
 class BonCommandeController extends Controller
@@ -108,16 +112,24 @@ class BonCommandeController extends Controller
         return response()->json(['message' => "Bon de commande #{$bonCommande->id} supprimé."]);
     }
 
-    public function pdf(BonCommande $bonCommande): Response
+    public function pdf(Request $request, BonCommande $bonCommande): Response
     {
         Gate::authorize('view', $bonCommande);
 
         $bonCommande->load('lignes');
 
-        // stream() (pas download()) : ouvre le PDF dans un nouvel onglet pour aperçu + impression
-        // navigateur, plutôt que de forcer un téléchargement — plus adapté à un document à imprimer.
-        return Pdf::loadView('exports.pdf.bon-commande', ['bonCommande' => $bonCommande])
-            ->setPaper('a4', 'portrait')
-            ->stream("bon-commande-{$bonCommande->reference}.pdf");
+        $pdf = Pdf::loadView('exports.pdf.bon-commande', ['bonCommande' => $bonCommande])->setPaper('a4', 'portrait');
+
+        // download=1 force le téléchargement ; sinon aperçu navigateur (impression) via stream().
+        return $request->boolean('download')
+            ? $pdf->download("bon-commande-{$bonCommande->reference}.pdf")
+            : $pdf->stream("bon-commande-{$bonCommande->reference}.pdf");
+    }
+
+    public function exportExcelSingle(BonCommande $bonCommande): BinaryFileResponse
+    {
+        Gate::authorize('view', $bonCommande);
+
+        return Excel::download(new BonsCommandeExport(collect([$bonCommande])), "bon-commande-{$bonCommande->reference}.xlsx");
     }
 }

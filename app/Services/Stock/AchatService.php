@@ -10,6 +10,7 @@ use App\Models\BonCommandeLigne;
 use App\Models\Fournisseur;
 use App\Models\MouvementStock;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class AchatService
 {
@@ -74,11 +75,36 @@ class AchatService
 
     /**
      * @param  array{article_id: int, quantite: int, prix_unitaire: float, bon_commande_ligne_id?: ?int}  $ligneData
+     *
+     * @throws ValidationException
      */
     private function enregistrerLigne(Achat $achat, array $ligneData): ?BonCommandeLigne
     {
         /** @var Article $article */
         $article = Article::lockForUpdate()->findOrFail($ligneData['article_id']);
+
+        $bonCommandeLigne = null;
+
+        if (! empty($ligneData['bon_commande_ligne_id'])) {
+            /** @var BonCommandeLigne $bonCommandeLigne */
+            $bonCommandeLigne = BonCommandeLigne::lockForUpdate()->findOrFail($ligneData['bon_commande_ligne_id']);
+
+            if ($achat->bon_commande_id && (string) $bonCommandeLigne->bon_commande_id !== (string) $achat->bon_commande_id) {
+                throw ValidationException::withMessages([
+                    'lignes' => "La ligne « {$bonCommandeLigne->article_nom} » n'appartient pas au bon de commande sélectionné.",
+                ]);
+            }
+
+            if ($ligneData['quantite'] > $bonCommandeLigne->quantiteRestante()) {
+                throw ValidationException::withMessages([
+                    'lignes' => "La quantité reçue pour « {$bonCommandeLigne->article_nom} » dépasse la quantité restant à recevoir ({$bonCommandeLigne->quantiteRestante()}).",
+                ]);
+            }
+        } elseif ($achat->bon_commande_id) {
+            throw ValidationException::withMessages([
+                'lignes' => "Impossible d'ajouter un article qui ne fait pas partie du bon de commande.",
+            ]);
+        }
 
         $montant = $ligneData['quantite'] * $ligneData['prix_unitaire'];
 
@@ -109,12 +135,10 @@ class AchatService
             'date_mouvement' => now(),
         ]);
 
-        if (empty($ligneData['bon_commande_ligne_id'])) {
+        if (! $bonCommandeLigne) {
             return null;
         }
 
-        /** @var BonCommandeLigne $bonCommandeLigne */
-        $bonCommandeLigne = BonCommandeLigne::lockForUpdate()->findOrFail($ligneData['bon_commande_ligne_id']);
         $bonCommandeLigne->increment('quantite_recue', $ligneData['quantite']);
 
         return $bonCommandeLigne;

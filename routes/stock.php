@@ -21,14 +21,16 @@ Route::middleware(['auth'])->prefix('stock')->name('stock.')->group(function () 
 
         Route::get('bons-commande', [BonCommandeController::class, 'index'])->name('bons-commande.index');
         Route::get('bons-commande/data', [BonCommandeController::class, 'data'])->name('bons-commande.data');
-        Route::get('bons-commande/{bonCommande}', [BonCommandeController::class, 'show'])->name('bons-commande.show');
         Route::get('bons-commande/{bonCommande}/pdf', [BonCommandeController::class, 'pdf'])->name('bons-commande.pdf');
+        Route::get('bons-commande/{bonCommande}/excel', [BonCommandeController::class, 'exportExcelSingle'])->name('bons-commande.export.excel.single');
+        Route::get('bons-commande/{bonCommande}', [BonCommandeController::class, 'show'])->name('bons-commande.show');
 
         Route::get('achats', [AchatController::class, 'index'])->name('achats.index');
         Route::get('achats/data', [AchatController::class, 'data'])->name('achats.data');
         Route::get('achats/export/excel', [AchatController::class, 'exportExcel'])->name('achats.export.excel');
         Route::get('achats/export/pdf', [AchatController::class, 'exportPdf'])->name('achats.export.pdf');
         Route::get('achats/{achat}/pdf', [AchatController::class, 'pdf'])->name('achats.pdf');
+        Route::get('achats/{achat}/excel', [AchatController::class, 'exportExcelSingle'])->name('achats.export.excel.single');
         Route::get('achats/{achat}', [AchatController::class, 'show'])->name('achats.show');
 
         Route::get('paiements', [PaiementFournisseurController::class, 'index'])->name('paiements.index');

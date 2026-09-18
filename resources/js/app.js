@@ -21,3 +21,17 @@ import Swal from 'sweetalert2';
 window.Swal = Swal;
 
 import 'datatables.net-bs5';
+
+/**
+ * Formate un montant : 2 décimales uniquement si elles sont significatives
+ * (ex: 1500 -> "1 500", 1500.5 -> "1 500,50"). Miroir JS de App\Support\Money::format().
+ */
+window.formatMontant = function (valeur) {
+    const arrondi = Math.round((Number(valeur) || 0) * 100) / 100;
+    const aDesDecimales = arrondi !== Math.floor(arrondi);
+
+    return arrondi.toLocaleString('fr-FR', {
+        minimumFractionDigits: aDesDecimales ? 2 : 0,
+        maximumFractionDigits: aDesDecimales ? 2 : 0,
+    });
+};

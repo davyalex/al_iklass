@@ -13,8 +13,8 @@
     </div>
 
     <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
-        <div class="d-flex flex-nowrap gap-2 flex-grow-1" style="min-width: 240px;">
-            <input type="text" id="recherche-article" class="form-control flex-grow-1" style="min-width: 0;" placeholder="Rechercher un article...">
+        <div class="d-flex flex-nowrap gap-2">
+            <input type="text" id="recherche-article" class="form-control flex-grow-1" style="min-width: 0; max-width: 300px;" placeholder="Rechercher un article...">
 
             <select id="filtre-categorie" class="form-select" style="max-width: 200px; flex-shrink: 0;">
                 <option value="">Toutes les catégories</option>
