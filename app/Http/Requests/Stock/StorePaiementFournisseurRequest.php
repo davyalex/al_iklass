@@ -10,7 +10,7 @@ class StorePaiementFournisseurRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()->can('stock.paiement.manage');
+        return $this->user()->can('stock.paiement.gerer');
     }
 
     public function rules(): array

@@ -1,0 +1,27 @@
+<?php
+
+namespace Database\Seeders;
+
+use App\Models\User;
+use App\Services\Admin\UserService;
+use Illuminate\Database\Seeder;
+
+class DemoUserSeeder extends Seeder
+{
+    public function run(): void
+    {
+        foreach ([
+            ['name' => 'Admin Démo', 'username' => 'admin.demo', 'telephone' => '0100000001', 'role' => 'admin'],
+            ['name' => 'Gestionnaire Démo', 'username' => 'gestionnaire.demo', 'telephone' => '0100000002', 'role' => 'gestionnaire'],
+        ] as $compte) {
+            if (User::where('username', $compte['username'])->exists()) {
+                continue;
+            }
+
+            $resultat = app(UserService::class)->creer($compte);
+
+            $this->command?->warn("Compte {$compte['role']} créé : {$resultat['user']->username}");
+            $this->command?->warn("Mot de passe temporaire : {$resultat['password']}");
+        }
+    }
+}

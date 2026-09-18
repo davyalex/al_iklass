@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Database\Factories\ArticleFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -11,11 +12,11 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Article extends Model
 {
-    /** @use HasFactory<\Database\Factories\ArticleFactory> */
+    /** @use HasFactory<ArticleFactory> */
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'reference', 'nom', 'description', 'categorie_id', 'unite',
+        'reference', 'nom', 'description', 'categorie_id', 'unite_id',
         'quantite_stock', 'prix_achat', 'prix_vente', 'seuil_alerte', 'actif',
     ];
 
@@ -31,6 +32,11 @@ class Article extends Model
     public function categorie(): BelongsTo
     {
         return $this->belongsTo(CategorieArticle::class, 'categorie_id');
+    }
+
+    public function unite(): BelongsTo
+    {
+        return $this->belongsTo(Unite::class, 'unite_id');
     }
 
     public function achatLignes(): HasMany

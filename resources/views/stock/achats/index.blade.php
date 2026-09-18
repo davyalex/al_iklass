@@ -45,13 +45,8 @@
                     <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-reset-achats">
                         Réinitialiser
                     </button>
-                    <div class="ms-md-auto d-flex gap-2">
-                        <a href="#" id="btn-export-excel-achats" class="btn btn-sm btn-outline-success">
-                            <i class="bi bi-file-earmark-excel me-1"></i>Excel
-                        </a>
-                        <a href="#" id="btn-export-pdf-achats" class="btn btn-sm btn-outline-danger">
-                            <i class="bi bi-file-earmark-pdf me-1"></i>PDF
-                        </a>
+                    <div class="ms-md-auto">
+                        <x-export-dropdown id-suffix="achats" />
                     </div>
                 </div>
             </form>
@@ -81,11 +76,13 @@
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <form id="form-achat">
+                    <input type="hidden" name="bon_commande_id" id="achat-bon-commande-id">
                     <div class="modal-header">
-                        <h5 class="modal-title">Nouvel achat</h5>
+                        <h5 class="modal-title" id="modal-achat-titre">Nouvel achat</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
+                        <div class="alert alert-info small d-none" id="achat-info-bc"></div>
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Fournisseur</label>
@@ -144,6 +141,7 @@
     {{-- Gabarit d'une ligne d'achat --}}
     <template id="gabarit-ligne-achat">
         <div class="row align-items-end ligne-achat mb-2">
+            <input type="hidden" name="lignes[__index__][bon_commande_ligne_id]" class="ligne-bon-commande-ligne-id">
             <div class="col-6">
                 <label class="form-label small">Article</label>
                 <select name="lignes[__index__][article_id]" class="form-select select2-article" required>
@@ -186,14 +184,59 @@
                 $('#achat-total').text(total.toLocaleString('fr-FR') + ' FCFA');
             }
 
-            function ajouterLigne() {
+            function ajouterLigne(prefill) {
                 const html = $('#gabarit-ligne-achat').html().replaceAll('__index__', ligneIndex++);
                 const $ligne = $(html);
                 $('#lignes-achat').append($ligne);
                 $ligne.find('.select2-article').select2({ dropdownParent: $('#modal-achat'), width: '100%' });
+
+                if (prefill) {
+                    $ligne.find('.ligne-bon-commande-ligne-id').val(prefill.bon_commande_ligne_id);
+                    $ligne.find('.select2-article').val(prefill.article_id).trigger('change');
+                    $ligne.find('.ligne-quantite').val(prefill.quantite);
+                    $ligne.find('.ligne-prix').val(prefill.prix_unitaire);
+                }
+
+                return $ligne;
             }
 
-            $('#btn-ajouter-ligne').on('click', ajouterLigne);
+            $('#btn-ajouter-ligne').on('click', () => ajouterLigne());
+
+            // Réception depuis un bon de commande (arrivée via /stock/achats?bon_commande_id=X)
+            const bonCommandeId = new URLSearchParams(window.location.search).get('bon_commande_id');
+            if (bonCommandeId) {
+                $.get(`/stock/bons-commande/${bonCommandeId}`, function (bc) {
+                    $('#form-achat')[0].reset();
+                    $('#lignes-achat').empty();
+                    ligneIndex = 0;
+
+                    $('#modal-achat-titre').text('Réception — bon de commande #' + bc.id);
+                    $('#achat-bon-commande-id').val(bc.id);
+                    $('#achat-info-bc').removeClass('d-none').text(
+                        'Cette réception va mettre à jour le bon de commande #' + bc.id + '. Ajustez les quantités si la livraison est partielle.'
+                    );
+                    $('.select2-fournisseur').val(bc.fournisseur_id).trigger('change');
+
+                    bc.lignes.forEach(function (ligne) {
+                        const restant = ligne.quantite_commandee - ligne.quantite_recue;
+                        if (restant <= 0) {
+                            return;
+                        }
+                        ajouterLigne({
+                            bon_commande_ligne_id: ligne.id,
+                            article_id: ligne.article_id,
+                            quantite: restant,
+                            prix_unitaire: ligne.prix_unitaire_estime,
+                        });
+                    });
+
+                    recalculerTotal();
+                    modalAchat.show();
+
+                    // Nettoie l'URL pour éviter de rouvrir la modale si l'utilisateur rafraîchit la page.
+                    window.history.replaceState({}, '', '/stock/achats');
+                });
+            }
 
             $('#lignes-achat').on('change', '.select2-article', function () {
                 const prix = $(this).find(':selected').data('prix');
@@ -214,6 +257,9 @@
                 $('#form-achat')[0].reset();
                 $('#lignes-achat').empty();
                 ligneIndex = 0;
+                $('#modal-achat-titre').text('Nouvel achat');
+                $('#achat-bon-commande-id').val('');
+                $('#achat-info-bc').addClass('d-none').text('');
                 $('.select2-fournisseur').val('').trigger('change');
                 ajouterLigne();
                 recalculerTotal();

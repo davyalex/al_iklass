@@ -22,11 +22,11 @@ class RolePermissionSeederTest extends TestCase
     public function test_admin_and_gestionnaire_stock_have_expected_stock_permissions(): void
     {
         $stockPermissions = [
-            'stock.dashboard.view',
-            'stock.article.manage',
-            'stock.fournisseur.manage',
-            'stock.achat.manage',
-            'stock.paiement.manage',
+            'stock.tableau_bord.voir',
+            'stock.article.gerer',
+            'stock.fournisseur.gerer',
+            'stock.achat.gerer',
+            'stock.paiement.gerer',
             'stock.sortie.interne',
             'stock.sortie.vente',
         ];
@@ -34,7 +34,7 @@ class RolePermissionSeederTest extends TestCase
         $admin = User::factory()->create()->assignRole('admin');
         $gestionnaireStock = User::factory()->create()->assignRole('gestionnaire_stock');
 
-        foreach ([...$stockPermissions, 'stock.demande.create'] as $permission) {
+        foreach ([...$stockPermissions, 'stock.demande.creer'] as $permission) {
             $this->assertTrue($admin->can($permission), "admin devrait avoir {$permission}");
         }
 
@@ -42,32 +42,32 @@ class RolePermissionSeederTest extends TestCase
             $this->assertTrue($gestionnaireStock->can($permission), "gestionnaire_stock devrait avoir {$permission}");
         }
 
-        $this->assertFalse($gestionnaireStock->can('stock.demande.create'));
+        $this->assertFalse($gestionnaireStock->can('stock.demande.creer'));
     }
 
     public function test_chef_mecanicien_can_only_create_demandes(): void
     {
         $chefMecanicien = User::factory()->create()->assignRole('chef_mecanicien');
 
-        $this->assertTrue($chefMecanicien->can('stock.demande.create'));
-        $this->assertFalse($chefMecanicien->can('stock.article.manage'));
-        $this->assertFalse($chefMecanicien->can('stock.achat.manage'));
+        $this->assertTrue($chefMecanicien->can('stock.demande.creer'));
+        $this->assertFalse($chefMecanicien->can('stock.article.gerer'));
+        $this->assertFalse($chefMecanicien->can('stock.achat.gerer'));
     }
 
     public function test_gestionnaire_has_no_stock_permissions(): void
     {
         $gestionnaire = User::factory()->create()->assignRole('gestionnaire');
 
-        $this->assertFalse($gestionnaire->can('stock.dashboard.view'));
-        $this->assertFalse($gestionnaire->can('stock.article.manage'));
+        $this->assertFalse($gestionnaire->can('stock.tableau_bord.voir'));
+        $this->assertFalse($gestionnaire->can('stock.article.gerer'));
     }
 
     public function test_superadmin_bypasses_every_permission_check(): void
     {
         $superadmin = User::factory()->create()->assignRole('superadmin');
 
-        $this->assertTrue($superadmin->can('stock.article.manage'));
-        $this->assertTrue($superadmin->can('stock.demande.create'));
+        $this->assertTrue($superadmin->can('stock.article.gerer'));
+        $this->assertTrue($superadmin->can('stock.demande.creer'));
         $this->assertTrue($superadmin->can('some.permission.that.does.not.exist'));
     }
 

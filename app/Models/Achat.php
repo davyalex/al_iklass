@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Database\Factories\AchatFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -11,11 +12,11 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Achat extends Model
 {
-    /** @use HasFactory<\Database\Factories\AchatFactory> */
+    /** @use HasFactory<AchatFactory> */
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'reference', 'fournisseur_id', 'fournisseur_nom', 'date_achat',
+        'reference', 'fournisseur_id', 'fournisseur_nom', 'bon_commande_id', 'date_achat',
         'montant_total', 'montant_paye', 'montant_restant', 'statut_paiement',
         'commentaire', 'user_id',
     ];
@@ -33,6 +34,11 @@ class Achat extends Model
     public function fournisseur(): BelongsTo
     {
         return $this->belongsTo(Fournisseur::class);
+    }
+
+    public function bonCommande(): BelongsTo
+    {
+        return $this->belongsTo(BonCommande::class);
     }
 
     public function user(): BelongsTo

@@ -1,90 +1,117 @@
+@php
+    $libellesRoles = [
+        'superadmin' => 'Super administrateur',
+        'admin' => 'Administrateur',
+        'gestionnaire' => 'Gestionnaire (parc)',
+        'gestionnaire_stock' => 'Gestionnaire de stock',
+        'chef_mecanicien' => 'Chef mécanicien',
+        'sans_role' => 'Sans rôle',
+    ];
+@endphp
+
 <x-app-layout>
     <x-slot name="header">Utilisateurs</x-slot>
 
-    <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between mb-3">
-        <div class="d-flex flex-wrap gap-2">
-            <input type="text" id="recherche-utilisateur" class="form-control" style="max-width: 260px;" placeholder="Rechercher un utilisateur...">
+    <div class="card shadow-sm border-0 bg-white mb-3">
+        <div class="card-body">
+            <div class="row g-2 align-items-end">
+                <div class="col-12 col-md-4">
+                    <label class="form-label small mb-1">Rechercher</label>
+                    <input type="text" id="recherche-utilisateur" class="form-control form-control-sm" placeholder="Nom ou identifiant...">
+                </div>
 
-            <select id="filtre-role" class="form-select" style="max-width: 220px;">
-                <option value="">Tous les rôles</option>
-                @foreach ($roles as $role)
-                    <option value="{{ $role->name }}" @selected(request('role') === $role->name)>{{ $role->name }}</option>
-                @endforeach
-            </select>
+                <div class="col-6 col-md-3">
+                    <label class="form-label small mb-1">Rôle</label>
+                    <select id="filtre-role" class="form-select form-select-sm">
+                        <option value="">Tous les rôles</option>
+                        @foreach ($roles as $role)
+                            <option value="{{ $role->name }}" @selected(request('role') === $role->name)>{{ $libellesRoles[$role->name] ?? $role->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
 
-            <select id="filtre-statut" class="form-select" style="max-width: 180px;">
-                <option value="">Tous les statuts</option>
-                <option value="actif" @selected(request('statut') === 'actif')>Actif</option>
-                <option value="inactif" @selected(request('statut') === 'inactif')>Inactif</option>
-            </select>
+                <div class="col-6 col-md-3">
+                    <label class="form-label small mb-1">Statut</label>
+                    <select id="filtre-statut" class="form-select form-select-sm">
+                        <option value="">Tous les statuts</option>
+                        <option value="actif" @selected(request('statut') === 'actif')>Actif</option>
+                        <option value="inactif" @selected(request('statut') === 'inactif')>Inactif</option>
+                    </select>
+                </div>
+
+                <div class="col-12 col-md-2 text-md-end">
+                    @can('create', \App\Models\User::class)
+                        <button type="button" class="btn btn-primary btn-sm w-100" id="btn-nouvel-utilisateur">
+                            <i class="bi bi-plus-lg me-1"></i>Nouvel utilisateur
+                        </button>
+                    @endcan
+                </div>
+            </div>
         </div>
-
-        @can('create', \App\Models\User::class)
-            <button type="button" class="btn btn-primary" id="btn-nouvel-utilisateur">
-                <i class="bi bi-plus-lg me-1"></i>Nouvel utilisateur
-            </button>
-        @endcan
     </div>
 
-    <div class="row g-3" id="grille-utilisateurs">
-        @forelse ($users as $utilisateur)
-            <div class="col-12 col-sm-6 col-lg-4 col-xl-3 carte-utilisateur" data-nom="{{ strtolower($utilisateur->name) }}" data-username="{{ strtolower($utilisateur->username) }}">
-                <div class="card h-100 shadow-sm border-0">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <span class="badge bg-light text-dark border">{{ '@'.$utilisateur->username }}</span>
-                            @if ($utilisateur->isLocked())
-                                <span class="badge bg-danger">Verrouillé</span>
-                            @elseif ($utilisateur->is_active)
-                                <span class="badge bg-success">Actif</span>
-                            @else
-                                <span class="badge bg-secondary">Inactif</span>
-                            @endif
-                        </div>
-                        <h2 class="h6 mb-1">{{ $utilisateur->name }}</h2>
-                        <p class="small text-muted mb-1">{{ $utilisateur->roles->pluck('name')->join(', ') ?: 'Aucun rôle' }}</p>
-                        <p class="small text-muted mb-3">
-                            <i class="bi bi-telephone me-1"></i>{{ $utilisateur->telephone }}
-                            @if ($utilisateur->email)
-                                <br><i class="bi bi-envelope me-1"></i>{{ $utilisateur->email }}
-                            @endif
-                        </p>
+    <div id="groupes-utilisateurs">
+        @forelse ($usersParRole as $role => $utilisateurs)
+            <div class="mb-4 groupe-role">
+                <h2 class="h6 text-uppercase text-muted mb-2">
+                    {{ $libellesRoles[$role] ?? $role }}
+                    <span class="badge bg-light text-dark border ms-1">{{ $utilisateurs->count() }}</span>
+                </h2>
+                <div class="row g-3">
+                    @foreach ($utilisateurs as $utilisateur)
+                        <div class="col-12 col-sm-6 col-lg-4 col-xl-3 carte-utilisateur" data-nom="{{ strtolower($utilisateur->name) }}" data-username="{{ strtolower($utilisateur->username) }}">
+                            <div class="card h-100 shadow-sm border-0 bg-white">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <span class="badge bg-light text-dark border">{{ '@'.$utilisateur->username }}</span>
+                                        @if ($utilisateur->isLocked())
+                                            <span class="badge bg-danger">Verrouillé</span>
+                                        @elseif ($utilisateur->is_active)
+                                            <span class="badge bg-success">Actif</span>
+                                        @else
+                                            <span class="badge bg-secondary">Inactif</span>
+                                        @endif
+                                    </div>
+                                    <h3 class="h6 mb-1">{{ $utilisateur->name }}</h3>
+                                    <p class="small text-muted mb-3">
+                                        <i class="bi bi-telephone me-1"></i>{{ $utilisateur->telephone }}
+                                        @if ($utilisateur->email)
+                                            <br><i class="bi bi-envelope me-1"></i>{{ $utilisateur->email }}
+                                        @endif
+                                    </p>
 
-                        <div class="d-flex flex-column gap-2">
-                            @can('update', $utilisateur)
-                                <button type="button" class="btn btn-sm btn-outline-secondary btn-modifier-utilisateur" data-id="{{ $utilisateur->id }}">
-                                    <i class="bi bi-pencil me-1"></i>Modifier
-                                </button>
-                            @endcan
-                            @can('resetPassword', $utilisateur)
-                                <button type="button" class="btn btn-sm btn-outline-primary btn-reinitialiser-mdp" data-id="{{ $utilisateur->id }}" data-nom="{{ $utilisateur->name }}">
-                                    <i class="bi bi-key me-1"></i>Réinitialiser le mot de passe
-                                </button>
-                            @endcan
-                            @can('toggleActive', $utilisateur)
-                                @if ($utilisateur->is_active)
-                                    <button type="button" class="btn btn-sm btn-outline-danger btn-desactiver-utilisateur" data-id="{{ $utilisateur->id }}" data-nom="{{ $utilisateur->name }}">
-                                        <i class="bi bi-slash-circle me-1"></i>Désactiver
-                                    </button>
-                                @else
-                                    <button type="button" class="btn btn-sm btn-outline-success btn-activer-utilisateur" data-id="{{ $utilisateur->id }}" data-nom="{{ $utilisateur->name }}">
-                                        <i class="bi bi-check-circle me-1"></i>Activer
-                                    </button>
-                                @endif
-                            @endcan
+                                    <div class="d-flex flex-column gap-2">
+                                        @can('update', $utilisateur)
+                                            <button type="button" class="btn btn-sm btn-outline-secondary btn-modifier-utilisateur" data-id="{{ $utilisateur->id }}">
+                                                <i class="bi bi-pencil me-1"></i>Modifier
+                                            </button>
+                                        @endcan
+                                        @can('resetPassword', $utilisateur)
+                                            <button type="button" class="btn btn-sm btn-outline-primary btn-reinitialiser-mdp" data-id="{{ $utilisateur->id }}" data-nom="{{ $utilisateur->name }}">
+                                                <i class="bi bi-key me-1"></i>Réinitialiser le mot de passe
+                                            </button>
+                                        @endcan
+                                        @can('toggleActive', $utilisateur)
+                                            @if ($utilisateur->is_active)
+                                                <button type="button" class="btn btn-sm btn-outline-danger btn-desactiver-utilisateur" data-id="{{ $utilisateur->id }}" data-nom="{{ $utilisateur->name }}">
+                                                    <i class="bi bi-slash-circle me-1"></i>Désactiver
+                                                </button>
+                                            @else
+                                                <button type="button" class="btn btn-sm btn-outline-success btn-activer-utilisateur" data-id="{{ $utilisateur->id }}" data-nom="{{ $utilisateur->name }}">
+                                                    <i class="bi bi-check-circle me-1"></i>Activer
+                                                </button>
+                                            @endif
+                                        @endcan
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                    </div>
+                    @endforeach
                 </div>
             </div>
         @empty
-            <div class="col-12">
-                <p class="text-muted">Aucun utilisateur pour le moment.</p>
-            </div>
+            <p class="text-muted">Aucun utilisateur pour le moment.</p>
         @endforelse
-    </div>
-
-    <div class="mt-4">
-        {{ $users->links() }}
     </div>
 
     {{-- Modale création / édition --}}
@@ -146,6 +173,10 @@
                 $('.carte-utilisateur').each(function () {
                     const match = $(this).data('nom').toString().includes(q) || $(this).data('username').toString().includes(q);
                     $(this).toggle(match);
+                });
+                $('.groupe-role').each(function () {
+                    const aUneCarteVisible = $(this).find('.carte-utilisateur:visible').length > 0;
+                    $(this).toggle(aUneCarteVisible);
                 });
             });
 

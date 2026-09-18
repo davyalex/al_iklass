@@ -1,7 +1,7 @@
 // Palette AL-IKLASS — surcharge des variables Bootstrap avant import
 $primary: #0257bd;
 $secondary: #073763;
-$body-bg: #e6f2fb;
+$body-bg: #eee;
 $body-color: #1c2b39;
 $font-family-sans-serif: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 $border-radius: 0.5rem;
@@ -30,7 +30,7 @@ $input-focus-box-shadow: 0 0 0 0.2rem rgba(2, 87, 189, 0.15);
 :root {
     --al-navy: #073763;
     --al-blue: #0257bd;
-    --al-bg-light: #e6f2fb;
+    --al-bg-light: #eee;
 }
 
 body {
@@ -57,4 +57,36 @@ body {
 .al-topbar {
     background-color: #fff;
     border-bottom: 1px solid rgba(7, 55, 99, 0.1);
+}
+
+// Select2 : le theme par defaut du plugin ne suit pas Bootstrap 5, ce qui
+// donne un champ plus bas et une bordure grise differente des .form-control /
+// .form-select voisins. On aligne sa hauteur, sa bordure et ses couleurs sur
+// les variables de champ definies plus haut.
+.select2-container--default .select2-selection--single {
+    height: $input-height;
+    display: flex;
+    align-items: center;
+    padding: 0 0.5rem;
+    background-color: $input-bg;
+    border: $input-border-width solid $input-border-color;
+    border-radius: $input-border-radius;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+    padding: 0;
+    line-height: normal;
+    color: $input-color;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 100%;
+    top: 0;
+    right: 0.5rem;
+}
+
+.select2-container--default.select2-container--focus .select2-selection--single,
+.select2-container--default.select2-container--open .select2-selection--single {
+    border-color: $input-focus-border-color;
+    box-shadow: $input-focus-box-shadow;
 }

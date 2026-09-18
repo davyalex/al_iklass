@@ -19,6 +19,22 @@ class UserControllerTest extends TestCase
         $this->seed(RolePermissionSeeder::class);
     }
 
+    public function test_admin_can_view_users_index_grouped_by_role(): void
+    {
+        $admin = User::factory()->create()->assignRole('admin');
+        User::factory()->create()->assignRole('gestionnaire');
+
+        $this->actingAs($admin)->get(route('admin.users.index'))->assertOk();
+        $this->actingAs($admin)->get(route('admin.users.index', ['role' => 'gestionnaire']))->assertOk();
+    }
+
+    public function test_gestionnaire_cannot_view_users_index(): void
+    {
+        $user = User::factory()->create()->assignRole('gestionnaire');
+
+        $this->actingAs($user)->get(route('admin.users.index'))->assertForbidden();
+    }
+
     public function test_admin_can_create_user_with_generated_password(): void
     {
         $admin = User::factory()->create()->assignRole('admin');

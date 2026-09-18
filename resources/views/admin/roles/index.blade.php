@@ -1,7 +1,7 @@
 @php
     $libellesGroupes = [
         'stock' => 'Stock',
-        'users' => 'Utilisateurs',
+        'utilisateurs' => 'Utilisateurs',
         'roles' => 'Rôles & permissions',
         'audit' => "Journal d'audit",
     ];
@@ -18,58 +18,54 @@
         @endcan
     </div>
 
-    <div class="card shadow-sm border-0">
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead>
-                    <tr>
-                        <th>Rôle</th>
-                        <th>Type</th>
-                        <th>Permissions</th>
-                        <th>Utilisateurs</th>
-                        <th class="text-end">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach ($roles as $role)
-                        <tr>
-                            <td class="fw-semibold">{{ $role->name }}</td>
-                            <td>
-                                @if (in_array($role->name, $rolesProtegees, true))
-                                    <span class="badge bg-secondary">Rôle par défaut</span>
-                                @else
-                                    <span class="badge bg-light text-dark border">Personnalisé</span>
+    <div class="row g-3">
+        @forelse ($roles as $role)
+            <div class="col-12 col-sm-6 col-lg-4 col-xl-3">
+                <div class="card h-100 shadow-sm border-0 bg-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <span class="badge bg-light text-dark border">{{ $role->name }}</span>
+                            @if (in_array($role->name, $rolesProtegees, true))
+                                <span class="badge bg-secondary">Rôle par défaut</span>
+                            @else
+                                <span class="badge bg-primary">Personnalisé</span>
+                            @endif
+                        </div>
+                        <p class="small text-muted mb-1">
+                            @if ($role->name === 'superadmin')
+                                Accès total (toutes permissions)
+                            @else
+                                {{ $role->permissions->count() }} permission(s)
+                            @endif
+                        </p>
+                        <p class="small text-muted mb-3">
+                            <i class="bi bi-people me-1"></i>{{ $role->users_count }} utilisateur(s)
+                        </p>
+
+                        <div class="d-flex flex-column gap-2">
+                            @can('update', $role)
+                                @if ($role->name !== 'superadmin')
+                                    <button type="button" class="btn btn-sm btn-outline-secondary btn-gerer-permissions" data-id="{{ $role->id }}" data-nom="{{ $role->name }}">
+                                        <i class="bi bi-shield-check me-1"></i>Permissions
+                                    </button>
                                 @endif
-                            </td>
-                            <td>
-                                @if ($role->name === 'superadmin')
-                                    <span class="text-muted small">Accès total (toutes permissions)</span>
-                                @else
-                                    <span class="small">{{ $role->permissions->count() }} permission(s)</span>
+                            @endcan
+                            @can('delete', $role)
+                                @if (! in_array($role->name, $rolesProtegees, true))
+                                    <button type="button" class="btn btn-sm btn-outline-danger btn-supprimer-role" data-id="{{ $role->id }}" data-nom="{{ $role->name }}">
+                                        <i class="bi bi-trash me-1"></i>Supprimer
+                                    </button>
                                 @endif
-                            </td>
-                            <td>{{ $role->users_count }}</td>
-                            <td class="text-end">
-                                @can('update', $role)
-                                    @if ($role->name !== 'superadmin')
-                                        <button type="button" class="btn btn-sm btn-outline-secondary btn-gerer-permissions" data-id="{{ $role->id }}" data-nom="{{ $role->name }}">
-                                            <i class="bi bi-shield-check me-1"></i>Permissions
-                                        </button>
-                                    @endif
-                                @endcan
-                                @can('delete', $role)
-                                    @if (! in_array($role->name, $rolesProtegees, true))
-                                        <button type="button" class="btn btn-sm btn-outline-danger btn-supprimer-role" data-id="{{ $role->id }}" data-nom="{{ $role->name }}">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
-                                    @endif
-                                @endcan
-                            </td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
+                            @endcan
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @empty
+            <div class="col-12">
+                <p class="text-muted">Aucun rôle pour le moment.</p>
+            </div>
+        @endforelse
     </div>
 
     {{-- Modale nouveau rôle --}}
@@ -88,21 +84,7 @@
                             <div class="form-text">Lettres, chiffres, tirets et underscores uniquement.</div>
                         </div>
                         <label class="form-label">Permissions</label>
-                        @foreach ($permissions as $groupe => $items)
-                            <div class="mb-2">
-                                <div class="fw-semibold small text-muted mb-1">{{ $libellesGroupes[$groupe] ?? ucfirst($groupe) }}</div>
-                                <div class="row row-cols-1 row-cols-sm-2">
-                                    @foreach ($items as $permission)
-                                        <div class="col">
-                                            <div class="form-check">
-                                                <input type="checkbox" class="form-check-input" name="permissions[]" value="{{ $permission->name }}" id="perm-new-{{ $permission->id }}">
-                                                <label class="form-check-label small" for="perm-new-{{ $permission->id }}">{{ $permission->name }}</label>
-                                            </div>
-                                        </div>
-                                    @endforeach
-                                </div>
-                            </div>
-                        @endforeach
+                        <x-permissions-groupees :permissions="$permissions" :libelles="$libellesGroupes" id-prefix="new" />
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
@@ -124,21 +106,7 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body" id="permissions-corps">
-                        @foreach ($permissions as $groupe => $items)
-                            <div class="mb-2">
-                                <div class="fw-semibold small text-muted mb-1">{{ $libellesGroupes[$groupe] ?? ucfirst($groupe) }}</div>
-                                <div class="row row-cols-1 row-cols-sm-2">
-                                    @foreach ($items as $permission)
-                                        <div class="col">
-                                            <div class="form-check">
-                                                <input type="checkbox" class="form-check-input case-permission" name="permissions[]" value="{{ $permission->name }}" id="perm-edit-{{ $permission->id }}">
-                                                <label class="form-check-label small" for="perm-edit-{{ $permission->id }}">{{ $permission->name }}</label>
-                                            </div>
-                                        </div>
-                                    @endforeach
-                                </div>
-                            </div>
-                        @endforeach
+                        <x-permissions-groupees :permissions="$permissions" :libelles="$libellesGroupes" id-prefix="edit" checkbox-class="case-permission" />
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>

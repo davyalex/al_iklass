@@ -12,7 +12,7 @@
                     <label class="form-label small mb-1">Au</label>
                     <input type="date" name="date_fin" class="form-control form-control-sm">
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <label class="form-label small mb-1">Utilisateur</label>
                     <select name="causer_id" class="form-select form-select-sm select2-filtre-utilisateur">
                         <option value="">Tous</option>
@@ -21,24 +21,15 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-md-2">
-                    <label class="form-label small mb-1">Recherche</label>
-                    <input type="text" name="recherche" class="form-control form-control-sm" placeholder="Action...">
-                </div>
-                <div class="col-12 col-md-3 d-flex flex-wrap gap-2">
+                <div class="col-12 col-md-4 d-flex flex-wrap gap-2">
                     <button type="button" class="btn btn-sm btn-primary" id="btn-filtrer-audit">
                         <i class="bi bi-funnel me-1"></i>Filtrer
                     </button>
                     <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-reset-audit">
                         Réinitialiser
                     </button>
-                    <div class="ms-md-auto d-flex gap-2">
-                        <a href="#" id="btn-export-excel-audit" class="btn btn-sm btn-outline-success">
-                            <i class="bi bi-file-earmark-excel me-1"></i>Excel
-                        </a>
-                        <a href="#" id="btn-export-pdf-audit" class="btn btn-sm btn-outline-danger">
-                            <i class="bi bi-file-earmark-pdf me-1"></i>PDF
-                        </a>
+                    <div class="ms-md-auto">
+                        <x-export-dropdown id-suffix="audit" />
                     </div>
                 </div>
             </form>
@@ -69,7 +60,6 @@
                     date_debut: $('#filtres-audit [name=date_debut]').val(),
                     date_fin: $('#filtres-audit [name=date_fin]').val(),
                     causer_id: $('#filtres-audit [name=causer_id]').val(),
-                    recherche: $('#filtres-audit [name=recherche]').val(),
                 };
             }
 

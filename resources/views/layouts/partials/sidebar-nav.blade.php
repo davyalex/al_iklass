@@ -14,7 +14,7 @@
         </a>
     </li>
 
-    @can('stock.dashboard.view')
+    @can('stock.tableau_bord.voir')
         <li class="nav-item mt-3">
             <span class="px-3 text-uppercase small fw-semibold" style="color: rgba(255,255,255,0.45); letter-spacing: .04em;">Stock</span>
         </li>
@@ -31,9 +31,15 @@
             </a>
         </li>
         <li class="nav-item">
+            <a href="{{ route('stock.bons-commande.index') }}" class="nav-link d-flex align-items-center gap-2 {{ request()->routeIs('stock.bons-commande.*') ? 'active' : '' }}">
+                <i class="bi bi-file-earmark-text"></i>
+                <span>Bons de commande</span>
+            </a>
+        </li>
+        <li class="nav-item">
             <a href="{{ route('stock.achats.index') }}" class="nav-link d-flex align-items-center gap-2 {{ request()->routeIs('stock.achats.*') ? 'active' : '' }}">
                 <i class="bi bi-cart-check"></i>
-                <span>Achats</span>
+                <span>Achats (réceptions)</span>
             </a>
         </li>
         <li class="nav-item">
@@ -50,11 +56,11 @@
         </li>
     @endcan
 
-    @canany(['users.view', 'roles.view', 'audit.view'])
+    @canany(['utilisateurs.voir', 'roles.voir', 'unites.voir', 'audit.voir'])
         <li class="nav-item mt-3">
             <span class="px-3 text-uppercase small fw-semibold" style="color: rgba(255,255,255,0.45); letter-spacing: .04em;">Administration</span>
         </li>
-        @can('users.view')
+        @can('utilisateurs.voir')
             <li class="nav-item">
                 <a href="{{ route('admin.users.index') }}" class="nav-link d-flex align-items-center gap-2 {{ request()->routeIs('admin.users.*') ? 'active' : '' }}">
                     <i class="bi bi-people"></i>
@@ -62,7 +68,7 @@
                 </a>
             </li>
         @endcan
-        @can('roles.view')
+        @can('roles.voir')
             <li class="nav-item">
                 <a href="{{ route('admin.roles.index') }}" class="nav-link d-flex align-items-center gap-2 {{ request()->routeIs('admin.roles.*') ? 'active' : '' }}">
                     <i class="bi bi-shield-lock"></i>
@@ -70,7 +76,15 @@
                 </a>
             </li>
         @endcan
-        @can('audit.view')
+        @can('unites.voir')
+            <li class="nav-item">
+                <a href="{{ route('admin.unites.index') }}" class="nav-link d-flex align-items-center gap-2 {{ request()->routeIs('admin.unites.*') ? 'active' : '' }}">
+                    <i class="bi bi-rulers"></i>
+                    <span>Unités</span>
+                </a>
+            </li>
+        @endcan
+        @can('audit.voir')
             <li class="nav-item">
                 <a href="{{ route('admin.audit.index') }}" class="nav-link d-flex align-items-center gap-2 {{ request()->routeIs('admin.audit.*') ? 'active' : '' }}">
                     <i class="bi bi-clock-history"></i>

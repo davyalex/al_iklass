@@ -41,15 +41,15 @@ class RoleControllerTest extends TestCase
 
         $response = $this->actingAs($admin)->postJson(route('admin.roles.store'), [
             'name' => 'comptable',
-            'permissions' => ['stock.dashboard.view', 'stock.paiement.manage'],
+            'permissions' => ['stock.tableau_bord.voir', 'stock.paiement.gerer'],
         ]);
 
         $response->assertCreated();
 
         $role = Role::where('name', 'comptable')->firstOrFail();
-        $this->assertTrue($role->hasPermissionTo('stock.dashboard.view'));
-        $this->assertTrue($role->hasPermissionTo('stock.paiement.manage'));
-        $this->assertFalse($role->hasPermissionTo('stock.achat.manage'));
+        $this->assertTrue($role->hasPermissionTo('stock.tableau_bord.voir'));
+        $this->assertTrue($role->hasPermissionTo('stock.paiement.gerer'));
+        $this->assertFalse($role->hasPermissionTo('stock.achat.gerer'));
     }
 
     public function test_cannot_create_role_with_duplicate_name(): void
@@ -67,11 +67,11 @@ class RoleControllerTest extends TestCase
         $role = Role::create(['name' => 'comptable', 'guard_name' => 'web']);
 
         $response = $this->actingAs($admin)->putJson(route('admin.roles.update-permissions', $role), [
-            'permissions' => ['stock.paiement.manage'],
+            'permissions' => ['stock.paiement.gerer'],
         ]);
 
         $response->assertOk();
-        $this->assertTrue($role->fresh()->hasPermissionTo('stock.paiement.manage'));
+        $this->assertTrue($role->fresh()->hasPermissionTo('stock.paiement.gerer'));
     }
 
     public function test_cannot_update_permissions_of_superadmin_role(): void
@@ -80,7 +80,7 @@ class RoleControllerTest extends TestCase
         $superadmin = Role::where('name', 'superadmin')->firstOrFail();
 
         $this->actingAs($admin)->putJson(route('admin.roles.update-permissions', $superadmin), [
-            'permissions' => ['stock.dashboard.view'],
+            'permissions' => ['stock.tableau_bord.voir'],
         ])->assertStatus(422);
     }
 

@@ -14,17 +14,29 @@
 
         <div class="mb-3">
             <x-input-label for="password" value="Mot de passe" />
-            <x-text-input id="password" type="password" name="password" required autocomplete="current-password" />
+            <div class="input-group">
+                <x-text-input id="password" type="password" name="password" required autocomplete="current-password" />
+                <button type="button" class="btn btn-outline-secondary" id="btn-afficher-mdp" tabindex="-1" aria-label="Afficher le mot de passe">
+                    <i class="bi bi-eye"></i>
+                </button>
+            </div>
             <x-input-error :messages="$errors->get('password')" />
-        </div>
-
-        <div class="form-check mb-3">
-            <input id="remember_me" type="checkbox" class="form-check-input" name="remember">
-            <label for="remember_me" class="form-check-label">Se souvenir de moi</label>
         </div>
 
         <div class="d-grid gap-2">
             <x-primary-button>Se connecter</x-primary-button>
         </div>
     </form>
+
+    <script>
+        document.getElementById('btn-afficher-mdp').addEventListener('click', function () {
+            const champ = document.getElementById('password');
+            const icone = this.querySelector('i');
+            const visible = champ.type === 'text';
+
+            champ.type = visible ? 'password' : 'text';
+            icone.classList.toggle('bi-eye');
+            icone.classList.toggle('bi-eye-slash');
+        });
+    </script>
 </x-guest-layout>

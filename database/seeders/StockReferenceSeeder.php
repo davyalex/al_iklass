@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Caisse;
 use App\Models\CategorieArticle;
 use App\Models\ModePaiement;
+use App\Models\Unite;
 use Illuminate\Database\Seeder;
 
 class StockReferenceSeeder extends Seeder
@@ -30,6 +31,10 @@ class StockReferenceSeeder extends Seeder
             ['code' => 'cheque', 'libelle' => 'Chèque'],
         ] as $mode) {
             ModePaiement::firstOrCreate(['code' => $mode['code']], $mode);
+        }
+
+        foreach (['pièce', 'jeu', 'bidon', 'litre', 'kg', 'mètre'] as $libelle) {
+            Unite::firstOrCreate(['libelle' => $libelle]);
         }
 
         foreach ([

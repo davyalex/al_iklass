@@ -18,7 +18,7 @@ use Yajra\DataTables\Facades\DataTables;
 
 class AuditLogController extends Controller
 {
-    // Accès protégé par le middleware de route 'permission:audit.view' (routes/admin.php),
+    // Accès protégé par le middleware de route 'permission:audit.voir' (routes/admin.php),
     // pas par une policy : Activity est un modèle du package, pas un modèle applicatif.
     public function index(): View
     {
@@ -59,7 +59,6 @@ class AuditLogController extends Controller
         return $query
             ->when($request->filled('date_debut'), fn (Builder $q) => $q->whereDate('created_at', '>=', $request->string('date_debut')))
             ->when($request->filled('date_fin'), fn (Builder $q) => $q->whereDate('created_at', '<=', $request->string('date_fin')))
-            ->when($request->filled('causer_id'), fn (Builder $q) => $q->where('causer_id', $request->integer('causer_id')))
-            ->when($request->filled('recherche'), fn (Builder $q) => $q->where('description', 'like', '%'.$request->string('recherche').'%'));
+            ->when($request->filled('causer_id'), fn (Builder $q) => $q->where('causer_id', $request->integer('causer_id')));
     }
 }

@@ -10,6 +10,7 @@ use App\Observers\AchatObserver;
 use App\Observers\MouvementStockObserver;
 use App\Observers\PaiementFournisseurObserver;
 use App\Policies\RolePolicy;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Spatie\Permission\Models\Role;
@@ -29,6 +30,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Paginator::useBootstrapFive();
+
         Gate::before(fn (User $user) => $user->hasRole('superadmin') ? true : null);
 
         Gate::policy(Role::class, RolePolicy::class);

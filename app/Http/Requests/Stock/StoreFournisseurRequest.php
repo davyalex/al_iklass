@@ -8,7 +8,7 @@ class StoreFournisseurRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()->can('stock.fournisseur.manage');
+        return $this->user()->can('stock.fournisseur.gerer');
     }
 
     public function rules(): array

@@ -22,7 +22,7 @@ class ArticleFactory extends Factory
             'nom' => $this->faker->words(3, true),
             'description' => $this->faker->sentence(),
             'categorie_id' => null,
-            'unite' => $this->faker->randomElement(['pièce', 'litre', 'kg']),
+            'unite_id' => null,
             'quantite_stock' => $this->faker->numberBetween(0, 100),
             'prix_achat' => $this->faker->numberBetween(1000, 50000),
             'prix_vente' => $this->faker->numberBetween(1500, 60000),

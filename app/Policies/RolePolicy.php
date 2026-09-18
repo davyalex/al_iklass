@@ -9,26 +9,26 @@ class RolePolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->can('roles.view');
+        return $user->can('roles.voir');
     }
 
     public function view(User $user, Role $role): bool
     {
-        return $user->can('roles.view');
+        return $user->can('roles.voir');
     }
 
     public function create(User $user): bool
     {
-        return $user->can('roles.manage');
+        return $user->can('roles.gerer');
     }
 
     public function update(User $user, Role $role): bool
     {
-        return $user->can('roles.manage');
+        return $user->can('roles.gerer');
     }
 
     public function delete(User $user, Role $role): bool
     {
-        return $user->can('roles.manage');
+        return $user->can('roles.gerer');
     }
 }

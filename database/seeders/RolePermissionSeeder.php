@@ -14,14 +14,15 @@ class RolePermissionSeeder extends Seeder
      * @var list<string>
      */
     private const STOCK_PERMISSIONS = [
-        'stock.dashboard.view',
-        'stock.article.manage',
-        'stock.fournisseur.manage',
-        'stock.achat.manage',
-        'stock.paiement.manage',
+        'stock.tableau_bord.voir',
+        'stock.article.gerer',
+        'stock.fournisseur.gerer',
+        'stock.bon_commande.gerer',
+        'stock.achat.gerer',
+        'stock.paiement.gerer',
         'stock.sortie.interne',
         'stock.sortie.vente',
-        'stock.demande.create',
+        'stock.demande.creer',
     ];
 
     /**
@@ -30,8 +31,8 @@ class RolePermissionSeeder extends Seeder
      * @var list<string>
      */
     private const USER_PERMISSIONS = [
-        'users.view',
-        'users.manage',
+        'utilisateurs.voir',
+        'utilisateurs.gerer',
     ];
 
     /**
@@ -40,9 +41,11 @@ class RolePermissionSeeder extends Seeder
      * @var list<string>
      */
     private const ADMIN_PERMISSIONS = [
-        'roles.view',
-        'roles.manage',
-        'audit.view',
+        'roles.voir',
+        'roles.gerer',
+        'audit.voir',
+        'unites.voir',
+        'unites.gerer',
     ];
 
     public function run(): void
@@ -58,10 +61,14 @@ class RolePermissionSeeder extends Seeder
             ->syncPermissions([...self::STOCK_PERMISSIONS, ...self::USER_PERMISSIONS, ...self::ADMIN_PERMISSIONS]);
 
         Role::firstOrCreate(['name' => 'gestionnaire_stock', 'guard_name' => 'web'])
-            ->syncPermissions(array_diff(self::STOCK_PERMISSIONS, ['stock.demande.create']));
+            ->syncPermissions([
+                ...array_diff(self::STOCK_PERMISSIONS, ['stock.demande.creer']),
+                'unites.voir',
+                'unites.gerer',
+            ]);
 
         Role::firstOrCreate(['name' => 'chef_mecanicien', 'guard_name' => 'web'])
-            ->syncPermissions(['stock.demande.create']);
+            ->syncPermissions(['stock.demande.creer']);
 
         // Le rôle "gestionnaire" (parc) n'a aucune permission côté module Stock.
         Role::firstOrCreate(['name' => 'gestionnaire', 'guard_name' => 'web']);

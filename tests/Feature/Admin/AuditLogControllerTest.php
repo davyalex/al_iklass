@@ -56,12 +56,12 @@ class AuditLogControllerTest extends TestCase
         $this->assertTrue($descriptions->contains(fn ($d) => str_contains($d, 'Nouvel Utilisateur')));
     }
 
-    public function test_data_can_be_filtered_by_causer_and_search(): void
+    public function test_data_can_be_filtered_by_causer(): void
     {
         $admin = User::factory()->create()->assignRole('admin');
+        $autreAdmin = User::factory()->create()->assignRole('admin');
 
         $this->actingAs($admin);
-
         app(UserService::class)->creer([
             'name' => 'Utilisateur Filtré',
             'username' => 'utilisateurfiltre',
@@ -69,20 +69,20 @@ class AuditLogControllerTest extends TestCase
             'role' => 'gestionnaire',
         ]);
 
+        $this->actingAs($autreAdmin);
+        app(UserService::class)->creer([
+            'name' => 'Autre Utilisateur',
+            'username' => 'autreutilisateur',
+            'telephone' => '0102030407',
+            'role' => 'gestionnaire',
+        ]);
+
         $response = $this->actingAs($admin)->getJson(route('admin.audit.data', [
             'causer_id' => $admin->id,
-            'recherche' => 'Utilisateur Filtré',
         ]));
 
         $response->assertOk();
-        $this->assertGreaterThanOrEqual(1, $response->json('recordsFiltered'));
-
-        $responseVide = $this->actingAs($admin)->getJson(route('admin.audit.data', [
-            'recherche' => 'Action inexistante xyz',
-        ]));
-
-        $responseVide->assertOk();
-        $this->assertSame(0, $responseVide->json('recordsFiltered'));
+        $this->assertSame(1, $response->json('recordsFiltered'));
     }
 
     public function test_admin_can_export_audit_log_excel_and_pdf(): void

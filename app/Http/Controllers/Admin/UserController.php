@@ -26,12 +26,15 @@ class UserController extends Controller
             ->when(request('statut') === 'actif', fn ($q) => $q->where('is_active', true))
             ->when(request('statut') === 'inactif', fn ($q) => $q->where('is_active', false))
             ->orderBy('name')
-            ->paginate(24)
-            ->withQueryString();
+            ->get();
+
+        $usersParRole = $users
+            ->groupBy(fn (User $u) => $u->roles->first()?->name ?? 'sans_role')
+            ->sortKeys();
 
         $roles = Role::orderBy('name')->get();
 
-        return view('admin.users.index', compact('users', 'roles'));
+        return view('admin.users.index', compact('usersParRole', 'roles'));
     }
 
     public function show(User $user): JsonResponse

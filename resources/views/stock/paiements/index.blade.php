@@ -49,13 +49,8 @@
                     <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-reset-paiements">
                         Réinitialiser
                     </button>
-                    <div class="ms-md-auto d-flex gap-2">
-                        <a href="#" id="btn-export-excel-paiements" class="btn btn-sm btn-outline-success">
-                            <i class="bi bi-file-earmark-excel me-1"></i>Excel
-                        </a>
-                        <a href="#" id="btn-export-pdf-paiements" class="btn btn-sm btn-outline-danger">
-                            <i class="bi bi-file-earmark-pdf me-1"></i>PDF
-                        </a>
+                    <div class="ms-md-auto">
+                        <x-export-dropdown id-suffix="paiements" />
                     </div>
                 </div>
             </form>

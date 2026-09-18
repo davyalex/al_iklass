@@ -9,16 +9,16 @@ class AchatPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->can('stock.dashboard.view');
+        return $user->can('stock.tableau_bord.voir');
     }
 
     public function view(User $user, Achat $achat): bool
     {
-        return $user->can('stock.dashboard.view');
+        return $user->can('stock.tableau_bord.voir');
     }
 
     public function create(User $user): bool
     {
-        return $user->can('stock.achat.manage');
+        return $user->can('stock.achat.gerer');
     }
 }

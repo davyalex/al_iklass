@@ -57,7 +57,7 @@ class LoginRequest extends FormRequest
             ]);
         }
 
-        if (! $user || ! Auth::attempt(['username' => $this->string('username'), 'password' => $this->string('password')], $this->boolean('remember'))) {
+        if (! $user || ! Auth::attempt(['username' => $this->string('username'), 'password' => $this->string('password')])) {
             RateLimiter::hit($this->throttleKey());
 
             $user?->registerFailedLogin();

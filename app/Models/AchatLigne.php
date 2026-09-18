@@ -11,7 +11,7 @@ class AchatLigne extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'achat_id', 'article_id', 'article_reference', 'article_nom',
+        'achat_id', 'article_id', 'bon_commande_ligne_id', 'article_reference', 'article_nom',
         'quantite', 'prix_unitaire', 'montant',
     ];
 
@@ -31,5 +31,10 @@ class AchatLigne extends Model
     public function article(): BelongsTo
     {
         return $this->belongsTo(Article::class);
+    }
+
+    public function bonCommandeLigne(): BelongsTo
+    {
+        return $this->belongsTo(BonCommandeLigne::class);
     }
 }

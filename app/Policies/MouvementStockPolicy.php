@@ -9,12 +9,12 @@ class MouvementStockPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->can('stock.dashboard.view');
+        return $user->can('stock.tableau_bord.voir');
     }
 
     public function view(User $user, MouvementStock $mouvement): bool
     {
-        return $user->can('stock.dashboard.view');
+        return $user->can('stock.tableau_bord.voir');
     }
 
     public function sortieInterne(User $user): bool
