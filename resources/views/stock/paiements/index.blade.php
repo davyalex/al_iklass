@@ -46,7 +46,7 @@
                     <button type="button" class="btn btn-sm btn-primary" id="btn-filtrer-paiements">
                         <i class="bi bi-funnel me-1"></i>Filtrer
                     </button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-reset-paiements">
+                    <button type="button" class="btn btn-sm btn-outline-secondary d-none" id="btn-reset-paiements">
                         Réinitialiser
                     </button>
                     <div class="ms-md-auto">
@@ -102,8 +102,17 @@
                             <div class="form-text" id="paiement-restant-info"></div>
                         </div>
                         <div class="mb-3">
+                            <label class="form-label d-block">Type de paiement</label>
+                            <div class="btn-group w-100" role="group">
+                                <input type="radio" class="btn-check" name="type_paiement_direct" id="paiement-direct-type-total" checked>
+                                <label class="btn btn-outline-primary" for="paiement-direct-type-total">Paiement total</label>
+                                <input type="radio" class="btn-check" name="type_paiement_direct" id="paiement-direct-type-partiel">
+                                <label class="btn btn-outline-primary" for="paiement-direct-type-partiel">Paiement partiel</label>
+                            </div>
+                        </div>
+                        <div class="mb-3">
                             <label class="form-label">Montant (FCFA)</label>
-                            <input type="number" name="montant" class="form-control" min="0.01" step="0.01" required>
+                            <input type="number" name="montant" id="paiement-direct-montant" class="form-control" min="0.01" step="0.01" required>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Mode de paiement</label>
@@ -199,6 +208,21 @@
                 }
             });
 
+            // Bascule Paiement total / partiel : en "total", le montant est verrouillé
+            // sur le solde restant de l'achat choisi (sans decimale superflue) ; en
+            // "partiel", le champ se vide et devient modifiable (plafonne a max).
+            function appliquerTypePaiementDirect() {
+                const restant = parseFloat($('#paiement-achat').find(':selected').data('restant'));
+
+                if ($('#paiement-direct-type-total').is(':checked')) {
+                    $('#paiement-direct-montant').val(Number.isFinite(restant) ? restant : '').prop('readonly', true);
+                } else {
+                    $('#paiement-direct-montant').val('').prop('readonly', false).trigger('focus');
+                }
+            }
+
+            $('#modal-paiement input[name=type_paiement_direct]').on('change', appliquerTypePaiementDirect);
+
             $('#paiement-achat').on('change', function () {
                 const restant = $(this).find(':selected').data('restant');
                 if (restant !== undefined) {
@@ -207,6 +231,7 @@
                 } else {
                     $('#paiement-restant-info').text('');
                 }
+                appliquerTypePaiementDirect();
             });
 
             $('#btn-nouveau-paiement').on('click', function () {
@@ -215,6 +240,7 @@
                 $('#paiement-achat').prop('disabled', true).val('').trigger('change');
                 $('#paiement-achat-aide').text("Choisissez d'abord un fournisseur.");
                 $('#paiement-restant-info').text('');
+                appliquerTypePaiementDirect();
                 modal.show();
             });
 
@@ -241,6 +267,14 @@
                     mode_paiement_id: $('#filtres-paiements [name=mode_paiement_id]').val(),
                 };
             }
+
+            function actualiserBoutonResetPaiements() {
+                const actif = Object.values(filtresPaiements()).some((v) => v !== undefined && v !== null && v !== '');
+                $('#btn-reset-paiements').toggleClass('d-none', !actif);
+            }
+
+            $('#filtres-paiements').on('change input', actualiserBoutonResetPaiements);
+            actualiserBoutonResetPaiements();
 
             const tablePaiements = $('#table-paiements').DataTable({
                 processing: true,
