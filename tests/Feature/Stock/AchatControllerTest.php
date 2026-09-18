@@ -170,11 +170,20 @@ class AchatControllerTest extends TestCase
     {
         $user = User::factory()->create()->assignRole('gestionnaire_stock');
 
+        // Un autre jour du même mois, garanti différent d'aujourd'hui quel que soit le jour du test.
+        $autreJourDuMois = now()->day > 15 ? now()->startOfMonth() : now()->endOfMonth()->startOfDay();
+
         Achat::factory()->create([
             'date_achat' => now(),
             'montant_total' => 1000,
             'montant_paye' => 400,
             'montant_restant' => 600,
+        ]);
+        Achat::factory()->create([
+            'date_achat' => $autreJourDuMois,
+            'montant_total' => 2000,
+            'montant_paye' => 2000,
+            'montant_restant' => 0,
         ]);
         Achat::factory()->create([
             'date_achat' => now()->subMonth(),
@@ -188,8 +197,10 @@ class AchatControllerTest extends TestCase
         $response->assertOk();
         $kpis = $response->viewData('kpis');
         $this->assertEquals(1000, $kpis['jour']);
-        $this->assertEquals(1000, $kpis['mois']);
-        $this->assertEquals(400, $kpis['paye_mois']);
+        $this->assertSame(1, $kpis['jour_count']);
+        $this->assertEquals(3000, $kpis['mois']);
+        $this->assertSame(2, $kpis['mois_count']);
+        $this->assertEquals(2400, $kpis['paye_mois']);
         $this->assertEquals(600, $kpis['restant_mois']);
     }
 

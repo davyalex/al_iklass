@@ -125,4 +125,53 @@ class BonCommandeControllerTest extends TestCase
             ->assertOk()
             ->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     }
+
+    public function test_gestionnaire_stock_can_export_bons_commande_list_excel_and_pdf(): void
+    {
+        $user = User::factory()->create()->assignRole('gestionnaire_stock');
+        $fournisseur = Fournisseur::factory()->create();
+        $article = Article::factory()->create();
+
+        $this->actingAs($user)->postJson(route('stock.bons-commande.store'), [
+            'fournisseur_id' => $fournisseur->id,
+            'lignes' => [['article_id' => $article->id, 'quantite_commandee' => 1, 'prix_unitaire_estime' => 100]],
+        ]);
+
+        $this->actingAs($user)->get(route('stock.bons-commande.export.excel'))
+            ->assertOk()
+            ->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+        $this->actingAs($user)->get(route('stock.bons-commande.export.pdf'))
+            ->assertOk()
+            ->assertHeader('content-type', 'application/pdf');
+    }
+
+    public function test_bons_commande_export_can_be_filtered_by_fournisseur(): void
+    {
+        $user = User::factory()->create()->assignRole('gestionnaire_stock');
+        $fournisseurRecherche = Fournisseur::factory()->create();
+        $autreFournisseur = Fournisseur::factory()->create();
+        $article = Article::factory()->create();
+
+        $this->actingAs($user)->postJson(route('stock.bons-commande.store'), [
+            'fournisseur_id' => $fournisseurRecherche->id,
+            'lignes' => [['article_id' => $article->id, 'quantite_commandee' => 1, 'prix_unitaire_estime' => 100]],
+        ]);
+        $this->actingAs($user)->postJson(route('stock.bons-commande.store'), [
+            'fournisseur_id' => $autreFournisseur->id,
+            'lignes' => [['article_id' => $article->id, 'quantite_commandee' => 1, 'prix_unitaire_estime' => 100]],
+        ]);
+
+        $this->actingAs($user)->get(route('stock.bons-commande.export.excel', ['fournisseur_id' => $fournisseurRecherche->id]))
+            ->assertOk()
+            ->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    }
+
+    public function test_chef_mecanicien_cannot_export_bons_commande(): void
+    {
+        $user = User::factory()->create()->assignRole('chef_mecanicien');
+
+        $this->actingAs($user)->get(route('stock.bons-commande.export.excel'))->assertForbidden();
+        $this->actingAs($user)->get(route('stock.bons-commande.export.pdf'))->assertForbidden();
+    }
 }

@@ -4,6 +4,7 @@ use App\Http\Controllers\Stock\AchatController;
 use App\Http\Controllers\Stock\ArticleController;
 use App\Http\Controllers\Stock\BonCommandeController;
 use App\Http\Controllers\Stock\CategorieArticleController;
+use App\Http\Controllers\Stock\EtatStockController;
 use App\Http\Controllers\Stock\FournisseurController;
 use App\Http\Controllers\Stock\PaiementFournisseurController;
 use App\Http\Controllers\Stock\SortieStockController;
@@ -16,11 +17,20 @@ Route::middleware(['auth'])->prefix('stock')->name('stock.')->group(function () 
         Route::get('articles/export/pdf', [ArticleController::class, 'exportPdf'])->name('articles.export.pdf');
         Route::get('articles/{article}', [ArticleController::class, 'show'])->name('articles.show');
 
+        Route::get('etat-stock', [EtatStockController::class, 'index'])->name('etat-stock.index');
+        Route::get('etat-stock/data', [EtatStockController::class, 'data'])->name('etat-stock.data');
+        Route::get('etat-stock/export/excel', [EtatStockController::class, 'exportExcel'])->name('etat-stock.export.excel');
+        Route::get('etat-stock/export/pdf', [EtatStockController::class, 'exportPdf'])->name('etat-stock.export.pdf');
+
         Route::get('fournisseurs', [FournisseurController::class, 'index'])->name('fournisseurs.index');
+        Route::get('fournisseurs/{fournisseur}/compte', [FournisseurController::class, 'compte'])->name('fournisseurs.compte');
+        Route::get('fournisseurs/{fournisseur}/compte/pdf', [FournisseurController::class, 'comptePdf'])->name('fournisseurs.compte.pdf');
         Route::get('fournisseurs/{fournisseur}', [FournisseurController::class, 'show'])->name('fournisseurs.show');
 
         Route::get('bons-commande', [BonCommandeController::class, 'index'])->name('bons-commande.index');
         Route::get('bons-commande/data', [BonCommandeController::class, 'data'])->name('bons-commande.data');
+        Route::get('bons-commande/export/excel', [BonCommandeController::class, 'exportExcel'])->name('bons-commande.export.excel');
+        Route::get('bons-commande/export/pdf', [BonCommandeController::class, 'exportPdf'])->name('bons-commande.export.pdf');
         Route::get('bons-commande/{bonCommande}/pdf', [BonCommandeController::class, 'pdf'])->name('bons-commande.pdf');
         Route::get('bons-commande/{bonCommande}/excel', [BonCommandeController::class, 'exportExcelSingle'])->name('bons-commande.export.excel.single');
         Route::get('bons-commande/{bonCommande}', [BonCommandeController::class, 'show'])->name('bons-commande.show');

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Database\Factories\FournisseurFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -9,7 +10,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Fournisseur extends Model
 {
-    /** @use HasFactory<\Database\Factories\FournisseurFactory> */
+    /** @use HasFactory<FournisseurFactory> */
     use HasFactory, SoftDeletes;
 
     protected $fillable = ['nom', 'telephone', 'email', 'adresse', 'actif'];
@@ -24,5 +25,10 @@ class Fournisseur extends Model
     public function achats(): HasMany
     {
         return $this->hasMany(Achat::class);
+    }
+
+    public function bonsCommande(): HasMany
+    {
+        return $this->hasMany(BonCommande::class);
     }
 }

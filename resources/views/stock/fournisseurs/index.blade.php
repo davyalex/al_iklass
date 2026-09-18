@@ -37,6 +37,9 @@
                                 @endif
                             </td>
                             <td class="text-end">
+                                <a href="{{ route('stock.fournisseurs.compte', $fournisseur) }}" class="btn btn-sm btn-outline-primary" title="Voir détail">
+                                    <i class="bi bi-eye"></i>
+                                </a>
                                 @can('update', $fournisseur)
                                     <button type="button" class="btn btn-sm btn-outline-secondary btn-modifier-fournisseur" data-id="{{ $fournisseur->id }}">
                                         <i class="bi bi-pencil"></i>

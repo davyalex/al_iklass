@@ -133,17 +133,22 @@ class AchatController extends Controller
     }
 
     /**
-     * @return array{jour: float, mois: float, paye_mois: float, restant_mois: float}
+     * @return array{jour: float, jour_count: int, mois: float, mois_count: int, paye_mois: float, restant_mois: float}
      */
     private function calculerKpis(): array
     {
         $aujourdhui = now();
 
+        $duJour = Achat::whereDate('date_achat', $aujourdhui->toDateString());
+        $duMois = Achat::duMois($aujourdhui);
+
         return [
-            'jour' => (float) Achat::whereDate('date_achat', $aujourdhui->toDateString())->sum('montant_total'),
-            'mois' => (float) Achat::duMois($aujourdhui)->sum('montant_total'),
-            'paye_mois' => (float) Achat::duMois($aujourdhui)->sum('montant_paye'),
-            'restant_mois' => (float) Achat::duMois($aujourdhui)->sum('montant_restant'),
+            'jour' => (float) (clone $duJour)->sum('montant_total'),
+            'jour_count' => (clone $duJour)->count(),
+            'mois' => (float) (clone $duMois)->sum('montant_total'),
+            'mois_count' => (clone $duMois)->count(),
+            'paye_mois' => (float) (clone $duMois)->sum('montant_paye'),
+            'restant_mois' => (float) (clone $duMois)->sum('montant_restant'),
         ];
     }
 }

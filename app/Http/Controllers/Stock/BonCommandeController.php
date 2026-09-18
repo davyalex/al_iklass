@@ -10,6 +10,7 @@ use App\Models\BonCommande;
 use App\Models\Fournisseur;
 use App\Services\Stock\BonCommandeService;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -131,5 +132,34 @@ class BonCommandeController extends Controller
         Gate::authorize('view', $bonCommande);
 
         return Excel::download(new BonsCommandeExport(collect([$bonCommande])), "bon-commande-{$bonCommande->reference}.xlsx");
+    }
+
+    public function exportExcel(Request $request): BinaryFileResponse
+    {
+        Gate::authorize('viewAny', BonCommande::class);
+
+        $bonsCommande = $this->filtrer(BonCommande::query(), $request)->with('lignes')->orderByDesc('date_commande')->get();
+
+        return Excel::download(new BonsCommandeExport($bonsCommande), 'bons-commande-'.now()->format('Y-m-d-His').'.xlsx');
+    }
+
+    public function exportPdf(Request $request): Response
+    {
+        Gate::authorize('viewAny', BonCommande::class);
+
+        $bonsCommande = $this->filtrer(BonCommande::query(), $request)->with('lignes')->orderByDesc('date_commande')->get();
+
+        return Pdf::loadView('exports.pdf.bons-commande', ['bonsCommande' => $bonsCommande])
+            ->setPaper('a4', 'landscape')
+            ->download('bons-commande-'.now()->format('Y-m-d-His').'.pdf');
+    }
+
+    private function filtrer(Builder $query, Request $request): Builder
+    {
+        return $query
+            ->when($request->filled('date_debut'), fn (Builder $q) => $q->whereDate('date_commande', '>=', $request->string('date_debut')))
+            ->when($request->filled('date_fin'), fn (Builder $q) => $q->whereDate('date_commande', '<=', $request->string('date_fin')))
+            ->when($request->filled('fournisseur_id'), fn (Builder $q) => $q->where('fournisseur_id', $request->integer('fournisseur_id')))
+            ->when($request->filled('statut'), fn (Builder $q) => $q->where('statut', $request->string('statut')));
     }
 }

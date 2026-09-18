@@ -13,7 +13,10 @@
         <div class="col-6 col-lg-3">
             <div class="card shadow-sm border-0 bg-white h-100">
                 <div class="card-body">
-                    <div class="small text-muted">Achats du jour</div>
+                    <div class="d-flex align-items-center justify-content-between">
+                        <span class="small text-muted">Achats du jour</span>
+                        <span class="badge rounded-pill bg-primary" title="Nombre d'achats aujourd'hui">{{ $kpis['jour_count'] }}</span>
+                    </div>
                     <div class="h5 mb-0" style="color: var(--al-navy);">{{ \App\Support\Money::format($kpis['jour']) }} FCFA</div>
                 </div>
             </div>
@@ -21,7 +24,10 @@
         <div class="col-6 col-lg-3">
             <div class="card shadow-sm border-0 bg-white h-100">
                 <div class="card-body">
-                    <div class="small text-muted">Achats du mois</div>
+                    <div class="d-flex align-items-center justify-content-between">
+                        <span class="small text-muted">Achats du mois</span>
+                        <span class="badge rounded-pill bg-primary" title="Nombre d'achats ce mois-ci">{{ $kpis['mois_count'] }}</span>
+                    </div>
                     <div class="h5 mb-0" style="color: var(--al-navy);">{{ \App\Support\Money::format($kpis['mois']) }} FCFA</div>
                 </div>
             </div>
