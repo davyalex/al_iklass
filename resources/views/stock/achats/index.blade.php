@@ -118,7 +118,7 @@
 
     {{-- Modale nouvel achat --}}
     <div class="modal fade" id="modal-achat" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-xl">
+        <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <form id="form-achat">
                     <input type="hidden" name="bon_commande_id" id="achat-bon-commande-id">

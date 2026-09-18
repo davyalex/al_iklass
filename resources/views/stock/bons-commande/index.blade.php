@@ -28,7 +28,7 @@
 
     {{-- Modale création --}}
     <div class="modal fade" id="modal-bon-commande" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-xl">
+        <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <form id="form-bon-commande">
                     <div class="modal-header">
