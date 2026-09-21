@@ -125,13 +125,11 @@
                         <label class="form-check-label small" for="filtre-en-alerte-etat">Alerte</label>
                     </div>
                 </div>
-                <div class="col-12 col-lg-2 d-flex flex-wrap gap-2">
-                    <button type="button" class="btn btn-sm btn-outline-secondary d-none" id="btn-reset-etat-stock">
-                        Réinitialiser
+                <div class="col-12 col-lg-2 d-flex justify-content-lg-end gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-secondary d-none" id="btn-reset-etat-stock" title="Réinitialiser les filtres">
+                        <i class="bi bi-arrow-counterclockwise"></i>
                     </button>
-                    <div class="ms-md-auto">
-                        <x-export-dropdown id-suffix="etat-stock" />
-                    </div>
+                    <x-export-dropdown id-suffix="etat-stock" />
                 </div>
             </form>
         </div>
