@@ -94,13 +94,13 @@
     <div class="card shadow-sm border-0 bg-white mb-3">
         <div class="card-body">
             <form id="filtres-etat-stock" class="row g-2 align-items-end">
-                <div class="col-6 col-md-2 col-lg-1">
-                    <label class="form-label small mb-1">Du</label>
-                    <input type="date" name="date_debut" class="form-control form-control-sm" value="{{ now()->startOfMonth()->format('Y-m-d') }}">
-                </div>
-                <div class="col-6 col-md-2 col-lg-1">
-                    <label class="form-label small mb-1">Au</label>
-                    <input type="date" name="date_fin" class="form-control form-control-sm" value="{{ now()->endOfMonth()->format('Y-m-d') }}">
+                <div class="col-12 col-md-5 col-lg-4">
+                    <label class="form-label small mb-1">Période</label>
+                    <div class="d-flex align-items-center gap-1">
+                        <input type="date" name="date_debut" class="form-control form-control-sm" value="{{ now()->startOfMonth()->format('Y-m-d') }}">
+                        <span class="text-muted small">à</span>
+                        <input type="date" name="date_fin" class="form-control form-control-sm" value="{{ now()->endOfMonth()->format('Y-m-d') }}">
+                    </div>
                 </div>
                 <div class="col-md-4 col-lg-3">
                     <label class="form-label small mb-1">Produit</label>
@@ -125,10 +125,7 @@
                         <label class="form-check-label small" for="filtre-en-alerte-etat">Alerte</label>
                     </div>
                 </div>
-                <div class="col-12 col-lg-4 d-flex flex-wrap gap-2">
-                    <button type="button" class="btn btn-sm btn-primary" id="btn-filtrer-etat-stock">
-                        <i class="bi bi-funnel me-1"></i>Filtrer
-                    </button>
+                <div class="col-12 col-lg-2 d-flex flex-wrap gap-2">
                     <button type="button" class="btn btn-sm btn-outline-secondary d-none" id="btn-reset-etat-stock">
                         Réinitialiser
                     </button>
@@ -315,7 +312,10 @@
                 });
             }
 
-            $('#btn-filtrer-etat-stock').on('click', function () {
+            // Filtrage automatique : chaque changement (date, produit, type,
+            // alerte) relance immédiatement le tableau et les KPI, sans bouton
+            // "Filtrer" à cliquer.
+            $('#filtres-etat-stock').on('change', function () {
                 tableEtatStock.ajax.reload();
                 rafraichirKpisEtatStock();
             });
