@@ -238,7 +238,7 @@
                 sortie_externe: { libelle: 'Sortie externe', classe: 'bg-danger' },
             };
 
-            $('.select2-filtre-article').select2({ width: '100%', placeholder: 'Tous' });
+            $('.select2-filtre-article').select2({ width: '100%', placeholder: 'Tous', selectionCssClass: 'select2-sm' });
 
             function filtresEtatStock() {
                 return {
