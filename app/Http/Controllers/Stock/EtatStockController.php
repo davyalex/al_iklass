@@ -4,7 +4,10 @@ namespace App\Http\Controllers\Stock;
 
 use App\Exports\Stock\EtatStockExport;
 use App\Http\Controllers\Controller;
+use App\Models\Achat;
 use App\Models\Article;
+use App\Models\CategorieArticle;
+use App\Models\MouvementStock;
 use App\Support\Money;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
@@ -19,14 +22,41 @@ use Yajra\DataTables\Facades\DataTables;
 
 class EtatStockController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
         Gate::authorize('viewAny', Article::class);
 
         $articles = Article::where('actif', true)->orderBy('nom')->get();
-        $kpis = $this->calculerKpis();
+        $categories = CategorieArticle::where('actif', true)->orderBy('libelle')->get();
+        // Au premier chargement, aucun filtre n'est encore appliqué : la période
+        // par défaut est donc le mois en cours (cahier des charges §6).
+        $kpis = $this->calculerKpis($request);
 
-        return view('stock.etat-stock.index', compact('articles', 'kpis'));
+        return view('stock.etat-stock.index', compact('articles', 'categories', 'kpis'));
+    }
+
+    public function kpis(Request $request): JsonResponse
+    {
+        Gate::authorize('viewAny', Article::class);
+
+        return response()->json($this->calculerKpis($request));
+    }
+
+    public function detail(Article $article): JsonResponse
+    {
+        Gate::authorize('view', $article);
+
+        $article->load(['categorie', 'unite']);
+
+        $mouvements = MouvementStock::where('article_id', $article->id)
+            ->orderByDesc('date_mouvement')
+            ->limit(10)
+            ->get();
+
+        return response()->json([
+            'article' => $article,
+            'mouvements' => $mouvements,
+        ]);
     }
 
     public function data(Request $request): JsonResponse
@@ -79,18 +109,60 @@ class EtatStockController extends Controller
     {
         return $query
             ->when($request->filled('article_id'), fn (Builder $q) => $q->where('id', $request->integer('article_id')))
+            ->when($request->filled('categorie_id'), fn (Builder $q) => $q->where('categorie_id', $request->integer('categorie_id')))
             ->when($request->boolean('en_alerte'), fn (Builder $q) => $q->enAlerte());
     }
 
     /**
-     * @return array{valeur_stock: float, en_alerte: int, total_pieces: int}
+     * Applique la période demandée (date_debut/date_fin) à la colonne donnée,
+     * ou à défaut le mois en cours (cahier des charges §6 : "mois par défaut").
      */
-    private function calculerKpis(): array
+    private function filtrerPeriode(Builder $query, Request $request, string $colonne): Builder
     {
+        if (! $request->filled('date_debut') && ! $request->filled('date_fin')) {
+            return $query->whereBetween($colonne, [now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()]);
+        }
+
+        return $query
+            ->when($request->filled('date_debut'), fn (Builder $q) => $q->whereDate($colonne, '>=', $request->string('date_debut')))
+            ->when($request->filled('date_fin'), fn (Builder $q) => $q->whereDate($colonne, '<=', $request->string('date_fin')));
+    }
+
+    /**
+     * KPI du tableau de bord Stock (cahier des charges §6) : indicateurs
+     * instantanés (état actuel du stock, indépendants de toute période) et
+     * indicateurs de période (mois en cours par défaut, filtrable).
+     *
+     * @return array{
+     *     nb_articles: int, total_pieces: int, valeur_stock: float, en_alerte: int, dettes_fournisseurs: float,
+     *     achats_periode: float, stock_utilise_interne: float, montant_vendu_externe: float,
+     *     entrees_count: int, sorties_interne_count: int, sorties_externe_count: int,
+     * }
+     */
+    private function calculerKpis(Request $request): array
+    {
+        $achatsPeriode = $this->filtrerPeriode(Achat::query(), $request, 'date_achat');
+        $sortiesInternePeriode = $this->filtrerPeriode(MouvementStock::sorties()->interne(), $request, 'date_mouvement');
+        $sortiesExternePeriode = $this->filtrerPeriode(MouvementStock::sorties()->externe(), $request, 'date_mouvement');
+        $entreesPeriode = $this->filtrerPeriode(MouvementStock::entrees(), $request, 'date_mouvement');
+
         return [
+            // Instantanés : l'état du stock "maintenant" ne dépend d'aucune période.
+            'nb_articles' => Article::actif()->count(),
+            'total_pieces' => (int) Article::actif()->sum('quantite_stock'),
             'valeur_stock' => (float) Article::query()->selectRaw('COALESCE(SUM(quantite_stock * prix_achat), 0) as total')->value('total'),
             'en_alerte' => Article::actif()->enAlerte()->count(),
-            'total_pieces' => (int) Article::actif()->sum('quantite_stock'),
+            'dettes_fournisseurs' => (float) Achat::query()->sum('montant_restant'),
+
+            // Période (mois en cours par défaut, filtrable) :
+            'achats_periode' => (float) (clone $achatsPeriode)->sum('montant_total'),
+            'stock_utilise_interne' => (float) (clone $sortiesInternePeriode)
+                ->selectRaw('COALESCE(SUM(quantite * prix_unitaire), 0) as total')->value('total'),
+            'montant_vendu_externe' => (float) (clone $sortiesExternePeriode)
+                ->selectRaw('COALESCE(SUM(quantite * prix_vente), 0) as total')->value('total'),
+            'entrees_count' => (clone $entreesPeriode)->count(),
+            'sorties_interne_count' => (clone $sortiesInternePeriode)->count(),
+            'sorties_externe_count' => (clone $sortiesExternePeriode)->count(),
         ];
     }
 }

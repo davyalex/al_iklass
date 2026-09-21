@@ -20,8 +20,10 @@ Route::middleware(['auth'])->prefix('stock')->name('stock.')->group(function () 
 
         Route::get('etat-stock', [EtatStockController::class, 'index'])->name('etat-stock.index');
         Route::get('etat-stock/data', [EtatStockController::class, 'data'])->name('etat-stock.data');
+        Route::get('etat-stock/kpis', [EtatStockController::class, 'kpis'])->name('etat-stock.kpis');
         Route::get('etat-stock/export/excel', [EtatStockController::class, 'exportExcel'])->name('etat-stock.export.excel');
         Route::get('etat-stock/export/pdf', [EtatStockController::class, 'exportPdf'])->name('etat-stock.export.pdf');
+        Route::get('etat-stock/{article}', [EtatStockController::class, 'detail'])->name('etat-stock.detail');
 
         Route::get('fournisseurs', [FournisseurController::class, 'index'])->name('fournisseurs.index');
         Route::get('fournisseurs/{fournisseur}/compte', [FournisseurController::class, 'compte'])->name('fournisseurs.compte');

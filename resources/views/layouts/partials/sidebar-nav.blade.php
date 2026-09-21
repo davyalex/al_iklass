@@ -27,7 +27,7 @@
         <li class="nav-item">
             <a href="{{ route('stock.etat-stock.index') }}" class="nav-link d-flex align-items-center gap-2 {{ request()->routeIs('stock.etat-stock.*') ? 'active' : '' }}">
                 <i class="bi bi-clipboard-data"></i>
-                <span>État de stock</span>
+                <span>Suivi de stock</span>
             </a>
         </li>
         <li class="nav-item">
