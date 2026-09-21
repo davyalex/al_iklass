@@ -10,7 +10,7 @@
 @endphp
 
 <x-app-layout>
-    <x-slot name="header">Utilisateurs</x-slot>
+    <x-slot name="header">{{ request('role') === 'gestionnaire' ? 'Gestionnaires' : 'Utilisateurs' }}</x-slot>
 
     <div class="card shadow-sm border-0 bg-white mb-3">
         <div class="card-body">
@@ -42,7 +42,7 @@
                 <div class="col-12 col-md-2 text-md-end">
                     @can('create', \App\Models\User::class)
                         <button type="button" class="btn btn-primary btn-sm w-100" id="btn-nouvel-utilisateur">
-                            <i class="bi bi-plus-lg me-1"></i>Nouvel utilisateur
+                            <i class="bi bi-plus-lg me-1"></i>{{ request('role') === 'gestionnaire' ? 'Nouveau gestionnaire' : 'Nouvel utilisateur' }}
                         </button>
                     @endcan
                 </div>
@@ -166,6 +166,8 @@
     @push('scripts')
         <script>
         document.addEventListener('DOMContentLoaded', function () {
+            const roleFiltre = @json(request('role'));
+
             $('.select2-role').select2({ dropdownParent: $('#modal-utilisateur'), width: '100%' });
 
             $('#recherche-utilisateur').on('input', function () {
@@ -196,7 +198,7 @@
                 $('#utilisateur-id').val('');
                 $('#modal-utilisateur-titre').text('Nouvel utilisateur');
                 $('#utilisateur-info-mdp').show();
-                $('.select2-role').val('').trigger('change');
+                $('.select2-role').val(roleFiltre === 'gestionnaire' ? 'gestionnaire' : '').trigger('change');
                 modal.show();
             });
 

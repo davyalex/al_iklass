@@ -6,9 +6,11 @@ use App\Models\Achat;
 use App\Models\MouvementStock;
 use App\Models\PaiementFournisseur;
 use App\Models\User;
+use App\Models\Vehicule;
 use App\Observers\AchatObserver;
 use App\Observers\MouvementStockObserver;
 use App\Observers\PaiementFournisseurObserver;
+use App\Observers\VehiculeObserver;
 use App\Policies\RolePolicy;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Gate;
@@ -39,5 +41,6 @@ class AppServiceProvider extends ServiceProvider
         Achat::observe(AchatObserver::class);
         PaiementFournisseur::observe(PaiementFournisseurObserver::class);
         MouvementStock::observe(MouvementStockObserver::class);
+        Vehicule::observe(VehiculeObserver::class);
     }
 }

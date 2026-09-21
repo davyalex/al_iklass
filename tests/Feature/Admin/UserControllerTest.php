@@ -28,6 +28,23 @@ class UserControllerTest extends TestCase
         $this->actingAs($admin)->get(route('admin.users.index', ['role' => 'gestionnaire']))->assertOk();
     }
 
+    public function test_index_filtered_by_role_only_shows_matching_users(): void
+    {
+        $admin = User::factory()->create()->assignRole('admin');
+        $gestionnaire = User::factory()->create(['name' => 'Awa Koné'])->assignRole('gestionnaire');
+        $chefMecanicien = User::factory()->create(['name' => 'Yao Bamba'])->assignRole('chef_mecanicien');
+
+        $response = $this->actingAs($admin)->get(route('admin.users.index', ['role' => 'gestionnaire']));
+
+        $response->assertOk();
+        $response->assertSee('Awa Koné');
+        $response->assertDontSee('Yao Bamba');
+
+        $usersParRole = $response->viewData('usersParRole');
+        $this->assertTrue($usersParRole->has('gestionnaire'));
+        $this->assertFalse($usersParRole->has('chef_mecanicien'));
+    }
+
     public function test_gestionnaire_cannot_view_users_index(): void
     {
         $user = User::factory()->create()->assignRole('gestionnaire');
@@ -117,5 +134,32 @@ class UserControllerTest extends TestCase
         $user->refresh();
         $this->assertSame(0, $user->failed_login_attempts);
         $this->assertNull($user->locked_at);
+    }
+
+    public function test_admin_can_delete_a_gestionnaire(): void
+    {
+        $admin = User::factory()->create()->assignRole('admin');
+        $gestionnaire = User::factory()->create()->assignRole('gestionnaire');
+
+        $response = $this->actingAs($admin)->deleteJson(route('admin.users.destroy', $gestionnaire));
+
+        $response->assertOk();
+        $this->assertSoftDeleted('users', ['id' => $gestionnaire->id]);
+    }
+
+    public function test_admin_cannot_delete_own_account(): void
+    {
+        $admin = User::factory()->create()->assignRole('admin');
+
+        $this->actingAs($admin)->deleteJson(route('admin.users.destroy', $admin))->assertForbidden();
+        $this->assertDatabaseHas('users', ['id' => $admin->id, 'deleted_at' => null]);
+    }
+
+    public function test_gestionnaire_cannot_delete_a_user(): void
+    {
+        $gestionnaire = User::factory()->create()->assignRole('gestionnaire');
+        $autre = User::factory()->create()->assignRole('gestionnaire');
+
+        $this->actingAs($gestionnaire)->deleteJson(route('admin.users.destroy', $autre))->assertForbidden();
     }
 }

@@ -1,9 +1,18 @@
+@php
+    $logoApplication = \App\Models\Parametre::valeur('application.logo');
+    $nomApplication = \App\Models\Parametre::valeur('application.nom', 'AL-IKLASS');
+@endphp
+
 <div class="d-flex align-items-center gap-2 px-3 py-3 mb-2">
-    <span class="d-inline-flex align-items-center justify-content-center rounded-circle"
+    <span class="d-inline-flex align-items-center justify-content-center rounded-circle overflow-hidden"
           style="width: 36px; height: 36px; background-color: rgba(255,255,255,0.15); color: #fff;">
-        <i class="bi bi-truck fs-6"></i>
+        @if ($logoApplication)
+            <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($logoApplication) }}" alt="{{ $nomApplication }}" class="w-100 h-100" style="object-fit: cover;">
+        @else
+            <i class="bi bi-truck fs-6"></i>
+        @endif
     </span>
-    <span class="fw-bold text-white fs-6">AL-IKLASS</span>
+    <span class="fw-bold text-white fs-6">{{ $nomApplication }}</span>
 </div>
 
 <ul class="nav nav-pills flex-column mb-auto px-2 gap-1">
@@ -74,7 +83,33 @@
         </li>
     @endcan
 
-    @canany(['utilisateurs.voir', 'roles.voir', 'unites.voir', 'audit.voir'])
+    @canany(['flotte.vehicule.voir', 'flotte.vehicule.voir_affectes'])
+        <li class="nav-item mt-3">
+            <span class="px-3 text-uppercase small fw-semibold" style="color: rgba(255,255,255,0.45); letter-spacing: .04em;">Flotte</span>
+        </li>
+        <li class="nav-item">
+            <a href="{{ route('flotte.vehicules.index') }}" class="nav-link d-flex align-items-center gap-2 {{ request()->routeIs('flotte.vehicules.*') ? 'active' : '' }}">
+                <i class="bi bi-truck-front-fill"></i>
+                <span>Véhicules</span>
+            </a>
+        </li>
+        @can('flotte.vehicule.voir')
+            <li class="nav-item">
+                <a href="{{ route('flotte.gestionnaires.index') }}" class="nav-link d-flex align-items-center gap-2 {{ request()->routeIs('flotte.gestionnaires.*') ? 'active' : '' }}">
+                    <i class="bi bi-person-badge"></i>
+                    <span>Gestionnaires</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ route('flotte.versements.index') }}" class="nav-link d-flex align-items-center gap-2 {{ request()->routeIs('flotte.versements.*') ? 'active' : '' }}">
+                    <i class="bi bi-cash-coin"></i>
+                    <span>Versements</span>
+                </a>
+            </li>
+        @endcan
+    @endcanany
+
+    @canany(['utilisateurs.voir', 'roles.voir', 'unites.voir', 'audit.voir', 'parametres.voir'])
         <li class="nav-item mt-3">
             <span class="px-3 text-uppercase small fw-semibold" style="color: rgba(255,255,255,0.45); letter-spacing: .04em;">Administration</span>
         </li>
@@ -107,6 +142,14 @@
                 <a href="{{ route('admin.audit.index') }}" class="nav-link d-flex align-items-center gap-2 {{ request()->routeIs('admin.audit.*') ? 'active' : '' }}">
                     <i class="bi bi-clock-history"></i>
                     <span>Journal d'audit</span>
+                </a>
+            </li>
+        @endcan
+        @can('parametres.voir')
+            <li class="nav-item">
+                <a href="{{ route('admin.parametres.index') }}" class="nav-link d-flex align-items-center gap-2 {{ request()->routeIs('admin.parametres.*') ? 'active' : '' }}">
+                    <i class="bi bi-sliders"></i>
+                    <span>Paramètres</span>
                 </a>
             </li>
         @endcan

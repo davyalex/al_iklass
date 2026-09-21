@@ -1,0 +1,121 @@
+<?php
+
+namespace App\Http\Controllers\Flotte;
+
+use App\Exports\Flotte\VersementsExport;
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Flotte\StoreVersementRequest;
+use App\Models\ModePaiement;
+use App\Models\User;
+use App\Models\Vehicule;
+use App\Models\Versement;
+use App\Services\Flotte\VersementService;
+use App\Support\Money;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\View\View;
+use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Yajra\DataTables\Facades\DataTables;
+
+class VersementController extends Controller
+{
+    public function __construct(private readonly VersementService $versementService) {}
+
+    public function index(): View
+    {
+        Gate::authorize('viewAny', Versement::class);
+
+        $gestionnaires = User::role('gestionnaire')->orderBy('name')->get();
+        $modesPaiement = ModePaiement::where('actif', true)->orderBy('libelle')->get();
+
+        return view('flotte.versements.index', compact('gestionnaires', 'modesPaiement'));
+    }
+
+    public function kpis(Request $request): JsonResponse
+    {
+        Gate::authorize('viewAny', Versement::class);
+
+        $gestionnaireId = $request->integer('gestionnaire_id') ?: null;
+
+        $attendu = Vehicule::with('statut')
+            ->when($gestionnaireId, fn (Builder $q) => $q->where('gestionnaire_id', $gestionnaireId))
+            ->get()
+            ->filter(fn (Vehicule $vehicule) => $vehicule->statut?->code === 'en_circulation')
+            ->sum('recette_journaliere');
+
+        $dejaVerseJour = (float) Versement::whereDate('date_versement', today())
+            ->when($gestionnaireId, fn (Builder $q) => $q->where('gestionnaire_id', $gestionnaireId))
+            ->sum('montant');
+
+        $resteAVerserJour = max(0, (float) $attendu - $dejaVerseJour);
+
+        $montantDu = $gestionnaireId
+            ? (float) (User::find($gestionnaireId)?->dette ?? 0)
+            : (float) User::role('gestionnaire')->sum('dette');
+
+        return response()->json([
+            'recette_journaliere' => Money::format($attendu),
+            'deja_verse_jour' => Money::format($dejaVerseJour),
+            'reste_a_verser_jour' => Money::format($resteAVerserJour),
+            'montant_du' => Money::format($montantDu),
+        ]);
+    }
+
+    public function data(Request $request): JsonResponse
+    {
+        Gate::authorize('viewAny', Versement::class);
+
+        $query = $this->filtrer(Versement::query(), $request)->with(['modePaiement', 'user'])->select('versements.*');
+
+        return DataTables::of($query)
+            ->editColumn('date_versement', fn (Versement $versement) => $versement->date_versement->format('d/m/Y'))
+            ->editColumn('montant', fn (Versement $versement) => Money::format($versement->montant).' FCFA')
+            ->addColumn('mode_paiement_libelle', fn (Versement $versement) => $versement->modePaiement->libelle)
+            ->addColumn('enregistre_par', fn (Versement $versement) => $versement->user?->name ?? '—')
+            ->make(true);
+    }
+
+    public function store(StoreVersementRequest $request): JsonResponse
+    {
+        $versement = $this->versementService->enregistrer($request->validated() + ['user_id' => $request->user()->id]);
+
+        return response()->json([
+            'message' => 'Versement de '.Money::format($versement->montant)." FCFA enregistré pour {$versement->gestionnaire_nom}.",
+            'versement' => $versement,
+        ], 201);
+    }
+
+    public function exportExcel(Request $request): BinaryFileResponse
+    {
+        Gate::authorize('viewAny', Versement::class);
+
+        $versements = $this->filtrer(Versement::query(), $request)->with(['modePaiement', 'user'])->orderByDesc('date_versement')->get();
+
+        return Excel::download(new VersementsExport($versements), 'versements-'.now()->format('Y-m-d-His').'.xlsx');
+    }
+
+    public function exportPdf(Request $request): Response
+    {
+        Gate::authorize('viewAny', Versement::class);
+
+        $versements = $this->filtrer(Versement::query(), $request)->with(['modePaiement', 'user'])->orderByDesc('date_versement')->get();
+
+        return Pdf::loadView('exports.pdf.versements', ['versements' => $versements])
+            ->setPaper('a4', 'landscape')
+            ->download('versements-'.now()->format('Y-m-d-His').'.pdf');
+    }
+
+    private function filtrer(Builder $query, Request $request): Builder
+    {
+        return $query
+            ->when($request->filled('date_debut'), fn (Builder $q) => $q->whereDate('date_versement', '>=', $request->string('date_debut')))
+            ->when($request->filled('date_fin'), fn (Builder $q) => $q->whereDate('date_versement', '<=', $request->string('date_fin')))
+            ->when($request->filled('gestionnaire_id'), fn (Builder $q) => $q->where('gestionnaire_id', $request->integer('gestionnaire_id')))
+            ->when($request->filled('mode_paiement_id'), fn (Builder $q) => $q->where('mode_paiement_id', $request->integer('mode_paiement_id')));
+    }
+}

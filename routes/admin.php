@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AuditLogController;
+use App\Http\Controllers\Admin\ParametreController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\UniteController;
 use App\Http\Controllers\Admin\UserController;
@@ -18,6 +19,7 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
         Route::post('users/{user}/reset-password', [UserController::class, 'resetPassword'])->name('users.reset-password');
         Route::patch('users/{user}/activate', [UserController::class, 'activate'])->name('users.activate');
         Route::patch('users/{user}/deactivate', [UserController::class, 'deactivate'])->name('users.deactivate');
+        Route::delete('users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
     });
 
     Route::middleware('permission:roles.voir')->group(function () {
@@ -46,5 +48,14 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
         Route::get('audit/data', [AuditLogController::class, 'data'])->name('audit.data');
         Route::get('audit/export/excel', [AuditLogController::class, 'exportExcel'])->name('audit.export.excel');
         Route::get('audit/export/pdf', [AuditLogController::class, 'exportPdf'])->name('audit.export.pdf');
+    });
+
+    Route::middleware('permission:parametres.voir')->group(function () {
+        Route::get('parametres', [ParametreController::class, 'index'])->name('parametres.index');
+    });
+
+    Route::middleware('permission:parametres.gerer')->group(function () {
+        Route::put('parametres/{parametre}', [ParametreController::class, 'update'])->name('parametres.update');
+        Route::post('parametres/logo', [ParametreController::class, 'uploaderLogo'])->name('parametres.logo');
     });
 });

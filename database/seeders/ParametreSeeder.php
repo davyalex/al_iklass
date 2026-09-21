@@ -1,0 +1,45 @@
+<?php
+
+namespace Database\Seeders;
+
+use App\Models\Parametre;
+use Illuminate\Database\Seeder;
+
+class ParametreSeeder extends Seeder
+{
+    public function run(): void
+    {
+        foreach ([
+            [
+                'cle' => 'application.nom',
+                'valeur' => 'AL-IKLASS',
+                'libelle' => "Nom de l'application",
+                'groupe' => 'identite_application',
+                'ordre' => 1,
+            ],
+            [
+                'cle' => 'application.logo',
+                'valeur' => '',
+                'libelle' => "Logo de l'application",
+                'groupe' => 'identite_application',
+                'ordre' => 2,
+            ],
+            [
+                'cle' => 'flotte.statut_journalier.heure_debut_fenetre',
+                'valeur' => '08:00',
+                'libelle' => "Début de la fenêtre d'ajustement des gestionnaires",
+                'groupe' => 'statut_journalier',
+                'ordre' => 1,
+            ],
+            [
+                'cle' => 'flotte.statut_journalier.heure_fin_fenetre',
+                'valeur' => '12:00',
+                'libelle' => "Fin de la fenêtre d'ajustement des gestionnaires",
+                'groupe' => 'statut_journalier',
+                'ordre' => 2,
+            ],
+        ] as $parametre) {
+            Parametre::firstOrCreate(['cle' => $parametre['cle']], $parametre);
+        }
+    }
+}

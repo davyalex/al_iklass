@@ -98,4 +98,15 @@ class UserController extends Controller
 
         return response()->json(['message' => "Compte de « {$user->name} » désactivé."]);
     }
+
+    public function destroy(User $user): JsonResponse
+    {
+        Gate::authorize('delete', $user);
+
+        $nom = $user->name;
+
+        $this->userService->supprimer($user);
+
+        return response()->json(['message' => "Compte « {$nom} » archivé."]);
+    }
 }

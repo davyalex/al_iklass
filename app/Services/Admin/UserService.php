@@ -113,6 +113,13 @@ class UserService
         return $user;
     }
 
+    public function supprimer(User $user): void
+    {
+        activity()->performedOn($user)->log("Compte « {$user->name} » archivé.");
+
+        $user->delete();
+    }
+
     private function genererMotDePasse(): string
     {
         return str_pad((string) random_int(0, 99999), 5, '0', STR_PAD_LEFT);

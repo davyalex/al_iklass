@@ -40,6 +40,16 @@ return [
             'audit.voir',
             'unites.voir',
             'unites.gerer',
+            'parametres.voir',
+            'parametres.gerer',
+        ],
+
+        'flotte' => [
+            'flotte.vehicule.voir',
+            'flotte.vehicule.gerer',
+            'flotte.vehicule.voir_affectes',
+            'flotte.vehicule.statut.gerer',
+            'flotte.vehicule.remise_circulation',
         ],
 
     ],
@@ -60,7 +70,7 @@ return [
 
         'superadmin' => [],
 
-        'admin' => ['stock', 'utilisateurs', 'administration'],
+        'admin' => ['stock', 'utilisateurs', 'administration', 'flotte' => ['except' => ['flotte.vehicule.voir_affectes']]],
 
         'gestionnaire_stock' => [
             'stock' => ['except' => ['stock.demande.creer']],
@@ -69,10 +79,15 @@ return [
 
         'chef_mecanicien' => [
             'stock' => ['only' => ['stock.demande.creer']],
+            'flotte' => ['only' => ['flotte.vehicule.remise_circulation']],
         ],
 
-        // Le rôle "gestionnaire" (parc) n'a aucune permission côté module Stock.
-        'gestionnaire' => [],
+        // Le rôle "gestionnaire" (parc) voit uniquement les véhicules qui lui sont
+        // attribués, et peut ajuster leur statut journalier (fenêtre horaire —
+        // cf. App\Support\FenetreStatutJournalier).
+        'gestionnaire' => [
+            'flotte' => ['only' => ['flotte.vehicule.voir_affectes', 'flotte.vehicule.statut.gerer']],
+        ],
 
     ],
 

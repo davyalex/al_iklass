@@ -35,4 +35,9 @@ class UserPolicy
     {
         return $user->can('utilisateurs.gerer');
     }
+
+    public function delete(User $user, User $model): bool
+    {
+        return $user->can('utilisateurs.gerer') && $user->isNot($model);
+    }
 }

@@ -4,6 +4,9 @@
         'utilisateurs' => 'Utilisateurs',
         'roles' => 'Rôles & permissions',
         'audit' => "Journal d'audit",
+        'unites' => 'Unités',
+        'flotte' => 'Flotte',
+        'parametres' => 'Paramètres',
     ];
 @endphp
 
@@ -70,7 +73,7 @@
 
     {{-- Modale nouveau rôle --}}
     <div class="modal fade" id="modal-role" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
+        <div class="modal-dialog modal-xl">
             <div class="modal-content">
                 <form id="form-role">
                     <div class="modal-header">
@@ -97,7 +100,7 @@
 
     {{-- Modale gestion des permissions d'un rôle existant --}}
     <div class="modal fade" id="modal-permissions" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
+        <div class="modal-dialog modal-xl">
             <div class="modal-content">
                 <form id="form-permissions">
                     <input type="hidden" id="permissions-role-id">

@@ -7,6 +7,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -36,6 +37,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'is_active' => 'boolean',
             'locked_at' => 'datetime',
+            'dette' => 'decimal:2',
         ];
     }
 
@@ -58,5 +60,10 @@ class User extends Authenticatable
         if ($this->failed_login_attempts !== 0 || $this->locked_at !== null) {
             $this->forceFill(['failed_login_attempts' => 0, 'locked_at' => null])->save();
         }
+    }
+
+    public function vehiculesAttribues(): HasMany
+    {
+        return $this->hasMany(Vehicule::class, 'gestionnaire_id');
     }
 }
