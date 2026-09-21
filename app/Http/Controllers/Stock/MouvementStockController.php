@@ -30,8 +30,9 @@ class MouvementStockController extends Controller
         $articlePreselectionne = $request->filled('article_id')
             ? Article::find($request->integer('article_id'))
             : null;
+        $kpis = $this->calculerKpis();
 
-        return view('stock.mouvements.index', compact('articles', 'articlePreselectionne'));
+        return view('stock.mouvements.index', compact('articles', 'articlePreselectionne', 'kpis'));
     }
 
     public function data(Request $request): JsonResponse
@@ -45,9 +46,9 @@ class MouvementStockController extends Controller
             ->editColumn('date_mouvement', fn (MouvementStock $m) => $m->date_mouvement->format('d/m/Y H:i'))
             ->addColumn('article_libelle', fn (MouvementStock $m) => $m->article_reference.' — '.$m->article_nom)
             ->addColumn('type_badge', fn (MouvementStock $m) => $this->typeBadge($m))
-            ->addColumn('origine', fn (MouvementStock $m) => $this->origineLibelle($m))
+            ->addColumn('origine', fn (MouvementStock $m) => $this->origineHtml($m))
             ->editColumn('prix_unitaire', fn (MouvementStock $m) => Money::format((float) $m->prix_unitaire).' FCFA')
-            ->rawColumns(['type_badge'])
+            ->rawColumns(['type_badge', 'origine'])
             ->make(true);
     }
 
@@ -115,5 +116,39 @@ class MouvementStockController extends Controller
             $m->nature === 'externe' => 'Vente à '.($m->acheteur ?: '—'),
             default => $m->motif ?? '—',
         };
+    }
+
+    /**
+     * Version HTML de l'origine : lien vers le détail (achat, inventaire)
+     * quand une page cible existe, sinon le libellé simple échappé.
+     */
+    public static function origineHtml(MouvementStock $m): string
+    {
+        if ($m->achat_id !== null) {
+            $libelle = 'Achat '.($m->achat?->reference ?? '#'.$m->achat_id);
+
+            return '<a href="'.route('stock.achats.index', ['open' => $m->achat_id]).'">'.e($libelle).'</a>';
+        }
+
+        if ($m->inventaire_id !== null) {
+            $libelle = 'Inventaire '.($m->inventaire?->reference ?? '#'.$m->inventaire_id);
+
+            return '<a href="'.route('stock.inventaires.index', ['open' => $m->inventaire_id]).'">'.e($libelle).'</a>';
+        }
+
+        return e(self::origineLibelle($m));
+    }
+
+    /**
+     * @return array{entrees_jour: int, sorties_jour: int, entrees_mois: int, sorties_mois: int}
+     */
+    private function calculerKpis(): array
+    {
+        return [
+            'entrees_jour' => MouvementStock::entrees()->whereDate('date_mouvement', now()->toDateString())->count(),
+            'sorties_jour' => MouvementStock::sorties()->whereDate('date_mouvement', now()->toDateString())->count(),
+            'entrees_mois' => MouvementStock::entrees()->duMois()->count(),
+            'sorties_mois' => MouvementStock::sorties()->duMois()->count(),
+        ];
     }
 }

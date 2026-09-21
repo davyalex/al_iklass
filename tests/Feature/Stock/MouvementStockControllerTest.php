@@ -4,6 +4,7 @@ namespace Tests\Feature\Stock;
 
 use App\Models\Achat;
 use App\Models\Article;
+use App\Models\Inventaire;
 use App\Models\MouvementStock;
 use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
@@ -116,7 +117,9 @@ class MouvementStockControllerTest extends TestCase
         $response = $this->actingAs($user)->getJson(route('stock.mouvements.data'));
 
         $response->assertOk();
-        $response->assertJsonFragment(['origine' => 'Achat ACH-2026-0099']);
+        $origine = $response->json('data.0.origine');
+        $this->assertStringContainsString('Achat ACH-2026-0099', $origine);
+        $this->assertStringContainsString(route('stock.achats.index', ['open' => $achat->id]), $origine);
     }
 
     public function test_origine_reflects_the_internal_vehicle_for_sortie_interne(): void
@@ -131,6 +134,47 @@ class MouvementStockControllerTest extends TestCase
 
         $response->assertOk();
         $response->assertJsonFragment(['origine' => 'Véhicule AL-001 — Vidange']);
+    }
+
+    public function test_origine_reflects_the_linked_inventaire(): void
+    {
+        $user = User::factory()->create()->assignRole('gestionnaire_stock');
+        $article = Article::factory()->create();
+        $inventaire = Inventaire::create([
+            'reference' => 'INV-2026-0099', 'date_inventaire' => now(), 'statut' => 'valide', 'user_id' => $user->id,
+        ]);
+        $this->creerMouvement($article, $user, ['nature' => 'ajustement', 'inventaire_id' => $inventaire->id]);
+
+        $response = $this->actingAs($user)->getJson(route('stock.mouvements.data'));
+
+        $response->assertOk();
+        $origine = $response->json('data.0.origine');
+        $this->assertStringContainsString('Inventaire INV-2026-0099', $origine);
+        $this->assertStringContainsString(route('stock.inventaires.index', ['open' => $inventaire->id]), $origine);
+    }
+
+    public function test_kpis_count_entrees_and_sorties_for_today_and_current_month(): void
+    {
+        $user = User::factory()->create()->assignRole('gestionnaire_stock');
+        $article = Article::factory()->create();
+
+        $this->creerMouvement($article, $user, ['type' => 'entree', 'date_mouvement' => now()]);
+        $this->creerMouvement($article, $user, ['type' => 'sortie', 'nature' => 'interne', 'date_mouvement' => now()]);
+        // Meme mois mais pas aujourd'hui (sauf si le test tourne le 1er, geree ci-dessous) : compte dans le mois, pas dans le jour.
+        $autreJourDuMois = now()->day > 1 ? now()->startOfMonth() : now()->endOfMonth();
+        $this->creerMouvement($article, $user, ['type' => 'entree', 'date_mouvement' => $autreJourDuMois]);
+        // Hors mois courant : ne doit compter nulle part.
+        $this->creerMouvement($article, $user, ['type' => 'sortie', 'nature' => 'externe', 'date_mouvement' => now()->subMonths(2)]);
+
+        $response = $this->actingAs($user)->get(route('stock.mouvements.index'));
+
+        $response->assertOk();
+        $response->assertViewHas('kpis', function ($kpis) {
+            return $kpis['entrees_jour'] === 1
+                && $kpis['sorties_jour'] === 1
+                && $kpis['entrees_mois'] === 2
+                && $kpis['sorties_mois'] === 1;
+        });
     }
 
     public function test_export_excel_requires_view_permission(): void

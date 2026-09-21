@@ -235,6 +235,14 @@
                 $.get(`/stock/inventaires/${id}`, afficherComptage);
             }
 
+            // Deep-link depuis une autre page (ex. Mouvements) : /stock/inventaires?open=ID
+            // ouvre directement le comptage de cet inventaire.
+            const inventaireAOuvrir = new URLSearchParams(window.location.search).get('open');
+            if (inventaireAOuvrir) {
+                ouvrirComptage(inventaireAOuvrir);
+                window.history.replaceState({}, '', '/stock/inventaires');
+            }
+
             $('#comptage-recherche').on('input', function () {
                 const q = $(this).val().toLowerCase();
                 $('#comptage-lignes tr').each(function () {

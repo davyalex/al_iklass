@@ -1,6 +1,41 @@
 <x-app-layout>
     <x-slot name="header">Mouvements de stock</x-slot>
 
+    <div class="row g-3 mb-3 row-cols-2 row-cols-lg-4">
+        <div class="col">
+            <div class="card border-0 bg-white h-100">
+                <div class="card-body py-2 d-flex align-items-center justify-content-between">
+                    <span class="small text-muted"><i class="bi bi-box-arrow-in-down text-success me-1"></i>Entrées du jour</span>
+                    <span class="badge rounded-pill bg-success">{{ $kpis['entrees_jour'] }}</span>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card border-0 bg-white h-100">
+                <div class="card-body py-2 d-flex align-items-center justify-content-between">
+                    <span class="small text-muted"><i class="bi bi-box-arrow-up text-danger me-1"></i>Sorties du jour</span>
+                    <span class="badge rounded-pill bg-danger">{{ $kpis['sorties_jour'] }}</span>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card border-0 bg-white h-100">
+                <div class="card-body py-2 d-flex align-items-center justify-content-between">
+                    <span class="small text-muted"><i class="bi bi-box-arrow-in-down text-success me-1"></i>Entrées du mois</span>
+                    <span class="badge rounded-pill bg-success">{{ $kpis['entrees_mois'] }}</span>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card border-0 bg-white h-100">
+                <div class="card-body py-2 d-flex align-items-center justify-content-between">
+                    <span class="small text-muted"><i class="bi bi-box-arrow-up text-danger me-1"></i>Sorties du mois</span>
+                    <span class="badge rounded-pill bg-danger">{{ $kpis['sorties_mois'] }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="alert alert-info d-flex align-items-center justify-content-between py-2 px-3 mb-3 d-none" id="banniere-article-filtre">
         <span><i class="bi bi-funnel me-2"></i>Historique filtré sur : <strong id="banniere-article-texte"></strong></span>
     </div>
@@ -33,16 +68,11 @@
                         <option value="sortie">Sortie</option>
                     </select>
                 </div>
-                <div class="col-12 col-md-3 d-flex flex-wrap gap-2">
-                    <button type="button" class="btn btn-sm btn-primary" id="btn-filtrer-mouvements">
-                        <i class="bi bi-funnel me-1"></i>Filtrer
-                    </button>
+                <div class="col-12 col-md-3 d-flex justify-content-md-end gap-2">
                     <button type="button" class="btn btn-sm btn-outline-secondary d-none" id="btn-reset-mouvements" title="Réinitialiser les filtres">
                         <i class="bi bi-arrow-counterclockwise"></i>
                     </button>
-                    <div class="ms-md-auto">
-                        <x-export-dropdown id-suffix="mouvements" />
-                    </div>
+                    <x-export-dropdown id-suffix="mouvements" />
                 </div>
             </form>
         </div>
@@ -121,7 +151,9 @@
                 order: [[0, 'desc']],
             });
 
-            $('#btn-filtrer-mouvements').on('click', () => tableMouvements.ajax.reload());
+            // Filtrage automatique : chaque changement (date, article, type)
+            // relance immédiatement le tableau, sans bouton "Filtrer" à cliquer.
+            $('#filtres-mouvements').on('change', () => tableMouvements.ajax.reload());
 
             $('#btn-reset-mouvements').on('click', function () {
                 $('#filtres-mouvements')[0].reset();

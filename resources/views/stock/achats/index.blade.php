@@ -597,9 +597,7 @@
                 order: [[0, 'desc']],
             });
 
-            $('#table-achats').on('click', '.btn-detail-achat', function () {
-                const id = $(this).data('id');
-
+            function ouvrirDetailAchat(id) {
                 $.get(`/stock/achats/${id}`, function (achat) {
                     const statutInfo = STATUTS_PAIEMENT[achat.statut_paiement] ?? { libelle: achat.statut_paiement, classe: 'bg-secondary' };
 
@@ -643,7 +641,19 @@
 
                     modalDetailAchat.show();
                 });
+            }
+
+            $('#table-achats').on('click', '.btn-detail-achat', function () {
+                ouvrirDetailAchat($(this).data('id'));
             });
+
+            // Deep-link depuis une autre page (ex. Mouvements) : /stock/achats?open=ID
+            // ouvre directement le detail de cet achat.
+            const achatAOuvrir = new URLSearchParams(window.location.search).get('open');
+            if (achatAOuvrir) {
+                ouvrirDetailAchat(achatAOuvrir);
+                window.history.replaceState({}, '', '/stock/achats');
+            }
 
             // Bascule Paiement total / partiel : en "total", le montant est verrouillé
             // sur le solde restant (sans decimale superflue) ; en "partiel", le champ
