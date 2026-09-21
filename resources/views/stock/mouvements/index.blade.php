@@ -1,22 +1,20 @@
 <x-app-layout>
     <x-slot name="header">Mouvements de stock</x-slot>
 
-    @if ($articlePreselectionne)
-        <div class="alert alert-info d-flex align-items-center justify-content-between py-2 px-3 mb-3">
-            <span><i class="bi bi-funnel me-2"></i>Historique filtré sur : <strong>{{ $articlePreselectionne->reference }} — {{ $articlePreselectionne->nom }}</strong></span>
-        </div>
-    @endif
+    <div class="alert alert-info d-flex align-items-center justify-content-between py-2 px-3 mb-3 d-none" id="banniere-article-filtre">
+        <span><i class="bi bi-funnel me-2"></i>Historique filtré sur : <strong id="banniere-article-texte"></strong></span>
+    </div>
 
     <div class="card shadow-sm border-0 bg-white mb-3">
         <div class="card-body">
             <form id="filtres-mouvements" class="row g-2 align-items-end">
                 <div class="col-6 col-md-2">
                     <label class="form-label small mb-1">Du</label>
-                    <input type="date" name="date_debut" class="form-control form-control-sm">
+                    <input type="date" name="date_debut" class="form-control form-control-sm" value="{{ request('date_debut') }}">
                 </div>
                 <div class="col-6 col-md-2">
                     <label class="form-label small mb-1">Au</label>
-                    <input type="date" name="date_fin" class="form-control form-control-sm">
+                    <input type="date" name="date_fin" class="form-control form-control-sm" value="{{ request('date_fin') }}">
                 </div>
                 <div class="col-md-3">
                     <label class="form-label small mb-1">Article</label>
@@ -86,8 +84,23 @@
                 $('#btn-reset-mouvements').toggleClass('d-none', !actif);
             }
 
+            // La bannière reflète toujours l'article réellement sélectionné dans le
+            // filtre (et disparaît si on le change ou le vide), plutôt que de rester
+            // figée sur l'article d'arrivée depuis Suivi de stock.
+            function actualiserBanniereArticle() {
+                const id = $('#filtres-mouvements [name=article_id]').val();
+                if (id) {
+                    $('#banniere-article-texte').text($('.select2-filtre-article option:selected').text());
+                    $('#banniere-article-filtre').removeClass('d-none');
+                } else {
+                    $('#banniere-article-filtre').addClass('d-none');
+                }
+            }
+
             $('#filtres-mouvements').on('change input', actualiserBoutonResetMouvements);
+            $('#filtres-mouvements').on('change', actualiserBanniereArticle);
             actualiserBoutonResetMouvements();
+            actualiserBanniereArticle();
 
             const tableMouvements = $('#table-mouvements').DataTable({
                 processing: true,
