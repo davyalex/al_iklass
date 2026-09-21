@@ -201,7 +201,10 @@
 
                     <hr>
 
-                    <h6 class="small text-uppercase text-muted mb-2">Derniers mouvements</h6>
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <h6 class="small text-uppercase text-muted mb-0">Derniers mouvements</h6>
+                        <a href="#" id="detail-article-historique-complet" class="small">Voir tout l'historique <i class="bi bi-arrow-right"></i></a>
+                    </div>
                     <div class="table-responsive">
                         <table class="table table-sm mb-0">
                             <thead>
@@ -332,6 +335,7 @@
                     const article = reponse.article;
 
                     $('#detail-article-nom').text(article.nom);
+                    $('#detail-article-historique-complet').attr('href', `/stock/mouvements?article_id=${article.id}`);
                     $('#detail-article-statut').html(article.actif
                         ? '<span class="badge bg-light text-dark border">Actif</span>'
                         : '<span class="badge bg-secondary">Inactif</span>');

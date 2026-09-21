@@ -31,6 +31,12 @@
             </a>
         </li>
         <li class="nav-item">
+            <a href="{{ route('stock.mouvements.index') }}" class="nav-link d-flex align-items-center gap-2 {{ request()->routeIs('stock.mouvements.*') ? 'active' : '' }}">
+                <i class="bi bi-arrow-left-right"></i>
+                <span>Mouvements</span>
+            </a>
+        </li>
+        <li class="nav-item">
             <a href="{{ route('stock.fournisseurs.index') }}" class="nav-link d-flex align-items-center gap-2 {{ request()->routeIs('stock.fournisseurs.*') ? 'active' : '' }}">
                 <i class="bi bi-truck-front"></i>
                 <span>Fournisseurs</span>

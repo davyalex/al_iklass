@@ -7,6 +7,7 @@ use App\Http\Controllers\Stock\CategorieArticleController;
 use App\Http\Controllers\Stock\EtatStockController;
 use App\Http\Controllers\Stock\FournisseurController;
 use App\Http\Controllers\Stock\InventaireController;
+use App\Http\Controllers\Stock\MouvementStockController;
 use App\Http\Controllers\Stock\PaiementFournisseurController;
 use App\Http\Controllers\Stock\SortieStockController;
 use Illuminate\Support\Facades\Route;
@@ -24,6 +25,11 @@ Route::middleware(['auth'])->prefix('stock')->name('stock.')->group(function () 
         Route::get('etat-stock/export/excel', [EtatStockController::class, 'exportExcel'])->name('etat-stock.export.excel');
         Route::get('etat-stock/export/pdf', [EtatStockController::class, 'exportPdf'])->name('etat-stock.export.pdf');
         Route::get('etat-stock/{article}', [EtatStockController::class, 'detail'])->name('etat-stock.detail');
+
+        Route::get('mouvements', [MouvementStockController::class, 'index'])->name('mouvements.index');
+        Route::get('mouvements/data', [MouvementStockController::class, 'data'])->name('mouvements.data');
+        Route::get('mouvements/export/excel', [MouvementStockController::class, 'exportExcel'])->name('mouvements.export.excel');
+        Route::get('mouvements/export/pdf', [MouvementStockController::class, 'exportPdf'])->name('mouvements.export.pdf');
 
         Route::get('fournisseurs', [FournisseurController::class, 'index'])->name('fournisseurs.index');
         Route::get('fournisseurs/{fournisseur}/compte', [FournisseurController::class, 'compte'])->name('fournisseurs.compte');
