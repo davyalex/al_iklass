@@ -96,11 +96,11 @@
             <form id="filtres-etat-stock" class="row g-2 align-items-end">
                 <div class="col-6 col-md-2 col-lg-1">
                     <label class="form-label small mb-1">Du</label>
-                    <input type="date" name="date_debut" class="form-control form-control-sm">
+                    <input type="date" name="date_debut" class="form-control form-control-sm" value="{{ now()->startOfMonth()->format('Y-m-d') }}">
                 </div>
                 <div class="col-6 col-md-2 col-lg-1">
                     <label class="form-label small mb-1">Au</label>
-                    <input type="date" name="date_fin" class="form-control form-control-sm">
+                    <input type="date" name="date_fin" class="form-control form-control-sm" value="{{ now()->endOfMonth()->format('Y-m-d') }}">
                 </div>
                 <div class="col-md-4 col-lg-3">
                     <label class="form-label small mb-1">Produit</label>
@@ -240,6 +240,12 @@
 
             $('.select2-filtre-article').select2({ width: '100%', placeholder: 'Tous', selectionCssClass: 'select2-sm' });
 
+            // Périodes par défaut (mois en cours), telles que préremplies dans le
+            // formulaire au chargement : servent de référence pour savoir si
+            // l'utilisateur s'est réellement écarté du filtre par défaut.
+            const DATE_DEBUT_DEFAUT = $('#filtres-etat-stock [name=date_debut]').val();
+            const DATE_FIN_DEFAUT = $('#filtres-etat-stock [name=date_fin]').val();
+
             function filtresEtatStock() {
                 return {
                     date_debut: $('#filtres-etat-stock [name=date_debut]').val(),
@@ -251,7 +257,10 @@
             }
 
             function actualiserBoutonResetEtatStock() {
-                const actif = Object.values(filtresEtatStock()).some((v) => v !== undefined && v !== null && v !== '');
+                const f = filtresEtatStock();
+                const actif = Boolean(f.article_id || f.type_mouvement || f.en_alerte)
+                    || f.date_debut !== DATE_DEBUT_DEFAUT
+                    || f.date_fin !== DATE_FIN_DEFAUT;
                 $('#btn-reset-etat-stock').toggleClass('d-none', !actif);
             }
 
