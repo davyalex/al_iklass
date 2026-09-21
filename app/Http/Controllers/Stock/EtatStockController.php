@@ -6,7 +6,6 @@ use App\Exports\Stock\EtatStockExport;
 use App\Http\Controllers\Controller;
 use App\Models\Achat;
 use App\Models\Article;
-use App\Models\CategorieArticle;
 use App\Models\MouvementStock;
 use App\Support\Money;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -27,12 +26,11 @@ class EtatStockController extends Controller
         Gate::authorize('viewAny', Article::class);
 
         $articles = Article::where('actif', true)->orderBy('nom')->get();
-        $categories = CategorieArticle::where('actif', true)->orderBy('libelle')->get();
         // Au premier chargement, aucun filtre n'est encore appliqué : la période
         // par défaut est donc le mois en cours (cahier des charges §6).
         $kpis = $this->calculerKpis($request);
 
-        return view('stock.etat-stock.index', compact('articles', 'categories', 'kpis'));
+        return view('stock.etat-stock.index', compact('articles', 'kpis'));
     }
 
     public function kpis(Request $request): JsonResponse
@@ -63,7 +61,13 @@ class EtatStockController extends Controller
     {
         Gate::authorize('viewAny', Article::class);
 
+        [$debut, $fin] = $this->bornesPeriode($request);
+
         $query = $this->filtrer(Article::query()->with(['categorie', 'unite']), $request)
+            ->withCount([
+                'mouvementsStock as entrees_count' => fn (Builder $q) => $q->where('type', 'entree')->whereBetween('date_mouvement', ["{$debut} 00:00:00", "{$fin} 23:59:59"]),
+                'mouvementsStock as sorties_count' => fn (Builder $q) => $q->where('type', 'sortie')->whereBetween('date_mouvement', ["{$debut} 00:00:00", "{$fin} 23:59:59"]),
+            ])
             ->orderByRaw('(quantite_stock <= seuil_alerte) desc')
             ->orderBy('nom');
 
@@ -107,25 +111,44 @@ class EtatStockController extends Controller
 
     private function filtrer(Builder $query, Request $request): Builder
     {
+        [$debut, $fin] = $this->bornesPeriode($request);
+
         return $query
             ->when($request->filled('article_id'), fn (Builder $q) => $q->where('id', $request->integer('article_id')))
-            ->when($request->filled('categorie_id'), fn (Builder $q) => $q->where('categorie_id', $request->integer('categorie_id')))
-            ->when($request->boolean('en_alerte'), fn (Builder $q) => $q->enAlerte());
+            ->when($request->boolean('en_alerte'), fn (Builder $q) => $q->enAlerte())
+            ->when($request->filled('type_mouvement'), fn (Builder $q) => $q->whereHas(
+                'mouvementsStock',
+                fn (Builder $m) => $m->where('type', $request->string('type_mouvement'))
+                    ->whereBetween('date_mouvement', ["{$debut} 00:00:00", "{$fin} 23:59:59"])
+            ));
     }
 
     /**
-     * Applique la période demandée (date_debut/date_fin) à la colonne donnée,
-     * ou à défaut le mois en cours (cahier des charges §6 : "mois par défaut").
+     * Bornes (Y-m-d) de la période demandée (date_debut/date_fin), ou à
+     * défaut le mois en cours (cahier des charges §6 : "mois par défaut").
+     *
+     * @return array{0: string, 1: string}
+     */
+    private function bornesPeriode(Request $request): array
+    {
+        if (! $request->filled('date_debut') && ! $request->filled('date_fin')) {
+            return [now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()];
+        }
+
+        return [
+            $request->filled('date_debut') ? $request->string('date_debut')->toString() : now()->startOfMonth()->toDateString(),
+            $request->filled('date_fin') ? $request->string('date_fin')->toString() : now()->endOfMonth()->toDateString(),
+        ];
+    }
+
+    /**
+     * Applique la période (bornes ci-dessus) à la colonne donnée d'une requête.
      */
     private function filtrerPeriode(Builder $query, Request $request, string $colonne): Builder
     {
-        if (! $request->filled('date_debut') && ! $request->filled('date_fin')) {
-            return $query->whereBetween($colonne, [now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()]);
-        }
+        [$debut, $fin] = $this->bornesPeriode($request);
 
-        return $query
-            ->when($request->filled('date_debut'), fn (Builder $q) => $q->whereDate($colonne, '>=', $request->string('date_debut')))
-            ->when($request->filled('date_fin'), fn (Builder $q) => $q->whereDate($colonne, '<=', $request->string('date_fin')));
+        return $query->whereDate($colonne, '>=', $debut)->whereDate($colonne, '<=', $fin);
     }
 
     /**

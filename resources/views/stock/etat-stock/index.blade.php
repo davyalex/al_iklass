@@ -94,16 +94,16 @@
     <div class="card shadow-sm border-0 bg-white mb-3">
         <div class="card-body">
             <form id="filtres-etat-stock" class="row g-2 align-items-end">
-                <div class="col-6 col-md-2">
+                <div class="col-6 col-md-2 col-lg-1">
                     <label class="form-label small mb-1">Du</label>
                     <input type="date" name="date_debut" class="form-control form-control-sm">
                 </div>
-                <div class="col-6 col-md-2">
+                <div class="col-6 col-md-2 col-lg-1">
                     <label class="form-label small mb-1">Au</label>
                     <input type="date" name="date_fin" class="form-control form-control-sm">
                 </div>
-                <div class="col-md-3">
-                    <label class="form-label small mb-1">Article</label>
+                <div class="col-md-4 col-lg-3">
+                    <label class="form-label small mb-1">Produit</label>
                     <select name="article_id" class="form-select form-select-sm select2-filtre-article">
                         <option value="">Tous</option>
                         @foreach ($articles as $article)
@@ -111,22 +111,21 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-6 col-md-2">
-                    <label class="form-label small mb-1">Catégorie</label>
-                    <select name="categorie_id" class="form-select form-select-sm select2-filtre-categorie">
-                        <option value="">Toutes</option>
-                        @foreach ($categories as $categorie)
-                            <option value="{{ $categorie->id }}">{{ $categorie->libelle }}</option>
-                        @endforeach
+                <div class="col-6 col-md-2 col-lg-2">
+                    <label class="form-label small mb-1">Type</label>
+                    <select name="type_mouvement" class="form-select form-select-sm">
+                        <option value="">Tous</option>
+                        <option value="entree">Entrée</option>
+                        <option value="sortie">Sortie</option>
                     </select>
                 </div>
-                <div class="col-6 col-md-1 d-flex align-items-center">
+                <div class="col-6 col-md-2 col-lg-1 d-flex align-items-center">
                     <div class="form-check form-switch mb-0">
                         <input class="form-check-input" type="checkbox" role="switch" name="en_alerte" id="filtre-en-alerte-etat">
                         <label class="form-check-label small" for="filtre-en-alerte-etat">Alerte</label>
                     </div>
                 </div>
-                <div class="col-12 col-md-2 d-flex flex-wrap gap-2">
+                <div class="col-12 col-lg-4 d-flex flex-wrap gap-2">
                     <button type="button" class="btn btn-sm btn-primary" id="btn-filtrer-etat-stock">
                         <i class="bi bi-funnel me-1"></i>Filtrer
                     </button>
@@ -148,8 +147,10 @@
                     <tr>
                         <th>Référence</th>
                         <th>Nom</th>
-                        <th>Catégorie</th>
-                        <th>Stock</th>
+                        <th class="text-end">Entrées</th>
+                        <th class="text-end">Sorties</th>
+                        <th class="text-end">Stock disponible</th>
+                        <th class="text-end">Prix d'achat</th>
                         <th>Statut</th>
                         <th class="text-end" style="width: 60px;">Action</th>
                     </tr>
@@ -238,14 +239,13 @@
             };
 
             $('.select2-filtre-article').select2({ width: '100%', placeholder: 'Tous' });
-            $('.select2-filtre-categorie').select2({ width: '100%', placeholder: 'Toutes' });
 
             function filtresEtatStock() {
                 return {
                     date_debut: $('#filtres-etat-stock [name=date_debut]').val(),
                     date_fin: $('#filtres-etat-stock [name=date_fin]').val(),
                     article_id: $('#filtres-etat-stock [name=article_id]').val(),
-                    categorie_id: $('#filtres-etat-stock [name=categorie_id]').val(),
+                    type_mouvement: $('#filtres-etat-stock [name=type_mouvement]').val(),
                     en_alerte: $('#filtres-etat-stock [name=en_alerte]').is(':checked') ? 1 : '',
                 };
             }
@@ -269,8 +269,10 @@
                 columns: [
                     { data: 'reference', name: 'reference' },
                     { data: 'nom', name: 'nom' },
-                    { data: 'categorie_libelle', name: 'categorie.libelle', orderable: false },
-                    { data: 'quantite_stock', name: 'quantite_stock' },
+                    { data: 'entrees_count', name: 'entrees_count', className: 'text-end', orderable: false },
+                    { data: 'sorties_count', name: 'sorties_count', className: 'text-end', orderable: false },
+                    { data: 'quantite_stock', name: 'quantite_stock', className: 'text-end' },
+                    { data: 'prix_achat', name: 'prix_achat', className: 'text-end' },
                     { data: 'statut_badge', name: 'actif', orderable: false },
                     {
                         data: null,
@@ -282,7 +284,12 @@
                 ],
                 order: [[1, 'asc']],
                 createdRow: function (row, data) {
-                    if (data.en_alerte) {
+                    // Un article desactive doit sauter aux yeux : la ligne entiere est
+                    // grisee, quel que soit son statut d'alerte (moins pertinent pour
+                    // un article qu'on ne vend/achete plus).
+                    if (!data.actif) {
+                        $(row).addClass('text-muted').css('opacity', 0.55);
+                    } else if (data.en_alerte) {
                         $(row).addClass('table-danger');
                     }
                 },
@@ -307,7 +314,6 @@
             $('#btn-reset-etat-stock').on('click', function () {
                 $('#filtres-etat-stock')[0].reset();
                 $('.select2-filtre-article').val('').trigger('change');
-                $('.select2-filtre-categorie').val('').trigger('change');
                 tableEtatStock.ajax.reload();
                 rafraichirKpisEtatStock();
             });

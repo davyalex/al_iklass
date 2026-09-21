@@ -4,7 +4,6 @@ namespace Tests\Feature\Stock;
 
 use App\Models\Achat;
 use App\Models\Article;
-use App\Models\CategorieArticle;
 use App\Models\MouvementStock;
 use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
@@ -122,18 +121,47 @@ class EtatStockControllerTest extends TestCase
         $response->assertViewHas('kpis', fn ($kpis) => $kpis['total_pieces'] === 15);
     }
 
-    public function test_article_id_filter_shows_only_the_selected_product_categorie(): void
+    public function test_type_mouvement_filter_shows_only_articles_with_a_matching_movement_in_period(): void
     {
         $user = User::factory()->create()->assignRole('gestionnaire_stock');
-        $categorieCible = CategorieArticle::create(['code' => 'CAT0001', 'libelle' => 'Moteur', 'actif' => true]);
-        $cible = Article::factory()->create(['nom' => 'Filtre à huile', 'categorie_id' => $categorieCible->id]);
-        $autre = Article::factory()->create(['nom' => 'Bougie']);
+        $avecEntree = Article::factory()->create(['nom' => 'Filtre à huile']);
+        $sansMouvement = Article::factory()->create(['nom' => 'Bougie']);
 
-        $response = $this->actingAs($user)->getJson(route('stock.etat-stock.data', ['categorie_id' => $categorieCible->id]));
+        MouvementStock::create([
+            'article_id' => $avecEntree->id, 'article_reference' => $avecEntree->reference, 'article_nom' => $avecEntree->nom,
+            'type' => 'entree', 'quantite' => 10, 'prix_unitaire' => 1000, 'user_id' => $user->id, 'date_mouvement' => now(),
+        ]);
+
+        $response = $this->actingAs($user)->getJson(route('stock.etat-stock.data', ['type_mouvement' => 'entree']));
 
         $response->assertOk();
-        $response->assertJsonFragment(['nom' => $cible->nom]);
-        $response->assertJsonMissing(['nom' => $autre->nom]);
+        $response->assertJsonFragment(['nom' => $avecEntree->nom]);
+        $response->assertJsonMissing(['nom' => $sansMouvement->nom]);
+    }
+
+    public function test_data_endpoint_exposes_entrees_and_sorties_counts_for_the_period(): void
+    {
+        $user = User::factory()->create()->assignRole('gestionnaire_stock');
+        $article = Article::factory()->create(['nom' => 'Filtre à huile']);
+
+        MouvementStock::create([
+            'article_id' => $article->id, 'article_reference' => $article->reference, 'article_nom' => $article->nom,
+            'type' => 'entree', 'quantite' => 10, 'prix_unitaire' => 1000, 'user_id' => $user->id, 'date_mouvement' => now(),
+        ]);
+        MouvementStock::create([
+            'article_id' => $article->id, 'article_reference' => $article->reference, 'article_nom' => $article->nom,
+            'type' => 'sortie', 'nature' => 'interne', 'quantite' => 4, 'prix_unitaire' => 1000, 'user_id' => $user->id, 'date_mouvement' => now(),
+        ]);
+        // Hors période par défaut (mois courant) : ne doit pas être compté.
+        MouvementStock::create([
+            'article_id' => $article->id, 'article_reference' => $article->reference, 'article_nom' => $article->nom,
+            'type' => 'entree', 'quantite' => 7, 'prix_unitaire' => 1000, 'user_id' => $user->id, 'date_mouvement' => now()->subMonths(2),
+        ]);
+
+        $response = $this->actingAs($user)->getJson(route('stock.etat-stock.data'));
+
+        $response->assertOk();
+        $response->assertJsonFragment(['nom' => $article->nom, 'entrees_count' => 1, 'sorties_count' => 1]);
     }
 
     public function test_kpis_default_to_the_current_month_and_react_to_period_filter(): void
