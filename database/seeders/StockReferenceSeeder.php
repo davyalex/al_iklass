@@ -21,7 +21,12 @@ class StockReferenceSeeder extends Seeder
             ['code' => 'lubrifiant', 'libelle' => 'Lubrifiant & fluides'],
             ['code' => 'autre', 'libelle' => 'Autre'],
         ] as $categorie) {
-            CategorieArticle::firstOrCreate(['code' => $categorie['code']], $categorie);
+            // withTrashed() : "code" est unique et non filtré sur deleted_at, donc
+            // firstOrCreate() percuterait une catégorie archivée au lieu de la
+            // retrouver (elle est exclue du scope par défaut).
+            if (! CategorieArticle::withTrashed()->where('code', $categorie['code'])->exists()) {
+                CategorieArticle::create($categorie);
+            }
         }
 
         foreach ([
@@ -34,7 +39,9 @@ class StockReferenceSeeder extends Seeder
         }
 
         foreach (['pièce', 'jeu', 'bidon', 'litre', 'kg', 'mètre'] as $libelle) {
-            Unite::firstOrCreate(['libelle' => $libelle]);
+            if (! Unite::withTrashed()->where('libelle', $libelle)->exists()) {
+                Unite::create(['libelle' => $libelle]);
+            }
         }
 
         foreach ([

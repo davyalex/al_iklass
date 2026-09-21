@@ -27,22 +27,27 @@ class ArticleSeeder extends Seeder
             ['reference' => 'LUB-0002', 'nom' => 'Liquide de frein', 'categorie' => 'lubrifiant', 'unite' => 'litre', 'prix_achat' => 3000, 'prix_vente' => 4500, 'quantite_stock' => 14, 'seuil_alerte' => 4],
             ['reference' => 'AUT-0001', 'nom' => 'Balai d\'essuie-glace', 'categorie' => 'autre', 'unite' => 'pièce', 'prix_achat' => 2500, 'prix_vente' => 4000, 'quantite_stock' => 22, 'seuil_alerte' => 6],
         ] as $article) {
+            // withTrashed() : la contrainte unique sur "reference" n'exclut pas les
+            // articles archivés, donc firstOrCreate() percuterait la ligne archivée
+            // au lieu de la retrouver (elle est exclue du scope par défaut).
+            if (Article::withTrashed()->where('reference', $article['reference'])->exists()) {
+                continue;
+            }
+
             $categorie = CategorieArticle::where('code', $article['categorie'])->first();
             $unite = Unite::where('libelle', $article['unite'])->first();
 
-            Article::firstOrCreate(
-                ['reference' => $article['reference']],
-                [
-                    'nom' => $article['nom'],
-                    'categorie_id' => $categorie?->id,
-                    'unite_id' => $unite?->id,
-                    'quantite_stock' => $article['quantite_stock'],
-                    'prix_achat' => $article['prix_achat'],
-                    'prix_vente' => $article['prix_vente'],
-                    'seuil_alerte' => $article['seuil_alerte'],
-                    'actif' => true,
-                ]
-            );
+            Article::create([
+                'reference' => $article['reference'],
+                'nom' => $article['nom'],
+                'categorie_id' => $categorie?->id,
+                'unite_id' => $unite?->id,
+                'quantite_stock' => $article['quantite_stock'],
+                'prix_achat' => $article['prix_achat'],
+                'prix_vente' => $article['prix_vente'],
+                'seuil_alerte' => $article['seuil_alerte'],
+                'actif' => true,
+            ]);
         }
     }
 }

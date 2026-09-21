@@ -48,7 +48,15 @@ class VehiculeSeeder extends Seeder
                 ? $gestionnaireIds[array_rand($gestionnaireIds)]
                 : null;
 
-            Vehicule::firstOrCreate(['code' => $code], [
+            // withTrashed() : "code" est unique et non filtré sur deleted_at, donc
+            // firstOrCreate() percuterait un véhicule archivé au lieu de le
+            // retrouver (il est exclu du scope par défaut).
+            if (Vehicule::withTrashed()->where('code', $code)->exists()) {
+                continue;
+            }
+
+            Vehicule::create([
+                'code' => $code,
                 'libelle' => "{$marque} {$modele}",
                 'marque' => $marque,
                 'modele' => $modele,
