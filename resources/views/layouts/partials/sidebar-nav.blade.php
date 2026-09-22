@@ -83,16 +83,18 @@
         </li>
     @endcan
 
-    @canany(['flotte.vehicule.voir', 'flotte.vehicule.voir_affectes'])
+    @canany(['flotte.vehicule.voir', 'flotte.vehicule.voir_affectes', 'flotte.versement.gerer'])
         <li class="nav-item mt-3">
             <span class="px-3 text-uppercase small fw-semibold" style="color: rgba(255,255,255,0.45); letter-spacing: .04em;">Flotte</span>
         </li>
-        <li class="nav-item">
-            <a href="{{ route('flotte.vehicules.index') }}" class="nav-link d-flex align-items-center gap-2 {{ request()->routeIs('flotte.vehicules.*') ? 'active' : '' }}">
-                <i class="bi bi-truck-front-fill"></i>
-                <span>Véhicules</span>
-            </a>
-        </li>
+        @canany(['flotte.vehicule.voir', 'flotte.vehicule.voir_affectes'])
+            <li class="nav-item">
+                <a href="{{ route('flotte.vehicules.index') }}" class="nav-link d-flex align-items-center gap-2 {{ request()->routeIs('flotte.vehicules.*') ? 'active' : '' }}">
+                    <i class="bi bi-truck-front-fill"></i>
+                    <span>Véhicules</span>
+                </a>
+            </li>
+        @endcanany
         @can('flotte.vehicule.voir')
             <li class="nav-item">
                 <a href="{{ route('flotte.gestionnaires.index') }}" class="nav-link d-flex align-items-center gap-2 {{ request()->routeIs('flotte.gestionnaires.*') ? 'active' : '' }}">
@@ -100,13 +102,15 @@
                     <span>Gestionnaires</span>
                 </a>
             </li>
+        @endcan
+        @canany(['flotte.vehicule.voir', 'flotte.versement.gerer'])
             <li class="nav-item">
                 <a href="{{ route('flotte.versements.index') }}" class="nav-link d-flex align-items-center gap-2 {{ request()->routeIs('flotte.versements.*') ? 'active' : '' }}">
                     <i class="bi bi-cash-coin"></i>
                     <span>Versements</span>
                 </a>
             </li>
-        @endcan
+        @endcanany
     @endcanany
 
     @canany(['utilisateurs.voir', 'roles.voir', 'unites.voir', 'audit.voir', 'parametres.voir'])
