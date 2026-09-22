@@ -10,8 +10,8 @@
     @endcan
 
     {{-- KPIs du jour — reflètent le gestionnaire sélectionné dans le filtre ci-dessous (agrégés sur tous les gestionnaires si "Tous") --}}
-    <div class="row g-3 mb-3">
-        <div class="col-6 col-lg-3">
+    <div class="row g-3 mb-3 row-cols-2 row-cols-lg-5">
+        <div class="col">
             <div class="card shadow-sm border-0 bg-white h-100">
                 <div class="card-body">
                     <div class="small text-muted">Recette journalière</div>
@@ -19,7 +19,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-6 col-lg-3">
+        <div class="col">
             <div class="card shadow-sm border-0 bg-success-subtle h-100">
                 <div class="card-body">
                     <div class="small text-muted">Déjà versé (jour)</div>
@@ -27,7 +27,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-6 col-lg-3">
+        <div class="col">
             <div class="card shadow-sm border-0 h-100" id="carte-reste-a-verser">
                 <div class="card-body">
                     <div class="small text-muted">Reste à verser (jour)</div>
@@ -35,7 +35,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-6 col-lg-3">
+        <div class="col">
             <div class="card shadow-sm border-0 h-100" id="carte-montant-du">
                 <div class="card-body">
                     <div class="small text-muted">Montant dû</div>
@@ -43,7 +43,18 @@
                 </div>
             </div>
         </div>
+        <div class="col">
+            <div class="card shadow-sm border-0 bg-white h-100">
+                <div class="card-body">
+                    <div class="small text-muted">Total versé (période)</div>
+                    <div class="h5 mb-0" style="color: var(--al-navy);" id="kpi-total-verse-periode">—</div>
+                </div>
+            </div>
+        </div>
     </div>
+    <p class="small text-muted mb-3">
+        <i class="bi bi-info-circle me-1"></i>« Total versé » suit le filtre de période ci-dessous (mois en cours par défaut). Les autres indicateurs restent sur la journée en cours.
+    </p>
 
     <div class="card shadow-sm border-0 bg-white mb-3">
         <div class="card-body">
@@ -141,9 +152,19 @@
                                 @endforeach
                             </select>
                         </div>
+                        <div class="form-text mb-2" id="versement-reste-a-verser-info"></div>
+                        <div class="mb-3">
+                            <label class="form-label d-block">Type de versement</label>
+                            <div class="btn-group w-100" role="group">
+                                <input type="radio" class="btn-check" name="type_versement" id="versement-type-total" checked>
+                                <label class="btn btn-outline-primary" for="versement-type-total">Versement total</label>
+                                <input type="radio" class="btn-check" name="type_versement" id="versement-type-partiel">
+                                <label class="btn btn-outline-primary" for="versement-type-partiel">Versement partiel</label>
+                            </div>
+                        </div>
                         <div class="mb-3">
                             <label class="form-label">Montant (FCFA)</label>
-                            <input type="number" name="montant" class="form-control" min="0.01" step="0.01" required>
+                            <input type="number" name="montant" id="versement-montant" class="form-control" min="0.01" step="0.01" required>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Mode de paiement</label>
@@ -183,14 +204,26 @@
         document.addEventListener('DOMContentLoaded', function () {
             $('.select2-filtre-gestionnaire').select2({ width: '100%', placeholder: 'Tous', selectionCssClass: 'select2-sm' });
 
+            function filtresVersements() {
+                return {
+                    date_debut: $('#filtres-versements [name=date_debut]').val(),
+                    date_fin: $('#filtres-versements [name=date_fin]').val(),
+                    gestionnaire_id: $('#filtres-versements [name=gestionnaire_id]').val(),
+                    mode_paiement_id: $('#filtres-versements [name=mode_paiement_id]').val(),
+                };
+            }
+
             function rafraichirKpisVersements() {
                 $.get('{{ route('flotte.versements.kpis') }}', {
                     gestionnaire_id: $('#filtres-versements [name=gestionnaire_id]').val(),
+                    date_debut: $('#filtres-versements [name=date_debut]').val(),
+                    date_fin: $('#filtres-versements [name=date_fin]').val(),
                 }, function (kpis) {
                     $('#kpi-recette-journaliere').text(kpis.recette_journaliere + ' FCFA');
                     $('#kpi-deja-verse-jour').text(kpis.deja_verse_jour + ' FCFA');
                     $('#kpi-reste-a-verser-jour').text(kpis.reste_a_verser_jour + ' FCFA');
                     $('#kpi-montant-du').text(kpis.montant_du + ' FCFA');
+                    $('#kpi-total-verse-periode').text(kpis.total_verse_periode + ' FCFA');
 
                     const resteActif = parseFloat(kpis.reste_a_verser_jour.replace(/\s/g, '').replace(',', '.')) > 0;
                     $('#carte-reste-a-verser').toggleClass('bg-danger-subtle', resteActif).toggleClass('bg-white', !resteActif);
@@ -202,15 +235,6 @@
 
             rafraichirKpisVersements();
             $('.select2-filtre-gestionnaire').on('change', rafraichirKpisVersements);
-
-            function filtresVersements() {
-                return {
-                    date_debut: $('#filtres-versements [name=date_debut]').val(),
-                    date_fin: $('#filtres-versements [name=date_fin]').val(),
-                    gestionnaire_id: $('#filtres-versements [name=gestionnaire_id]').val(),
-                    mode_paiement_id: $('#filtres-versements [name=mode_paiement_id]').val(),
-                };
-            }
 
             const DATE_DEBUT_DEFAUT = $('#filtres-versements [name=date_debut]').val();
             const DATE_FIN_DEFAUT = $('#filtres-versements [name=date_fin]').val();
@@ -248,7 +272,10 @@
                 order: [[0, 'desc']],
             });
 
-            $('#btn-filtrer-versements').on('click', () => tableVersements.ajax.reload());
+            $('#btn-filtrer-versements').on('click', function () {
+                tableVersements.ajax.reload();
+                rafraichirKpisVersements();
+            });
 
             $('#btn-reset-versements').on('click', function () {
                 $('#filtres-versements')[0].reset();
@@ -277,6 +304,33 @@
 
             $('.select2-vehicule-versement').select2({ dropdownParent: $('#modal-versement'), width: '100%', placeholder: '—' });
 
+            // Bascule Versement total / partiel : en "total", le montant est
+            // verrouillé sur le reste à verser (jour) du gestionnaire concerné ;
+            // en "partiel", le champ se vide et devient modifiable.
+            function appliquerTypeVersement() {
+                const reste = $('#form-versement').data('reste-a-verser') || 0;
+
+                if ($('#versement-type-total').is(':checked')) {
+                    $('#versement-montant').val(reste > 0 ? reste : '').prop('readonly', true);
+                } else {
+                    $('#versement-montant').val('').prop('readonly', false).trigger('focus');
+                }
+            }
+
+            function chargerResteAVerser(gestionnaireId) {
+                $('#form-versement').removeData('reste-a-verser');
+                $('#versement-reste-a-verser-info').text('Chargement…');
+
+                $.get('{{ route('flotte.versements.kpis') }}', gestionnaireId ? { gestionnaire_id: gestionnaireId } : {}, function (kpis) {
+                    const reste = parseFloat(kpis.reste_a_verser_jour.replace(/\s/g, '').replace(',', '.')) || 0;
+                    $('#form-versement').data('reste-a-verser', reste);
+                    $('#versement-reste-a-verser-info').text('Reste à verser (jour) : ' + kpis.reste_a_verser_jour + ' FCFA');
+                    appliquerTypeVersement();
+                });
+            }
+
+            $('#modal-versement input[name=type_versement]').on('change', appliquerTypeVersement);
+
             @if ($peutVoirTout)
                 $('.select2-gestionnaire-versement').select2({ dropdownParent: $('#modal-versement'), width: '100%' });
 
@@ -293,12 +347,29 @@
                 $('.select2-gestionnaire-versement').on('change', function () {
                     $('.select2-vehicule-versement').val('').trigger('change');
                     actualiserVehiculesDisponibles();
+
+                    const gestionnaireId = $(this).val();
+                    if (gestionnaireId) {
+                        chargerResteAVerser(gestionnaireId);
+                    } else {
+                        $('#form-versement').removeData('reste-a-verser');
+                        $('#versement-reste-a-verser-info').text("Choisissez d'abord un gestionnaire.");
+                        $('#versement-montant').val('').prop('readonly', false);
+                    }
                 });
             @endif
 
             $('#btn-nouveau-versement').on('click', function () {
                 $('#form-versement')[0].reset();
                 $('.select2-gestionnaire-versement, .select2-vehicule-versement').val('').trigger('change');
+                $('#versement-montant').prop('readonly', false);
+
+                @if ($peutVoirTout)
+                    $('#versement-reste-a-verser-info').text("Choisissez d'abord un gestionnaire.");
+                @else
+                    chargerResteAVerser();
+                @endif
+
                 modalVersement.show();
             });
 

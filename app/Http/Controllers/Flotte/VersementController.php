@@ -67,11 +67,18 @@ class VersementController extends Controller
             ? (float) (User::find($gestionnaireId)?->dette ?? 0)
             : (float) User::role('gestionnaire')->sum('dette');
 
+        [$debutPeriode, $finPeriode] = $this->bornesPeriode($request);
+        $totalVersePeriode = (float) Versement::whereDate('date_versement', '>=', $debutPeriode)
+            ->whereDate('date_versement', '<=', $finPeriode)
+            ->when($gestionnaireId, fn (Builder $q) => $q->where('gestionnaire_id', $gestionnaireId))
+            ->sum('montant');
+
         return response()->json([
             'recette_journaliere' => Money::format($attendu),
             'deja_verse_jour' => Money::format($dejaVerseJour),
             'reste_a_verser_jour' => Money::format($resteAVerserJour),
             'montant_du' => Money::format($montantDu),
+            'total_verse_periode' => Money::format($totalVersePeriode),
         ]);
     }
 
@@ -117,6 +124,24 @@ class VersementController extends Controller
         return Pdf::loadView('exports.pdf.versements', ['versements' => $versements])
             ->setPaper('a4', 'landscape')
             ->download('versements-'.now()->format('Y-m-d-His').'.pdf');
+    }
+
+    /**
+     * Bornes (Y-m-d) de la période demandée (date_debut/date_fin), ou à
+     * défaut le mois en cours.
+     *
+     * @return array{0: string, 1: string}
+     */
+    private function bornesPeriode(Request $request): array
+    {
+        if (! $request->filled('date_debut') && ! $request->filled('date_fin')) {
+            return [now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()];
+        }
+
+        return [
+            $request->filled('date_debut') ? $request->string('date_debut')->toString() : now()->startOfMonth()->toDateString(),
+            $request->filled('date_fin') ? $request->string('date_fin')->toString() : now()->endOfMonth()->toDateString(),
+        ];
     }
 
     private function filtrer(Builder $query, Request $request): Builder

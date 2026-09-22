@@ -8,6 +8,12 @@
 
     @include('flotte.partials.statut-styles')
 
+    @if ($fenetreStatut)
+        <div class="alert alert-warning d-flex align-items-center py-2 px-3 mb-3" id="banniere-fenetre-statut">
+            <i class="bi bi-clock-history me-2"></i><span id="fenetre-statut-texte">—</span>
+        </div>
+    @endif
+
     {{-- KPIs --}}
     <div class="row g-3 mb-3">
         @foreach ($statuts as $statut)
@@ -117,6 +123,49 @@
     @push('scripts')
         <script>
         document.addEventListener('DOMContentLoaded', function () {
+            @if ($fenetreStatut)
+                (function () {
+                    const debutFenetre = new Date('{{ $fenetreStatut['debut'] }}');
+                    const finFenetre = new Date('{{ $fenetreStatut['fin'] }}');
+                    const formatHeure = (date) => date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+                    function actualiserCompteAReboursFenetre() {
+                        const maintenant = new Date();
+                        const $banniere = $('#banniere-fenetre-statut');
+
+                        if (maintenant < debutFenetre) {
+                            $banniere.removeClass('alert-warning alert-danger').addClass('alert-secondary');
+                            $('#fenetre-statut-texte').text(
+                                `La modification des statuts ouvre à ${formatHeure(debutFenetre)}.`
+                            );
+                            return;
+                        }
+
+                        if (maintenant > finFenetre) {
+                            $banniere.removeClass('alert-warning alert-secondary').addClass('alert-danger');
+                            $('#fenetre-statut-texte').text(
+                                "La fenêtre de modification des statuts est fermée pour aujourd'hui. Contactez un administrateur si besoin."
+                            );
+                            clearInterval(intervalFenetre);
+                            return;
+                        }
+
+                        const diffMs = finFenetre - maintenant;
+                        const heures = Math.floor(diffMs / 3600000);
+                        const minutes = Math.floor((diffMs % 3600000) / 60000);
+                        const reste = heures > 0 ? `${heures} h ${minutes} min` : `${minutes} min`;
+
+                        $banniere.removeClass('alert-secondary alert-danger').addClass('alert-warning');
+                        $('#fenetre-statut-texte').text(
+                            `Il vous reste ${reste} pour mettre à jour le statut de vos véhicules (fenêtre jusqu'à ${formatHeure(finFenetre)}).`
+                        );
+                    }
+
+                    actualiserCompteAReboursFenetre();
+                    const intervalFenetre = setInterval(actualiserCompteAReboursFenetre, 30000);
+                })();
+            @endif
+
             function appliquerFiltres() {
                 const q = $('#recherche-vehicule').val().trim().toLowerCase();
                 const gestionnaireId = $('#filtre-gestionnaire').val() || '';

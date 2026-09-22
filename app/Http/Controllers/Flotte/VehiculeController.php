@@ -10,6 +10,7 @@ use App\Http\Requests\Flotte\UpdateVehiculeStatutRequest;
 use App\Models\StatutVehicule;
 use App\Models\User;
 use App\Models\Vehicule;
+use App\Support\FenetreStatutJournalier;
 use App\Support\VehiculeKpis;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -43,7 +44,16 @@ class VehiculeController extends Controller
 
         $kpis = VehiculeKpis::calculer($vehicules, $statuts);
 
-        return view('flotte.vehicules.index', compact('vehicules', 'statuts', 'vehiculesParStatut', 'gestionnaires', 'kpis'));
+        // Compte à rebours de la fenêtre horaire : uniquement pertinent pour un
+        // gestionnaire soumis au verrou (flotte.vehicule.statut.gerer sans le
+        // flotte.vehicule.gerer qui donne un accès permanent à l'admin).
+        $fenetreStatut = null;
+        if ($request->user()->can('flotte.vehicule.statut.gerer') && ! $request->user()->can('flotte.vehicule.gerer')) {
+            [$debutFenetre, $finFenetre] = FenetreStatutJournalier::bornesDuJour();
+            $fenetreStatut = ['debut' => $debutFenetre->toIso8601String(), 'fin' => $finFenetre->toIso8601String()];
+        }
+
+        return view('flotte.vehicules.index', compact('vehicules', 'statuts', 'vehiculesParStatut', 'gestionnaires', 'kpis', 'fenetreStatut'));
     }
 
     public function show(Vehicule $vehicule): JsonResponse

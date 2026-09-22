@@ -24,4 +24,23 @@ class FenetreStatutJournalier
 
         return $heureActuelle >= $debut && $heureActuelle <= $fin;
     }
+
+    /**
+     * Bornes du jour (début/fin) de la fenêtre, en Carbon — utile pour
+     * afficher un compte à rebours côté client.
+     *
+     * @return array{0: Carbon, 1: Carbon}
+     */
+    public static function bornesDuJour(?Carbon $maintenant = null): array
+    {
+        $maintenant ??= now();
+
+        $debut = Parametre::valeur('flotte.statut_journalier.heure_debut_fenetre', '08:00');
+        $fin = Parametre::valeur('flotte.statut_journalier.heure_fin_fenetre', '12:00');
+
+        return [
+            Carbon::parse($maintenant->toDateString().' '.$debut, $maintenant->getTimezone()),
+            Carbon::parse($maintenant->toDateString().' '.$fin, $maintenant->getTimezone()),
+        ];
+    }
 }

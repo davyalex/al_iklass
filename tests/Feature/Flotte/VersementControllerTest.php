@@ -338,6 +338,56 @@ class VersementControllerTest extends TestCase
         $response->assertJsonPath('montant_du', '12 000');
     }
 
+    public function test_kpis_total_verse_periode_defaults_to_current_month(): void
+    {
+        $admin = User::factory()->create()->assignRole('admin');
+        $gestionnaire = User::factory()->create()->assignRole('gestionnaire');
+        $modePaiement = ModePaiement::create(['code' => 'especes', 'libelle' => 'Espèces', 'actif' => true]);
+
+        app(VersementService::class)->enregistrer([
+            'gestionnaire_id' => $gestionnaire->id, 'montant' => 4000, 'mode_paiement_id' => $modePaiement->id,
+            'date_versement' => now()->format('Y-m-d'), 'user_id' => $admin->id,
+        ]);
+        app(VersementService::class)->enregistrer([
+            'gestionnaire_id' => $gestionnaire->id, 'montant' => 6000, 'mode_paiement_id' => $modePaiement->id,
+            'date_versement' => now()->subMonths(2)->format('Y-m-d'), 'user_id' => $admin->id,
+        ]);
+
+        $reponseParDefaut = $this->actingAs($admin)->getJson(route('flotte.versements.kpis', ['gestionnaire_id' => $gestionnaire->id]));
+
+        $reponseParDefaut->assertOk();
+        $reponseParDefaut->assertJsonPath('total_verse_periode', '4 000');
+
+        $reponseFiltree = $this->actingAs($admin)->getJson(route('flotte.versements.kpis', [
+            'gestionnaire_id' => $gestionnaire->id,
+            'date_debut' => now()->subMonths(3)->toDateString(),
+            'date_fin' => now()->toDateString(),
+        ]));
+
+        $reponseFiltree->assertOk();
+        $reponseFiltree->assertJsonPath('total_verse_periode', '10 000');
+    }
+
+    public function test_gestionnaire_kpis_total_verse_periode_is_forced_to_their_own(): void
+    {
+        $admin = User::factory()->create()->assignRole('admin');
+        $gestionnaire = User::factory()->create()->assignRole('gestionnaire');
+        $autre = User::factory()->create()->assignRole('gestionnaire');
+        $modePaiement = ModePaiement::create(['code' => 'especes', 'libelle' => 'Espèces', 'actif' => true]);
+
+        app(VersementService::class)->enregistrer([
+            'gestionnaire_id' => $gestionnaire->id, 'montant' => 3000, 'mode_paiement_id' => $modePaiement->id, 'user_id' => $admin->id,
+        ]);
+        app(VersementService::class)->enregistrer([
+            'gestionnaire_id' => $autre->id, 'montant' => 9000, 'mode_paiement_id' => $modePaiement->id, 'user_id' => $admin->id,
+        ]);
+
+        $response = $this->actingAs($gestionnaire)->getJson(route('flotte.versements.kpis', ['gestionnaire_id' => $autre->id]));
+
+        $response->assertOk();
+        $response->assertJsonPath('total_verse_periode', '3 000');
+    }
+
     public function test_admin_can_export_versements_excel_and_pdf(): void
     {
         $admin = User::factory()->create()->assignRole('admin');
