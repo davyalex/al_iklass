@@ -7,7 +7,6 @@ use App\Http\Requests\Flotte\RemiseEnCirculationRequest;
 use App\Http\Requests\Flotte\StoreVehiculeRequest;
 use App\Http\Requests\Flotte\UpdateVehiculeRequest;
 use App\Http\Requests\Flotte\UpdateVehiculeStatutRequest;
-use App\Models\Article;
 use App\Models\ModePaiement;
 use App\Models\StatutVehicule;
 use App\Models\User;
@@ -67,11 +66,7 @@ class VehiculeController extends Controller
             ? 'depannage'
             : null;
 
-        $articles = $request->user()->can('stock.sortie.interne')
-            ? Article::where('actif', true)->orderBy('nom')->get()
-            : collect();
-
-        return view('flotte.vehicules.index', compact('vehicules', 'statuts', 'vehiculesParStatut', 'gestionnaires', 'kpis', 'fenetreStatut', 'modesPaiement', 'statutParDefaut', 'articles'));
+        return view('flotte.vehicules.index', compact('vehicules', 'statuts', 'vehiculesParStatut', 'gestionnaires', 'kpis', 'fenetreStatut', 'modesPaiement', 'statutParDefaut'));
     }
 
     public function show(Vehicule $vehicule): JsonResponse

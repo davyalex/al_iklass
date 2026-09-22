@@ -205,7 +205,7 @@
         </div>
     @endcanany
 
-    <x-flotte.vehicule-modals :statuts="$statuts" :gestionnaires="$gestionnaires" :fenetre-statut="$fenetreStatut" :articles="$articles" />
+    <x-flotte.vehicule-modals :statuts="$statuts" :gestionnaires="$gestionnaires" :fenetre-statut="$fenetreStatut" />
 
     @push('scripts')
         <script>

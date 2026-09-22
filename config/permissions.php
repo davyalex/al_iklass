@@ -26,6 +26,7 @@ return [
             'stock.sortie.interne',
             'stock.sortie.vente',
             'stock.demande.creer',
+            'stock.demande.traiter',
             'stock.inventaire.gerer',
         ],
 
@@ -79,7 +80,7 @@ return [
         ],
 
         'chef_mecanicien' => [
-            'stock' => ['only' => ['stock.demande.creer', 'stock.sortie.interne']],
+            'stock' => ['only' => ['stock.demande.creer']],
             'flotte' => ['only' => ['flotte.vehicule.remise_circulation']],
         ],
 

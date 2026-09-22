@@ -2,7 +2,6 @@
 
 namespace Tests\Feature\Flotte;
 
-use App\Models\Article;
 use App\Models\StatutVehicule;
 use App\Models\User;
 use App\Models\Vehicule;
@@ -242,16 +241,6 @@ class VehiculeControllerTest extends TestCase
 
         $response->assertOk();
         $this->assertNull($response->viewData('statutParDefaut'));
-    }
-
-    public function test_chef_mecanicien_voit_le_bouton_piece_utilisee_mais_pas_admin_sans_le_droit(): void
-    {
-        $mecanicien = User::factory()->create()->assignRole('chef_mecanicien');
-        $article = Article::factory()->create(['actif' => true]);
-
-        $response = $this->actingAs($mecanicien)->get(route('flotte.vehicules.index'));
-
-        $response->assertOk()->assertSee('Pièce utilisée')->assertSee($article->nom);
     }
 
     public function test_admin_can_change_statut_quickly(): void

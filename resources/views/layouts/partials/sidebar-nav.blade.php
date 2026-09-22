@@ -23,10 +23,12 @@
         </a>
     </li>
 
-    @can('stock.tableau_bord.voir')
+    @canany(['stock.tableau_bord.voir', 'stock.demande.creer', 'stock.demande.traiter'])
         <li class="nav-item mt-3">
             <span class="px-3 text-uppercase small fw-semibold" style="color: rgba(255,255,255,0.45); letter-spacing: .04em;">Stock</span>
         </li>
+    @endcanany
+    @can('stock.tableau_bord.voir')
         <li class="nav-item">
             <a href="{{ route('stock.articles.index') }}" class="nav-link d-flex align-items-center gap-2 {{ request()->routeIs('stock.articles.*') ? 'active' : '' }}">
                 <i class="bi bi-box-seam"></i>
@@ -82,6 +84,14 @@
             </a>
         </li>
     @endcan
+    @canany(['stock.demande.creer', 'stock.demande.traiter'])
+        <li class="nav-item">
+            <a href="{{ route('stock.demandes.index') }}" class="nav-link d-flex align-items-center gap-2 {{ request()->routeIs('stock.demandes.*') ? 'active' : '' }}">
+                <i class="bi bi-clipboard2-plus"></i>
+                <span>Demandes de pièces</span>
+            </a>
+        </li>
+    @endcanany
 
     @canany(['flotte.vehicule.voir', 'flotte.vehicule.voir_affectes', 'flotte.vehicule.remise_circulation', 'flotte.versement.gerer'])
         <li class="nav-item mt-3">
