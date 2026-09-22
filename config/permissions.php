@@ -51,6 +51,7 @@ return [
             'flotte.vehicule.statut.gerer',
             'flotte.vehicule.remise_circulation',
             'flotte.versement.gerer',
+            'flotte.dette.gerer',
         ],
 
     ],

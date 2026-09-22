@@ -1,0 +1,124 @@
+<?php
+
+namespace App\Services\Flotte;
+
+use App\Models\HistoriqueDette;
+use App\Models\Parametre;
+use App\Models\User;
+use App\Models\Vehicule;
+use App\Models\Versement;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+
+class DetteJournalierService
+{
+    private const CLE_DERNIERE_EXECUTION = 'flotte.dette_journaliere.derniere_execution';
+
+    /**
+     * Bascule en dette, pour chaque gestionnaire, le reste à verser de la
+     * veille (recette attendue des véhicules en circulation hier − versements
+     * effectués hier). Idempotent par jour, verrouillé contre une double
+     * bascule en cas d'appels concurrents (la dette est cumulative, à la
+     * différence du reset de statut journalier qui est sans risque à rejouer).
+     *
+     * @return int Nombre de gestionnaires basculés en dette.
+     */
+    public function basculerSiNecessaire(): int
+    {
+        return DB::transaction(function () {
+            $parametre = Parametre::where('cle', self::CLE_DERNIERE_EXECUTION)->lockForUpdate()->first();
+
+            if (! $parametre) {
+                $parametre = Parametre::create([
+                    'cle' => self::CLE_DERNIERE_EXECUTION,
+                    'valeur' => '',
+                    'libelle' => 'Dernière bascule de dette journalière',
+                    'groupe' => 'interne',
+                    'ordre' => 0,
+                ]);
+            }
+
+            $aujourdhui = now()->format('Y-m-d');
+
+            if ($parametre->valeur === $aujourdhui) {
+                return 0;
+            }
+
+            $hier = now()->subDay();
+            $compteur = 0;
+
+            foreach (User::role('gestionnaire')->get() as $gestionnaire) {
+                $attendu = (float) Vehicule::where('gestionnaire_id', $gestionnaire->id)
+                    ->whereHas('statut', fn ($q) => $q->where('code', 'en_circulation'))
+                    ->sum('recette_journaliere');
+
+                $dejaVerseHier = (float) Versement::whereDate('date_versement', $hier)
+                    ->where('gestionnaire_id', $gestionnaire->id)
+                    ->sum('montant');
+
+                $resteAVerser = max(0, $attendu - $dejaVerseHier);
+
+                if ($resteAVerser <= 0) {
+                    continue;
+                }
+
+                $detteAvant = (float) $gestionnaire->dette;
+                $gestionnaire->dette = $detteAvant + $resteAVerser;
+                $gestionnaire->save();
+
+                HistoriqueDette::create([
+                    'gestionnaire_id' => $gestionnaire->id,
+                    'gestionnaire_nom' => $gestionnaire->name,
+                    'type' => 'bascule',
+                    'montant' => $resteAVerser,
+                    'dette_avant' => $detteAvant,
+                    'dette_apres' => $gestionnaire->dette,
+                    'date_reference' => $hier->toDateString(),
+                    'user_id' => null,
+                ]);
+
+                $compteur++;
+            }
+
+            $parametre->update(['valeur' => $aujourdhui]);
+
+            return $compteur;
+        });
+    }
+
+    /**
+     * Annulation (partielle ou totale) par un admin. N'écrit volontairement
+     * aucun MouvementCaisse : une annulation de dette n'est pas un mouvement
+     * d'argent réel, seul HistoriqueDette trace l'opération.
+     *
+     * @throws ValidationException
+     */
+    public function annuler(User $gestionnaire, float $montant, string $motif, User $admin): HistoriqueDette
+    {
+        $detteAvant = (float) $gestionnaire->dette;
+
+        if ($montant <= 0) {
+            throw ValidationException::withMessages(['montant' => 'Le montant doit être supérieur à 0.']);
+        }
+
+        if ($montant > $detteAvant) {
+            throw ValidationException::withMessages(['montant' => 'Le montant ne peut pas dépasser la dette actuelle.']);
+        }
+
+        return DB::transaction(function () use ($gestionnaire, $montant, $motif, $admin, $detteAvant) {
+            $gestionnaire->dette = $detteAvant - $montant;
+            $gestionnaire->save();
+
+            return HistoriqueDette::create([
+                'gestionnaire_id' => $gestionnaire->id,
+                'gestionnaire_nom' => $gestionnaire->name,
+                'type' => 'annulation',
+                'montant' => $montant,
+                'dette_avant' => $detteAvant,
+                'dette_apres' => $gestionnaire->dette,
+                'motif' => $motif,
+                'user_id' => $admin->id,
+            ]);
+        });
+    }
+}

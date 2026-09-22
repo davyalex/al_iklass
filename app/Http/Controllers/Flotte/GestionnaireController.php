@@ -3,19 +3,25 @@
 namespace App\Http\Controllers\Flotte;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Flotte\AnnulerDetteRequest;
+use App\Models\HistoriqueDette;
 use App\Models\ModePaiement;
 use App\Models\StatutVehicule;
 use App\Models\User;
 use App\Models\Vehicule;
 use App\Models\Versement;
+use App\Services\Flotte\DetteJournalierService;
 use App\Support\Money;
 use App\Support\VehiculeKpis;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class GestionnaireController extends Controller
 {
+    public function __construct(private readonly DetteJournalierService $detteService) {}
+
     public function index(): View
     {
         Gate::authorize('flotte.vehicule.voir');
@@ -53,12 +59,19 @@ class GestionnaireController extends Controller
             ->limit(10)
             ->get();
 
+        $historiqueDette = HistoriqueDette::where('gestionnaire_id', $gestionnaire->id)
+            ->with('user')
+            ->latest()
+            ->limit(10)
+            ->get();
+
         return response()->json([
             'gestionnaire' => $gestionnaire->only(['id', 'name', 'username', 'telephone', 'email']),
             'kpis' => [
                 'total_tout_temps' => Money::format(Versement::where('gestionnaire_id', $gestionnaire->id)->sum('montant')),
                 'nombre_versements' => Versement::where('gestionnaire_id', $gestionnaire->id)->count(),
                 'solde_du' => Money::format($gestionnaire->dette),
+                'solde_du_brut' => (float) $gestionnaire->dette,
             ],
             'versements_recents' => $versementsRecents->map(fn (Versement $versement) => [
                 'date' => $versement->date_versement->format('d/m/Y'),
@@ -68,6 +81,37 @@ class GestionnaireController extends Controller
                 'reference' => $versement->reference,
                 'commentaire' => $versement->commentaire,
             ]),
+            'historique_dette' => $historiqueDette->map(fn (HistoriqueDette $h) => [
+                'date' => $h->created_at->format('d/m/Y H:i'),
+                'type' => $h->type,
+                'montant' => Money::format($h->montant),
+                'auteur' => $h->user?->name,
+                'motif' => $h->motif,
+            ]),
+        ]);
+    }
+
+    public function annulerDette(User $gestionnaire, AnnulerDetteRequest $request): JsonResponse
+    {
+        abort_unless($gestionnaire->hasRole('gestionnaire'), 404);
+
+        try {
+            $this->detteService->annuler(
+                $gestionnaire,
+                (float) $request->validated('montant'),
+                $request->validated('motif'),
+                $request->user(),
+            );
+        } catch (ValidationException $e) {
+            return response()->json(['message' => collect($e->errors())->flatten()->first()], 422);
+        }
+
+        $gestionnaire = $gestionnaire->fresh();
+
+        return response()->json([
+            'message' => "Dette de {$gestionnaire->name} mise à jour.",
+            'solde_du' => Money::format($gestionnaire->dette),
+            'solde_du_brut' => (float) $gestionnaire->dette,
         ]);
     }
 }

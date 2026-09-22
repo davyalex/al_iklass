@@ -51,6 +51,10 @@ Route::middleware(['auth', 'reinitialiser.statut.journalier'])->prefix('flotte')
         Route::post('vehicules/{vehicule}/remise-circulation', [VehiculeController::class, 'remiseEnCirculation'])->name('vehicules.remise-circulation');
     });
 
+    Route::middleware('permission:flotte.dette.gerer')->group(function () {
+        Route::post('gestionnaires/{gestionnaire}/dette/annuler', [GestionnaireController::class, 'annulerDette'])->name('gestionnaires.dette.annuler');
+    });
+
     // Historique personnel d'un chef mécanicien (ses changements de statut,
     // tous véhicules confondus).
     Route::middleware('permission:flotte.vehicule.remise_circulation')->group(function () {

@@ -292,7 +292,12 @@
                     </div>
 
                     <h6 class="small text-uppercase text-muted">Versements récents</h6>
-                    <div id="compte-historique-liste" class="small">
+                    <div id="compte-historique-liste" class="small mb-3">
+                        <p class="text-muted">Chargement…</p>
+                    </div>
+
+                    <h6 class="small text-uppercase text-muted">Historique de la dette</h6>
+                    <div id="compte-historique-dette-liste" class="small">
                         <p class="text-muted">Chargement…</p>
                     </div>
                 </div>
@@ -300,11 +305,57 @@
                     <a href="#" id="lien-historique-complet" class="btn btn-outline-primary me-auto">
                         <i class="bi bi-clock-history me-1"></i>Voir tout l'historique
                     </a>
+                    @can('flotte.dette.gerer')
+                        <button type="button" class="btn btn-outline-danger" id="btn-annuler-dette">
+                            <i class="bi bi-x-circle me-1"></i>Annuler la dette
+                        </button>
+                    @endcan
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fermer</button>
                 </div>
             </div>
         </div>
     </div>
+
+    @can('flotte.dette.gerer')
+        {{-- Modale annulation de dette (totale ou partielle) --}}
+        <div class="modal fade" id="modal-annuler-dette" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <form id="form-annuler-dette" class="needs-validation" novalidate>
+                        <div class="modal-header">
+                            <h5 class="modal-title">Annuler la dette — <span id="annuler-dette-nom"></span></h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label class="form-label d-block">Type d'annulation</label>
+                                <div class="btn-group w-100" role="group">
+                                    <input type="radio" class="btn-check" name="type_annulation_dette" id="ad-type-total" checked>
+                                    <label class="btn btn-outline-danger" for="ad-type-total">Totale</label>
+                                    <input type="radio" class="btn-check" name="type_annulation_dette" id="ad-type-partiel">
+                                    <label class="btn btn-outline-danger" for="ad-type-partiel">Partielle</label>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Montant (FCFA)</label>
+                                <input type="number" name="montant" id="annuler-dette-montant" class="form-control" min="0.01" step="0.01" required>
+                                <div class="invalid-feedback">Le montant doit être positif et ne peut pas dépasser la dette actuelle.</div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Motif</label>
+                                <textarea name="motif" class="form-control" rows="3" required maxlength="500"></textarea>
+                                <div class="invalid-feedback">Le motif est obligatoire.</div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+                            <button type="submit" class="btn btn-danger">Confirmer l'annulation</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    @endcan
 
     @can('utilisateurs.gerer')
         {{-- Modale création / édition gestionnaire (réutilise admin.users.store/update, rôle imposé) --}}
@@ -422,9 +473,14 @@
             const modalCompteEl = document.getElementById('modal-compte-gestionnaire');
             const modalCompte = modalCompteEl ? new bootstrap.Modal(modalCompteEl) : null;
             let compteGestionnaireId = null;
+            let compteGestionnaireNom = null;
+            let compteSoldeDuBrut = 0;
 
             function chargerCompteGestionnaire() {
                 $.get(`/flotte/gestionnaires/${compteGestionnaireId}/compte`, function (res) {
+                    compteGestionnaireNom = res.gestionnaire.name;
+                    compteSoldeDuBrut = res.kpis.solde_du_brut;
+
                     $('#compte-gestionnaire-nom').text(res.gestionnaire.name);
                     $('#compte-username').text('@' + res.gestionnaire.username);
                     $('#compte-telephone').text(res.gestionnaire.telephone || '—');
@@ -432,34 +488,106 @@
                     $('#compte-kpi-total').text(res.kpis.total_tout_temps + ' FCFA');
                     $('#compte-kpi-nombre').text(res.kpis.nombre_versements);
                     $('#compte-kpi-solde').text(res.kpis.solde_du + ' FCFA');
+                    $('#btn-annuler-dette').prop('disabled', compteSoldeDuBrut <= 0);
 
                     if (!res.versements_recents.length) {
                         $('#compte-historique-liste').html('<p class="text-muted mb-0">Aucun versement pour ce gestionnaire.</p>');
+                    } else {
+                        const lignes = res.versements_recents.map(function (v) {
+                            return `<div class="d-flex justify-content-between align-items-start border-bottom py-2">
+                                <div>
+                                    <strong>${v.montant} FCFA</strong> — ${v.mode_paiement}
+                                    ${v.vehicule_code ? ' <span class="badge bg-light text-dark border">' + v.vehicule_code + '</span>' : ''}
+                                    ${v.reference ? ' <span class="text-muted">(' + v.reference + ')</span>' : ''}
+                                    ${v.commentaire ? '<br><span class="text-muted">' + v.commentaire + '</span>' : ''}
+                                </div>
+                                <div class="text-muted text-nowrap ms-2">${v.date}</div>
+                            </div>`;
+                        }).join('');
+
+                        $('#compte-historique-liste').html(lignes);
+                    }
+
+                    if (!res.historique_dette.length) {
+                        $('#compte-historique-dette-liste').html('<p class="text-muted mb-0">Aucun mouvement de dette pour ce gestionnaire.</p>');
                         return;
                     }
 
-                    const lignes = res.versements_recents.map(function (v) {
+                    const lignesDette = res.historique_dette.map(function (h) {
+                        const badge = h.type === 'bascule'
+                            ? '<span class="badge bg-danger">Bascule</span>'
+                            : '<span class="badge bg-success">Annulation</span>';
                         return `<div class="d-flex justify-content-between align-items-start border-bottom py-2">
                             <div>
-                                <strong>${v.montant} FCFA</strong> — ${v.mode_paiement}
-                                ${v.vehicule_code ? ' <span class="badge bg-light text-dark border">' + v.vehicule_code + '</span>' : ''}
-                                ${v.reference ? ' <span class="text-muted">(' + v.reference + ')</span>' : ''}
-                                ${v.commentaire ? '<br><span class="text-muted">' + v.commentaire + '</span>' : ''}
+                                ${badge} <strong>${h.montant} FCFA</strong>
+                                ${h.auteur ? ' <span class="text-muted">— ' + h.auteur + '</span>' : ''}
+                                ${h.motif ? '<br><span class="text-muted">' + h.motif + '</span>' : ''}
                             </div>
-                            <div class="text-muted text-nowrap ms-2">${v.date}</div>
+                            <div class="text-muted text-nowrap ms-2">${h.date}</div>
                         </div>`;
                     }).join('');
 
-                    $('#compte-historique-liste').html(lignes);
+                    $('#compte-historique-dette-liste').html(lignesDette);
                 });
             }
 
             $('#groupes-gestionnaires').on('click', '.btn-detail-gestionnaire', function () {
                 compteGestionnaireId = $(this).data('id');
                 $('#compte-historique-liste').html('<p class="text-muted">Chargement…</p>');
+                $('#compte-historique-dette-liste').html('<p class="text-muted">Chargement…</p>');
                 $('#lien-historique-complet').attr('href', `{{ route('flotte.versements.index') }}?gestionnaire_id=${compteGestionnaireId}`);
                 chargerCompteGestionnaire();
                 modalCompte.show();
+            });
+
+            const modalAnnulerDetteEl = document.getElementById('modal-annuler-dette');
+            const modalAnnulerDette = modalAnnulerDetteEl ? new bootstrap.Modal(modalAnnulerDetteEl) : null;
+            const $formAnnulerDette = $('#form-annuler-dette');
+
+            function appliquerTypeAnnulationDette() {
+                if ($('#ad-type-total').is(':checked')) {
+                    $('#annuler-dette-montant').val(compteSoldeDuBrut > 0 ? compteSoldeDuBrut.toFixed(2) : '').prop('readonly', true);
+                } else {
+                    $('#annuler-dette-montant').val('').prop('readonly', false).trigger('focus');
+                }
+            }
+
+            $('#modal-annuler-dette input[name=type_annulation_dette]').on('change', appliquerTypeAnnulationDette);
+
+            $('#btn-annuler-dette').on('click', function () {
+                modalCompte.hide();
+                $formAnnulerDette[0].reset();
+                $formAnnulerDette.removeClass('was-validated');
+                $formAnnulerDette.find('.is-invalid').removeClass('is-invalid');
+                $('#annuler-dette-nom').text(compteGestionnaireNom);
+                $('#ad-type-total').prop('checked', true);
+                $('#annuler-dette-montant').attr('max', compteSoldeDuBrut);
+                appliquerTypeAnnulationDette();
+                modalAnnulerDette.show();
+            });
+
+            $formAnnulerDette.on('submit', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const formEl = $formAnnulerDette[0];
+                if (!formEl.checkValidity()) {
+                    $formAnnulerDette.addClass('was-validated');
+                    return;
+                }
+
+                $.post(`/flotte/gestionnaires/${compteGestionnaireId}/dette/annuler`, $formAnnulerDette.serialize())
+                    .done(function (res) {
+                        modalAnnulerDette.hide();
+                        Swal.fire({ icon: 'success', text: res.message, timer: 1800, showConfirmButton: false });
+                        chargerCompteGestionnaire();
+                        modalCompte.show();
+                    })
+                    .fail(function (xhr) {
+                        const erreurs = xhr.responseJSON?.errors;
+                        const msg = erreurs ? Object.values(erreurs).flat()[0] : (xhr.responseJSON?.message || 'Une erreur est survenue.');
+                        Swal.fire({ icon: 'error', text: msg });
+                    });
             });
 
             function resetValidationGestionnaire() {
