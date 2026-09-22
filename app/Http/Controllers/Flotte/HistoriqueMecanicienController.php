@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Flotte;
 
 use App\Http\Controllers\Controller;
 use App\Models\HistoriqueStatutVehicule;
-use App\Models\SortieStock;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -14,7 +13,7 @@ use Yajra\DataTables\Facades\DataTables;
 
 /**
  * Historique personnel d'un chef mécanicien : ses changements de statut
- * (dépannages traités) et ses sorties de pièces, tous véhicules confondus.
+ * (dépannages traités), tous véhicules confondus.
  */
 class HistoriqueMecanicienController extends Controller
 {
@@ -29,18 +28,12 @@ class HistoriqueMecanicienController extends Controller
     {
         Gate::authorize('flotte.vehicule.remise_circulation');
 
-        $userId = auth()->id();
-
         return response()->json([
-            'depannages_mois' => HistoriqueStatutVehicule::where('user_id', $userId)
+            'depannages_mois' => HistoriqueStatutVehicule::where('user_id', auth()->id())
                 ->where('ancien_statut_code', 'depannage')
                 ->where('nouveau_statut_code', 'en_circulation')
                 ->whereMonth('created_at', now()->month)
                 ->whereYear('created_at', now()->year)
-                ->count(),
-            'pieces_sorties_mois' => SortieStock::where('user_id', $userId)
-                ->where('nature', 'interne')
-                ->duMois()
                 ->count(),
         ]);
     }
@@ -59,24 +52,6 @@ class HistoriqueMecanicienController extends Controller
             ->editColumn('created_at', fn (HistoriqueStatutVehicule $h) => $h->created_at->format('d/m/Y H:i'))
             ->addColumn('transition', fn (HistoriqueStatutVehicule $h) => ($h->ancien_statut_libelle ?? 'Création').' → '.$h->nouveau_statut_libelle)
             ->editColumn('commentaire', fn (HistoriqueStatutVehicule $h) => $h->commentaire ?? '—')
-            ->make(true);
-    }
-
-    public function sorties(Request $request): JsonResponse
-    {
-        Gate::authorize('flotte.vehicule.remise_circulation');
-
-        $query = $this->filtrerPeriode(
-            SortieStock::where('user_id', auth()->id())->where('nature', 'interne')->withCount('lignes')->withSum('lignes', 'quantite'),
-            $request,
-            'date_sortie'
-        );
-
-        return DataTables::of($query)
-            ->editColumn('date_sortie', fn (SortieStock $s) => $s->date_sortie->format('d/m/Y'))
-            ->addColumn('lignes_count', fn (SortieStock $s) => (int) $s->lignes_count)
-            ->addColumn('quantite_totale', fn (SortieStock $s) => (int) $s->lignes_sum_quantite)
-            ->editColumn('motif', fn (SortieStock $s) => $s->motif ?? '—')
             ->make(true);
     }
 

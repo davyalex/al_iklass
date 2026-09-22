@@ -4,7 +4,6 @@ use App\Http\Controllers\Stock\AchatController;
 use App\Http\Controllers\Stock\ArticleController;
 use App\Http\Controllers\Stock\BonCommandeController;
 use App\Http\Controllers\Stock\CategorieArticleController;
-use App\Http\Controllers\Stock\DemandeSortieController;
 use App\Http\Controllers\Stock\EtatStockController;
 use App\Http\Controllers\Stock\FournisseurController;
 use App\Http\Controllers\Stock\InventaireController;
@@ -116,25 +115,5 @@ Route::middleware(['auth'])->prefix('stock')->name('stock.')->group(function () 
         Route::put('inventaires/lignes/{ligne}', [InventaireController::class, 'updateLigne'])->name('inventaires.lignes.update');
         Route::post('inventaires/{inventaire}/valider', [InventaireController::class, 'valider'])->name('inventaires.valider');
         Route::delete('inventaires/{inventaire}', [InventaireController::class, 'destroy'])->name('inventaires.destroy');
-    });
-
-    // Demandes de pièces : le chef mécanicien (stock.demande.creer) ne voit et
-    // ne crée que les siennes ; le gestionnaire de stock (stock.demande.traiter)
-    // voit tout et valide/rejette. Hors du groupe stock.tableau_bord.voir car
-    // le chef mécanicien n'a accès à aucune autre page du module Stock.
-    Route::middleware('permission:stock.demande.creer|stock.demande.traiter')->group(function () {
-        Route::get('demandes', [DemandeSortieController::class, 'index'])->name('demandes.index');
-        Route::get('demandes/data', [DemandeSortieController::class, 'data'])->name('demandes.data');
-        Route::get('demandes/kpis', [DemandeSortieController::class, 'kpis'])->name('demandes.kpis');
-        Route::get('demandes/{demande}', [DemandeSortieController::class, 'show'])->name('demandes.show');
-    });
-
-    Route::middleware('permission:stock.demande.creer')->group(function () {
-        Route::post('demandes', [DemandeSortieController::class, 'store'])->name('demandes.store');
-    });
-
-    Route::middleware('permission:stock.demande.traiter')->group(function () {
-        Route::post('demandes/{demande}/valider', [DemandeSortieController::class, 'valider'])->name('demandes.valider');
-        Route::post('demandes/{demande}/rejeter', [DemandeSortieController::class, 'rejeter'])->name('demandes.rejeter');
     });
 });

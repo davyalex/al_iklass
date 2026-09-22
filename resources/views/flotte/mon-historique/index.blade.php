@@ -10,14 +10,6 @@
                 </div>
             </div>
         </div>
-        <div class="col">
-            <div class="card shadow-sm border-0 bg-white h-100">
-                <div class="card-body">
-                    <div class="small text-muted">Sorties de pièces (mois)</div>
-                    <div class="h5 mb-0" style="color: var(--al-navy);" id="kpi-pieces-sorties-mois">0</div>
-                </div>
-            </div>
-        </div>
     </div>
 
     <div class="card shadow-sm border-0 bg-white mb-3">
@@ -44,49 +36,17 @@
     </div>
 
     <div class="card shadow-sm border-0 bg-white">
-        <div class="card-header bg-white border-0 pt-3">
-            <ul class="nav nav-tabs card-header-tabs" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-mes-statuts" type="button">Changements de statut</button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="onglet-mes-sorties" data-bs-toggle="tab" data-bs-target="#tab-mes-sorties" type="button">Sorties de pièces</button>
-                </li>
-            </ul>
-        </div>
-        <div class="card-body pt-3">
-            <div class="tab-content">
-                <div class="tab-pane fade show active" id="tab-mes-statuts">
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0 w-100" id="table-mes-statuts">
-                            <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>Véhicule</th>
-                                    <th>Transition</th>
-                                    <th>Commentaire</th>
-                                </tr>
-                            </thead>
-                        </table>
-                    </div>
-                </div>
-                <div class="tab-pane fade" id="tab-mes-sorties">
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0 w-100" id="table-mes-sorties">
-                            <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>Référence</th>
-                                    <th>Véhicule</th>
-                                    <th class="text-end">Articles</th>
-                                    <th class="text-end">Quantité</th>
-                                    <th>Motif</th>
-                                </tr>
-                            </thead>
-                        </table>
-                    </div>
-                </div>
-            </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 w-100" id="table-mes-statuts">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Véhicule</th>
+                        <th>Transition</th>
+                        <th>Commentaire</th>
+                    </tr>
+                </thead>
+            </table>
         </div>
     </div>
 
@@ -121,28 +81,9 @@
                 order: [[0, 'desc']],
             });
 
-            const tableSorties = $('#table-mes-sorties').DataTable({
-                processing: true,
-                serverSide: true,
-                ajax: { url: '{{ route('flotte.mon-historique.sorties') }}', data: (d) => Object.assign(d, filtres()) },
-                language: { url: 'https://cdn.datatables.net/plug-ins/2.1.8/i18n/fr-FR.json' },
-                columns: [
-                    { data: 'date_sortie', name: 'date_sortie' },
-                    { data: 'reference', name: 'reference' },
-                    { data: 'vehicule_code', name: 'vehicule_code' },
-                    { data: 'lignes_count', name: 'lignes_count', className: 'text-end', orderable: false },
-                    { data: 'quantite_totale', name: 'quantite_totale', className: 'text-end', orderable: false },
-                    { data: 'motif', name: 'motif' },
-                ],
-                order: [[0, 'desc']],
-            });
-
-            $('#onglet-mes-sorties').on('shown.bs.tab', () => tableSorties.columns.adjust());
-
             function rafraichirKpis() {
                 $.get('{{ route('flotte.mon-historique.kpis') }}', function (kpis) {
                     $('#kpi-depannages-mois').text(kpis.depannages_mois);
-                    $('#kpi-pieces-sorties-mois').text(kpis.pieces_sorties_mois);
                 });
             }
 
@@ -150,13 +91,11 @@
 
             $('#btn-filtrer-mon-historique').on('click', function () {
                 tableStatuts.ajax.reload();
-                tableSorties.ajax.reload();
             });
 
             $('#btn-reset-mon-historique').on('click', function () {
                 $('#filtres-mon-historique')[0].reset();
                 tableStatuts.ajax.reload();
-                tableSorties.ajax.reload();
             });
         });
         </script>

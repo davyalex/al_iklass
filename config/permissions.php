@@ -26,7 +26,6 @@ return [
             'stock.sortie.interne',
             'stock.sortie.vente',
             'stock.demande.creer',
-            'stock.demande.traiter',
             'stock.inventaire.gerer',
         ],
 

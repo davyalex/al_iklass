@@ -13,6 +13,8 @@ class DemoUserSeeder extends Seeder
         $comptes = [
             ['name' => 'Admin Démo', 'username' => 'admin.demo', 'telephone' => '0100000001', 'role' => 'admin'],
             ['name' => 'Gestionnaire Démo', 'username' => 'gestionnaire.demo', 'telephone' => '0100000002', 'role' => 'gestionnaire'],
+            ['name' => 'Gestionnaire Stock Démo', 'username' => 'gestionnaire.stock.demo', 'telephone' => '0100000003', 'role' => 'gestionnaire_stock'],
+            ['name' => 'Chef Mécanicien Démo', 'username' => 'chef.mecanicien.demo', 'telephone' => '0100000004', 'role' => 'chef_mecanicien'],
         ];
 
         // Par défaut, 10 gestionnaires au total (le compte démo ci-dessus + 9),
