@@ -60,8 +60,12 @@ Route::middleware(['auth'])->prefix('stock')->name('stock.')->group(function () 
 
         Route::get('sorties', [SortieStockController::class, 'index'])->name('sorties.index');
         Route::get('sorties/data', [SortieStockController::class, 'data'])->name('sorties.data');
+        Route::get('sorties/kpis', [SortieStockController::class, 'kpis'])->name('sorties.kpis');
         Route::get('sorties/export/excel', [SortieStockController::class, 'exportExcel'])->name('sorties.export.excel');
         Route::get('sorties/export/pdf', [SortieStockController::class, 'exportPdf'])->name('sorties.export.pdf');
+        Route::get('sorties/{sortie}', [SortieStockController::class, 'show'])->name('sorties.show');
+        Route::get('sorties/{sortie}/pdf', [SortieStockController::class, 'pdf'])->name('sorties.pdf');
+        Route::get('sorties/{sortie}/excel', [SortieStockController::class, 'exportExcelSingle'])->name('sorties.export.excel.single');
 
         Route::get('inventaires', [InventaireController::class, 'index'])->name('inventaires.index');
         Route::get('inventaires/data', [InventaireController::class, 'data'])->name('inventaires.data');

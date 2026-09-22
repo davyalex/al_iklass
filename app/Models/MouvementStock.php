@@ -17,7 +17,7 @@ class MouvementStock extends Model
         'article_id', 'article_reference', 'article_nom', 'type', 'nature',
         'quantite', 'prix_unitaire', 'prix_vente', 'motif',
         'vehicule_id', 'vehicule_code', 'vehicule_externe', 'acheteur',
-        'achat_id', 'inventaire_id', 'intervention_id', 'caisse_mouvement_id', 'user_id', 'date_mouvement',
+        'achat_id', 'sortie_id', 'inventaire_id', 'intervention_id', 'caisse_mouvement_id', 'user_id', 'date_mouvement',
     ];
 
     protected function casts(): array
@@ -47,6 +47,11 @@ class MouvementStock extends Model
     public function inventaire(): BelongsTo
     {
         return $this->belongsTo(Inventaire::class);
+    }
+
+    public function sortie(): BelongsTo
+    {
+        return $this->belongsTo(SortieStock::class, 'sortie_id');
     }
 
     public function mouvementCaisse(): BelongsTo

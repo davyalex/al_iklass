@@ -7,108 +7,160 @@ use App\Models\Article;
 use App\Models\Caisse;
 use App\Models\MouvementCaisse;
 use App\Models\MouvementStock;
+use App\Models\SortieLigne;
+use App\Models\SortieStock;
 use App\Models\Vehicule;
 use Illuminate\Support\Facades\DB;
 
 class SortieStockService
 {
     /**
-     * @param  array{article_id: int, quantite: int, vehicule_id: int, motif: string, user_id: int}  $data
+     * @param  array{
+     *     vehicule_id: int,
+     *     motif: string,
+     *     date_sortie?: ?string,
+     *     reference?: ?string,
+     *     user_id: int,
+     *     lignes: list<array{article_id: int, quantite: int}>,
+     * }  $data
      *
      * @throws StockInsuffisantException
      */
-    public function sortieInterne(array $data): MouvementStock
+    public function creerInterne(array $data): SortieStock
     {
         return DB::transaction(function () use ($data) {
-            $article = $this->verrouillerEtVerifierStock($data['article_id'], $data['quantite']);
             $vehicule = Vehicule::findOrFail($data['vehicule_id']);
 
-            $article->decrement('quantite_stock', $data['quantite']);
-
-            return MouvementStock::create([
-                'article_id' => $article->id,
-                'article_reference' => $article->reference,
-                'article_nom' => $article->nom,
-                'type' => 'sortie',
+            $sortie = SortieStock::create([
+                'reference' => ($data['reference'] ?? null) ?: $this->genererReference(),
                 'nature' => 'interne',
-                'quantite' => $data['quantite'],
-                'prix_unitaire' => $article->prix_achat,
+                'date_sortie' => $data['date_sortie'] ?? now(),
                 'motif' => $data['motif'],
                 'vehicule_id' => $vehicule->id,
                 'vehicule_code' => $vehicule->code,
                 'user_id' => $data['user_id'],
-                'date_mouvement' => now(),
             ]);
+
+            $montantTotal = 0;
+
+            foreach ($data['lignes'] as $ligneData) {
+                $montantTotal += $this->enregistrerLigne($sortie, $ligneData);
+            }
+
+            $sortie->update(['montant_total' => $montantTotal]);
+
+            return $sortie->fresh('lignes');
         });
     }
 
     /**
      * @param  array{
-     *     article_id: int,
-     *     quantite: int,
-     *     prix_vente: float,
      *     vehicule_externe: string,
      *     acheteur: string,
      *     motif: string,
+     *     date_sortie?: ?string,
+     *     reference?: ?string,
      *     user_id: int,
+     *     lignes: list<array{article_id: int, quantite: int, prix_vente: float}>,
      * }  $data
      *
      * @throws StockInsuffisantException
      */
-    public function sortieExterne(array $data): MouvementStock
+    public function creerExterne(array $data): SortieStock
     {
         return DB::transaction(function () use ($data) {
-            $article = $this->verrouillerEtVerifierStock($data['article_id'], $data['quantite']);
-
-            $article->decrement('quantite_stock', $data['quantite']);
-
-            $mouvement = MouvementStock::create([
-                'article_id' => $article->id,
-                'article_reference' => $article->reference,
-                'article_nom' => $article->nom,
-                'type' => 'sortie',
+            $sortie = SortieStock::create([
+                'reference' => ($data['reference'] ?? null) ?: $this->genererReference(),
                 'nature' => 'externe',
-                'quantite' => $data['quantite'],
-                'prix_unitaire' => $article->prix_achat,
-                'prix_vente' => $data['prix_vente'],
+                'date_sortie' => $data['date_sortie'] ?? now(),
                 'motif' => $data['motif'],
                 'vehicule_externe' => $data['vehicule_externe'],
                 'acheteur' => $data['acheteur'],
                 'user_id' => $data['user_id'],
-                'date_mouvement' => now(),
             ]);
+
+            $montantTotal = 0;
+
+            foreach ($data['lignes'] as $ligneData) {
+                $montantTotal += $this->enregistrerLigne($sortie, $ligneData);
+            }
 
             $caisse = Caisse::where('type', 'ventes_externes')->firstOrFail();
 
             $mouvementCaisse = MouvementCaisse::create([
                 'caisse_id' => $caisse->id,
                 'sens' => 'entree',
-                'montant' => $data['quantite'] * $data['prix_vente'],
-                'motif' => "Vente externe — {$article->nom}",
-                'origine_type' => MouvementStock::class,
-                'origine_id' => $mouvement->id,
+                'montant' => $montantTotal,
+                'motif' => "Vente externe — {$sortie->reference}",
+                'origine_type' => SortieStock::class,
+                'origine_id' => $sortie->id,
                 'user_id' => $data['user_id'],
                 'date_mouvement' => now(),
             ]);
 
-            $mouvement->update(['caisse_mouvement_id' => $mouvementCaisse->id]);
+            $sortie->update(['montant_total' => $montantTotal, 'caisse_mouvement_id' => $mouvementCaisse->id]);
 
-            return $mouvement;
+            return $sortie->fresh('lignes');
         });
     }
 
     /**
+     * @param  array{article_id: int, quantite: int, prix_vente?: float}  $ligneData
+     *
      * @throws StockInsuffisantException
      */
-    private function verrouillerEtVerifierStock(int $articleId, int $quantite): Article
+    private function enregistrerLigne(SortieStock $sortie, array $ligneData): float
     {
         /** @var Article $article */
-        $article = Article::lockForUpdate()->findOrFail($articleId);
+        $article = Article::lockForUpdate()->findOrFail($ligneData['article_id']);
 
-        if ($quantite > $article->quantite_stock) {
-            throw new StockInsuffisantException($article, $quantite);
+        if ($ligneData['quantite'] > $article->quantite_stock) {
+            throw new StockInsuffisantException($article, $ligneData['quantite']);
         }
 
-        return $article;
+        $prixVente = $sortie->nature === 'externe' ? (float) $ligneData['prix_vente'] : null;
+        $montant = $ligneData['quantite'] * ($prixVente ?? (float) $article->prix_achat);
+
+        $article->decrement('quantite_stock', $ligneData['quantite']);
+
+        SortieLigne::create([
+            'sortie_id' => $sortie->id,
+            'article_id' => $article->id,
+            'article_reference' => $article->reference,
+            'article_nom' => $article->nom,
+            'quantite' => $ligneData['quantite'],
+            'prix_unitaire' => $article->prix_achat,
+            'prix_vente' => $prixVente,
+            'montant' => $montant,
+        ]);
+
+        MouvementStock::create([
+            'article_id' => $article->id,
+            'article_reference' => $article->reference,
+            'article_nom' => $article->nom,
+            'type' => 'sortie',
+            'nature' => $sortie->nature,
+            'quantite' => $ligneData['quantite'],
+            'prix_unitaire' => $article->prix_achat,
+            'prix_vente' => $prixVente,
+            'motif' => $sortie->motif,
+            'vehicule_id' => $sortie->vehicule_id,
+            'vehicule_code' => $sortie->vehicule_code,
+            'vehicule_externe' => $sortie->vehicule_externe,
+            'acheteur' => $sortie->acheteur,
+            'sortie_id' => $sortie->id,
+            'user_id' => $sortie->user_id,
+            'date_mouvement' => now(),
+        ]);
+
+        return $montant;
+    }
+
+    private function genererReference(): string
+    {
+        $annee = now()->year;
+        $sequence = SortieStock::withTrashed()->whereYear('date_sortie', $annee)->count() + 1;
+
+        return sprintf('SOR-%d-%04d', $annee, $sequence);
     }
 }

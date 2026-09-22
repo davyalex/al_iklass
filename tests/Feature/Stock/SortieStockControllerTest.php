@@ -4,6 +4,7 @@ namespace Tests\Feature\Stock;
 
 use App\Models\Article;
 use App\Models\Caisse;
+use App\Models\SortieStock;
 use App\Models\User;
 use App\Models\Vehicule;
 use Database\Seeders\RolePermissionSeeder;
@@ -23,59 +24,90 @@ class SortieStockControllerTest extends TestCase
         Caisse::firstOrCreate(['type' => 'ventes_externes'], ['type' => 'ventes_externes', 'libelle' => 'Ventes externes']);
     }
 
-    public function test_gestionnaire_stock_can_record_sortie_interne(): void
+    public function test_gestionnaire_stock_peut_afficher_la_page_sorties(): void
     {
         $user = User::factory()->create()->assignRole('gestionnaire_stock');
-        $article = Article::factory()->create(['quantite_stock' => 10]);
+        Article::factory()->create(['quantite_stock' => 10]);
+        Vehicule::factory()->create();
+
+        $this->actingAs($user)->get(route('stock.sorties.index'))
+            ->assertOk()
+            ->assertSee('Sortie interne')
+            ->assertSee('Vente externe');
+    }
+
+    public function test_gestionnaire_stock_can_record_sortie_interne_avec_plusieurs_lignes(): void
+    {
+        $user = User::factory()->create()->assignRole('gestionnaire_stock');
+        $article1 = Article::factory()->create(['quantite_stock' => 10]);
+        $article2 = Article::factory()->create(['quantite_stock' => 10]);
         $vehicule = Vehicule::factory()->create();
 
         $response = $this->actingAs($user)->postJson(route('stock.sorties.store'), [
             'nature' => 'interne',
-            'article_id' => $article->id,
-            'quantite' => 3,
             'vehicule_id' => $vehicule->id,
             'motif' => 'Entretien',
+            'lignes' => [
+                ['article_id' => $article1->id, 'quantite' => 3],
+                ['article_id' => $article2->id, 'quantite' => 2],
+            ],
         ]);
 
         $response->assertCreated();
-        $this->assertSame(7, $article->fresh()->quantite_stock);
+        $this->assertSame(7, $article1->fresh()->quantite_stock);
+        $this->assertSame(8, $article2->fresh()->quantite_stock);
+
+        $sortie = SortieStock::first();
+        $this->assertSame(2, $sortie->lignes()->count());
     }
 
-    public function test_gestionnaire_stock_can_record_vente_externe(): void
+    public function test_gestionnaire_stock_can_record_vente_externe_avec_plusieurs_lignes(): void
     {
         $user = User::factory()->create()->assignRole('gestionnaire_stock');
-        $article = Article::factory()->create(['quantite_stock' => 10]);
+        $article1 = Article::factory()->create(['quantite_stock' => 10, 'prix_achat' => 1000]);
+        $article2 = Article::factory()->create(['quantite_stock' => 10, 'prix_achat' => 500]);
 
         $response = $this->actingAs($user)->postJson(route('stock.sorties.store'), [
             'nature' => 'externe',
-            'article_id' => $article->id,
-            'quantite' => 2,
-            'prix_vente' => 3000,
             'vehicule_externe' => 'CI-0001-AA',
             'acheteur' => 'Client Test',
             'motif' => 'Vente',
+            'lignes' => [
+                ['article_id' => $article1->id, 'quantite' => 2, 'prix_vente' => 3000],
+                ['article_id' => $article2->id, 'quantite' => 1, 'prix_vente' => 800],
+            ],
         ]);
 
         $response->assertCreated();
-        $this->assertSame(8, $article->fresh()->quantite_stock);
+        $this->assertSame(8, $article1->fresh()->quantite_stock);
+        $this->assertSame(9, $article2->fresh()->quantite_stock);
+
+        $sortie = SortieStock::first();
+        $this->assertEquals(6800, (float) $sortie->montant_total);
+        $this->assertNotNull($sortie->caisse_mouvement_id);
     }
 
-    public function test_insufficient_stock_returns_422_with_flag(): void
+    public function test_insufficient_stock_returns_422_with_flag_et_annule_toute_la_sortie(): void
     {
         $user = User::factory()->create()->assignRole('gestionnaire_stock');
-        $article = Article::factory()->create(['quantite_stock' => 1]);
+        $articleOk = Article::factory()->create(['quantite_stock' => 10]);
+        $articleInsuffisant = Article::factory()->create(['quantite_stock' => 1]);
         $vehicule = Vehicule::factory()->create();
 
         $response = $this->actingAs($user)->postJson(route('stock.sorties.store'), [
             'nature' => 'interne',
-            'article_id' => $article->id,
-            'quantite' => 5,
             'vehicule_id' => $vehicule->id,
             'motif' => 'Test',
+            'lignes' => [
+                ['article_id' => $articleOk->id, 'quantite' => 2],
+                ['article_id' => $articleInsuffisant->id, 'quantite' => 5],
+            ],
         ]);
 
         $response->assertStatus(422)->assertJson(['insufficient_stock' => true]);
-        $this->assertSame(1, $article->fresh()->quantite_stock);
+        $this->assertSame(10, $articleOk->fresh()->quantite_stock);
+        $this->assertSame(1, $articleInsuffisant->fresh()->quantite_stock);
+        $this->assertSame(0, SortieStock::count());
     }
 
     public function test_chef_mecanicien_cannot_record_sortie(): void
@@ -86,10 +118,11 @@ class SortieStockControllerTest extends TestCase
 
         $this->actingAs($user)->postJson(route('stock.sorties.store'), [
             'nature' => 'interne',
-            'article_id' => $article->id,
-            'quantite' => 1,
             'vehicule_id' => $vehicule->id,
             'motif' => 'Test',
+            'lignes' => [
+                ['article_id' => $article->id, 'quantite' => 1],
+            ],
         ])->assertForbidden();
     }
 
@@ -101,21 +134,22 @@ class SortieStockControllerTest extends TestCase
 
         $this->actingAs($user)->postJson(route('stock.sorties.store'), [
             'nature' => 'interne',
-            'article_id' => $article->id,
-            'quantite' => 1,
             'vehicule_id' => $vehicule->id,
             'motif' => 'Test',
+            'lignes' => [
+                ['article_id' => $article->id, 'quantite' => 1],
+            ],
         ])->assertCreated();
 
         $autreArticle = Article::factory()->create(['quantite_stock' => 10]);
         $this->actingAs($user)->postJson(route('stock.sorties.store'), [
             'nature' => 'externe',
-            'article_id' => $autreArticle->id,
-            'quantite' => 1,
-            'prix_vente' => 1000,
             'vehicule_externe' => 'CI-0002-BB',
             'acheteur' => 'Autre client',
             'motif' => 'Vente',
+            'lignes' => [
+                ['article_id' => $autreArticle->id, 'quantite' => 1, 'prix_vente' => 1000],
+            ],
         ])->assertCreated();
 
         $response = $this->actingAs($user)->getJson(route('stock.sorties.data', [
@@ -127,7 +161,31 @@ class SortieStockControllerTest extends TestCase
         $this->assertSame(1, $response->json('recordsFiltered'));
     }
 
-    public function test_gestionnaire_stock_can_export_sorties_excel_and_pdf(): void
+    public function test_kpis_reflechissent_les_sorties_du_jour_et_du_mois(): void
+    {
+        $user = User::factory()->create()->assignRole('gestionnaire_stock');
+        $article = Article::factory()->create(['quantite_stock' => 10, 'prix_achat' => 1000]);
+        $vehicule = Vehicule::factory()->create();
+
+        $this->actingAs($user)->postJson(route('stock.sorties.store'), [
+            'nature' => 'interne',
+            'vehicule_id' => $vehicule->id,
+            'motif' => 'Test',
+            'lignes' => [
+                ['article_id' => $article->id, 'quantite' => 3],
+            ],
+        ])->assertCreated();
+
+        $response = $this->actingAs($user)->getJson(route('stock.sorties.kpis'));
+
+        $response->assertOk();
+        $this->assertSame(1, $response->json('sorties_jour'));
+        $this->assertSame(1, $response->json('sorties_mois'));
+        $this->assertSame(3, $response->json('quantite_mois'));
+        $this->assertEquals(3000, $response->json('valeur_mois'));
+    }
+
+    public function test_show_retourne_la_sortie_avec_ses_lignes(): void
     {
         $user = User::factory()->create()->assignRole('gestionnaire_stock');
         $article = Article::factory()->create(['quantite_stock' => 10]);
@@ -135,11 +193,37 @@ class SortieStockControllerTest extends TestCase
 
         $this->actingAs($user)->postJson(route('stock.sorties.store'), [
             'nature' => 'interne',
-            'article_id' => $article->id,
-            'quantite' => 1,
             'vehicule_id' => $vehicule->id,
             'motif' => 'Test',
+            'lignes' => [
+                ['article_id' => $article->id, 'quantite' => 1],
+            ],
         ])->assertCreated();
+
+        $sortie = SortieStock::first();
+
+        $response = $this->actingAs($user)->getJson(route('stock.sorties.show', $sortie));
+
+        $response->assertOk();
+        $this->assertCount(1, $response->json('lignes'));
+    }
+
+    public function test_gestionnaire_stock_can_export_sorties_excel_et_pdf(): void
+    {
+        $user = User::factory()->create()->assignRole('gestionnaire_stock');
+        $article = Article::factory()->create(['quantite_stock' => 10]);
+        $vehicule = Vehicule::factory()->create();
+
+        $this->actingAs($user)->postJson(route('stock.sorties.store'), [
+            'nature' => 'interne',
+            'vehicule_id' => $vehicule->id,
+            'motif' => 'Test',
+            'lignes' => [
+                ['article_id' => $article->id, 'quantite' => 1],
+            ],
+        ])->assertCreated();
+
+        $sortie = SortieStock::first();
 
         $this->actingAs($user)->get(route('stock.sorties.export.excel'))
             ->assertOk()
@@ -148,6 +232,14 @@ class SortieStockControllerTest extends TestCase
         $this->actingAs($user)->get(route('stock.sorties.export.pdf'))
             ->assertOk()
             ->assertHeader('content-type', 'application/pdf');
+
+        $this->actingAs($user)->get(route('stock.sorties.pdf', $sortie))
+            ->assertOk()
+            ->assertHeader('content-type', 'application/pdf');
+
+        $this->actingAs($user)->get(route('stock.sorties.export.excel.single', $sortie))
+            ->assertOk()
+            ->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     }
 
     public function test_chef_mecanicien_cannot_export_sorties(): void

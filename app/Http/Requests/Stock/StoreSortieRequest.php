@@ -16,15 +16,20 @@ class StoreSortieRequest extends FormRequest
 
     public function rules(): array
     {
+        $estExterne = $this->input('nature') === 'externe';
+
         return [
             'nature' => ['required', Rule::in(['interne', 'externe'])],
-            'article_id' => ['required', 'exists:articles,id'],
-            'quantite' => ['required', 'integer', 'min:1'],
             'motif' => ['required', 'string', 'max:255'],
+            'reference' => ['nullable', 'string', 'max:50'],
+            'date_sortie' => ['nullable', 'date'],
             'vehicule_id' => ['required_if:nature,interne', 'nullable', 'exists:vehicules,id'],
-            'prix_vente' => ['required_if:nature,externe', 'nullable', 'numeric', 'min:0'],
             'vehicule_externe' => ['required_if:nature,externe', 'nullable', 'string', 'max:100'],
             'acheteur' => ['required_if:nature,externe', 'nullable', 'string', 'max:255'],
+            'lignes' => ['required', 'array', 'min:1'],
+            'lignes.*.article_id' => ['required', 'exists:articles,id'],
+            'lignes.*.quantite' => ['required', 'integer', 'min:1'],
+            'lignes.*.prix_vente' => [$estExterne ? 'required' : 'nullable', 'numeric', 'min:0'],
         ];
     }
 }

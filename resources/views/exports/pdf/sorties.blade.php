@@ -9,39 +9,48 @@
         table { width: 100%; border-collapse: collapse; }
         th, td { border: 1px solid #ccc; padding: 5px 6px; text-align: left; }
         th { background-color: #e6f2fb; }
+        tfoot td { font-weight: bold; background-color: #f5f5f5; }
     </style>
 </head>
 <body>
     <h1>Sorties de stock</h1>
-    <div class="meta">Édité le {{ now()->format('d/m/Y H:i') }} — {{ $mouvements->count() }} ligne(s)</div>
+    <div class="meta">Édité le {{ now()->format('d/m/Y H:i') }} — {{ $sorties->count() }} sortie(s)</div>
 
     <table>
         <thead>
             <tr>
                 <th>Date</th>
-                <th>Article</th>
+                <th>Référence</th>
                 <th>Nature</th>
-                <th>Quantité</th>
+                <th>Articles</th>
+                <th>Quantité totale</th>
                 <th>Destination</th>
-                <th>Prix de vente (FCFA)</th>
+                <th>Montant (FCFA)</th>
             </tr>
         </thead>
         <tbody>
-            @foreach ($mouvements as $mouvement)
+            @foreach ($sorties as $sortie)
                 <tr>
-                    <td>{{ $mouvement->date_mouvement->format('d/m/Y H:i') }}</td>
-                    <td>{{ $mouvement->article_nom }}</td>
-                    <td>{{ $mouvement->nature === 'interne' ? 'Interne' : 'Vente externe' }}</td>
-                    <td>{{ $mouvement->quantite }}</td>
+                    <td>{{ $sortie->date_sortie->format('d/m/Y') }}</td>
+                    <td>{{ $sortie->reference }}</td>
+                    <td>{{ $sortie->nature === 'interne' ? 'Interne' : 'Vente externe' }}</td>
+                    <td>{{ $sortie->lignes->count() }}</td>
+                    <td>{{ $sortie->lignes->sum('quantite') }}</td>
                     <td>
-                        {{ $mouvement->nature === 'interne'
-                            ? ($mouvement->vehicule_code ?? '—')
-                            : trim(($mouvement->vehicule_externe ?? '').' / '.($mouvement->acheteur ?? '')) }}
+                        {{ $sortie->nature === 'interne'
+                            ? ($sortie->vehicule_code ?? '—')
+                            : trim(($sortie->vehicule_externe ?? '').' / '.($sortie->acheteur ?? '')) }}
                     </td>
-                    <td>{{ $mouvement->prix_vente !== null ? number_format((float) $mouvement->prix_vente, 0, ',', ' ') : '—' }}</td>
+                    <td>{{ number_format((float) $sortie->montant_total, 0, ',', ' ') }}</td>
                 </tr>
             @endforeach
         </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="6">Total</td>
+                <td>{{ number_format((float) $sorties->sum('montant_total'), 0, ',', ' ') }}</td>
+            </tr>
+        </tfoot>
     </table>
 </body>
 </html>

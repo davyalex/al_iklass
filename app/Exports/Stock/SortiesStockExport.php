@@ -2,7 +2,7 @@
 
 namespace App\Exports\Stock;
 
-use App\Models\MouvementStock;
+use App\Models\SortieStock;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
@@ -12,36 +12,37 @@ use Maatwebsite\Excel\Concerns\WithMapping;
 class SortiesStockExport implements FromCollection, ShouldAutoSize, WithHeadings, WithMapping
 {
     /**
-     * @param  Collection<int, MouvementStock>  $mouvements
+     * @param  Collection<int, SortieStock>  $sorties
      */
-    public function __construct(private readonly Collection $mouvements) {}
+    public function __construct(private readonly Collection $sorties) {}
 
     public function collection(): Collection
     {
-        return $this->mouvements;
+        return $this->sorties;
     }
 
     public function headings(): array
     {
-        return ['Date', 'Article', 'Nature', 'Quantité', 'Destination', 'Prix de vente (FCFA)'];
+        return ['Date', 'Référence', 'Nature', 'Articles', 'Quantité totale', 'Destination', 'Montant (FCFA)'];
     }
 
     /**
      * @return array<int, mixed>
      */
-    public function map($mouvement): array
+    public function map($sortie): array
     {
-        $destination = $mouvement->nature === 'interne'
-            ? ($mouvement->vehicule_code ?? '—')
-            : trim(($mouvement->vehicule_externe ?? '').' / '.($mouvement->acheteur ?? ''));
+        $destination = $sortie->nature === 'interne'
+            ? ($sortie->vehicule_code ?? '—')
+            : trim(($sortie->vehicule_externe ?? '').' / '.($sortie->acheteur ?? ''));
 
         return [
-            $mouvement->date_mouvement->format('d/m/Y H:i'),
-            $mouvement->article_nom,
-            $mouvement->nature === 'interne' ? 'Interne' : 'Vente externe',
-            $mouvement->quantite,
+            $sortie->date_sortie->format('d/m/Y'),
+            $sortie->reference,
+            $sortie->nature === 'interne' ? 'Interne' : 'Vente externe',
+            $sortie->lignes->count(),
+            $sortie->lignes->sum('quantite'),
             $destination,
-            $mouvement->prix_vente !== null ? (float) $mouvement->prix_vente : '—',
+            (float) $sortie->montant_total,
         ];
     }
 }
