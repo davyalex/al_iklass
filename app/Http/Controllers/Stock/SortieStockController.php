@@ -56,8 +56,7 @@ class SortieStockController extends Controller
     {
         Gate::authorize('viewAny', SortieStock::class);
 
-        $query = $this->filtrer(SortieStock::query()->withCount('lignes')->withSum('lignes', 'quantite'), $request)
-            ->select('sorties_stock.*');
+        $query = $this->filtrer(SortieStock::query()->withCount('lignes')->withSum('lignes', 'quantite'), $request);
 
         return DataTables::of($query)
             ->editColumn('date_sortie', fn (SortieStock $s) => $s->date_sortie->format('d/m/Y'))
@@ -68,6 +67,7 @@ class SortieStockController extends Controller
             ->addColumn('destination', fn (SortieStock $s) => $s->nature === 'interne'
                 ? ($s->vehicule_code ?? '—')
                 : trim(($s->vehicule_externe ?? '').' / '.($s->acheteur ?? '')))
+            ->addColumn('lignes_count', fn (SortieStock $s) => (int) $s->lignes_count)
             ->addColumn('quantite_totale', fn (SortieStock $s) => (int) $s->lignes_sum_quantite)
             ->rawColumns(['nature_badge'])
             ->make(true);

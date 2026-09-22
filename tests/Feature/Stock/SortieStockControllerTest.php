@@ -162,6 +162,31 @@ class SortieStockControllerTest extends TestCase
         $this->assertSame(1, $response->json('recordsFiltered'));
     }
 
+    public function test_data_expose_le_nombre_et_la_quantite_de_lignes_par_sortie(): void
+    {
+        $user = User::factory()->create()->assignRole('gestionnaire_stock');
+        $article1 = Article::factory()->create(['quantite_stock' => 10]);
+        $article2 = Article::factory()->create(['quantite_stock' => 10]);
+        $vehicule = Vehicule::factory()->create();
+
+        $this->actingAs($user)->postJson(route('stock.sorties.store'), [
+            'nature' => 'interne',
+            'vehicule_id' => $vehicule->id,
+            'motif' => 'Test',
+            'lignes' => [
+                ['article_id' => $article1->id, 'quantite' => 3],
+                ['article_id' => $article2->id, 'quantite' => 2],
+            ],
+        ])->assertCreated();
+
+        $response = $this->actingAs($user)->getJson(route('stock.sorties.data'));
+
+        $response->assertOk();
+        $ligne = $response->json('data.0');
+        $this->assertSame(2, $ligne['lignes_count']);
+        $this->assertSame(5, $ligne['quantite_totale']);
+    }
+
     public function test_kpis_sont_dissocies_entre_interne_et_externe(): void
     {
         $user = User::factory()->create()->assignRole('gestionnaire_stock');
