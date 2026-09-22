@@ -7,6 +7,7 @@ use App\Http\Requests\Flotte\RemiseEnCirculationRequest;
 use App\Http\Requests\Flotte\StoreVehiculeRequest;
 use App\Http\Requests\Flotte\UpdateVehiculeRequest;
 use App\Http\Requests\Flotte\UpdateVehiculeStatutRequest;
+use App\Models\Article;
 use App\Models\ModePaiement;
 use App\Models\StatutVehicule;
 use App\Models\User;
@@ -55,7 +56,22 @@ class VehiculeController extends Controller
             $fenetreStatut = ['debut' => $debutFenetre->toIso8601String(), 'fin' => $finFenetre->toIso8601String()];
         }
 
-        return view('flotte.vehicules.index', compact('vehicules', 'statuts', 'vehiculesParStatut', 'gestionnaires', 'kpis', 'fenetreStatut', 'modesPaiement'));
+        // Un chef mécanicien "pur" (aucune vue globale ni "mes véhicules") n'a
+        // qu'un seul usage de cette page : traiter les véhicules en dépannage.
+        // On lui pré-filtre donc la vue sur ce statut à la connexion. Note :
+        // $peutVoirTout inclut déjà remise_circulation, donc on retteste
+        // flotte.vehicule.voir seul ici pour isoler ce profil précis.
+        $statutParDefaut = (! $request->user()->can('flotte.vehicule.voir')
+                && ! $request->user()->can('flotte.vehicule.voir_affectes')
+                && $request->user()->can('flotte.vehicule.remise_circulation'))
+            ? 'depannage'
+            : null;
+
+        $articles = $request->user()->can('stock.sortie.interne')
+            ? Article::where('actif', true)->orderBy('nom')->get()
+            : collect();
+
+        return view('flotte.vehicules.index', compact('vehicules', 'statuts', 'vehiculesParStatut', 'gestionnaires', 'kpis', 'fenetreStatut', 'modesPaiement', 'statutParDefaut', 'articles'));
     }
 
     public function show(Vehicule $vehicule): JsonResponse
@@ -69,30 +85,33 @@ class VehiculeController extends Controller
     {
         Gate::authorize('view', $vehicule);
 
-        $sorties = $vehicule->mouvementsStock()
+        $mouvements = $vehicule->mouvementsStock()
+            ->with('user')
             ->orderByDesc('date_mouvement')
-            ->limit(20)
+            ->orderByDesc('id')
             ->get()
             ->map(fn ($mouvement) => [
                 'type' => 'mouvement_stock',
                 'date' => $mouvement->date_mouvement,
                 'libelle' => ($mouvement->type === 'sortie' ? 'Sortie' : 'Entrée').' — '.$mouvement->article_nom.' (qté '.$mouvement->quantite.')',
-                'detail' => $mouvement->nature,
+                'auteur' => $mouvement->user?->name,
+                'commentaire' => $mouvement->motif,
             ]);
 
         $changementsStatut = $vehicule->historiqueStatuts()
             ->with('user')
             ->orderByDesc('created_at')
-            ->limit(20)
+            ->orderByDesc('id')
             ->get()
             ->map(fn ($historique) => [
                 'type' => 'changement_statut',
                 'date' => $historique->created_at,
                 'libelle' => ($historique->ancien_statut_libelle ?? 'Création').' → '.$historique->nouveau_statut_libelle,
-                'detail' => $historique->user?->name,
+                'auteur' => $historique->user?->name,
+                'commentaire' => $historique->commentaire,
             ]);
 
-        $evenements = $sorties->concat($changementsStatut)->sortByDesc('date')->values();
+        $evenements = $mouvements->concat($changementsStatut)->sortByDesc('date')->values();
 
         return response()->json(['evenements' => $evenements]);
     }

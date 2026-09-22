@@ -2,9 +2,11 @@
 
 namespace Tests\Feature\Flotte;
 
+use App\Models\Article;
 use App\Models\StatutVehicule;
 use App\Models\User;
 use App\Models\Vehicule;
+use Database\Seeders\ParametreSeeder;
 use Database\Seeders\RolePermissionSeeder;
 use Database\Seeders\StatutVehiculeSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -20,6 +22,10 @@ class VehiculeControllerTest extends TestCase
 
         $this->seed(RolePermissionSeeder::class);
         $this->seed(StatutVehiculeSeeder::class);
+        // Cf. GestionnaireControllerTest::setUp() : évite que le filet de
+        // sécurité de réinitialisation quotidienne ne modifie les statuts
+        // des véhicules du test au premier accès à une page flotte.
+        $this->seed(ParametreSeeder::class);
     }
 
     public function test_admin_can_create_vehicule_with_gestionnaire(): void
@@ -200,6 +206,54 @@ class VehiculeControllerTest extends TestCase
         $this->assertSame('changement_statut', $evenements[0]['type']);
     }
 
+    public function test_historique_endpoint_expose_le_rapport_de_remise_en_circulation(): void
+    {
+        $mecanicien = User::factory()->create()->assignRole('chef_mecanicien');
+        $statutDepannage = StatutVehicule::where('code', 'depannage')->firstOrFail();
+        $vehicule = Vehicule::factory()->create(['statut_id' => $statutDepannage->id]);
+
+        $this->actingAs($mecanicien)->postJson(route('flotte.vehicules.remise-circulation', $vehicule), [
+            'rapport' => 'Changement de la courroie de distribution.',
+        ])->assertOk();
+
+        $response = $this->actingAs($mecanicien)->getJson(route('flotte.vehicules.historique', $vehicule));
+
+        $response->assertOk();
+        $evenement = collect($response->json('evenements'))->firstWhere('type', 'changement_statut');
+        $this->assertSame('Changement de la courroie de distribution.', $evenement['commentaire']);
+        $this->assertSame($mecanicien->name, $evenement['auteur']);
+    }
+
+    public function test_chef_mecanicien_a_le_statut_depannage_preselectionne_par_defaut(): void
+    {
+        $mecanicien = User::factory()->create()->assignRole('chef_mecanicien');
+
+        $response = $this->actingAs($mecanicien)->get(route('flotte.vehicules.index'));
+
+        $response->assertOk();
+        $this->assertSame('depannage', $response->viewData('statutParDefaut'));
+    }
+
+    public function test_admin_na_pas_de_statut_preselectionne_par_defaut(): void
+    {
+        $admin = User::factory()->create()->assignRole('admin');
+
+        $response = $this->actingAs($admin)->get(route('flotte.vehicules.index'));
+
+        $response->assertOk();
+        $this->assertNull($response->viewData('statutParDefaut'));
+    }
+
+    public function test_chef_mecanicien_voit_le_bouton_piece_utilisee_mais_pas_admin_sans_le_droit(): void
+    {
+        $mecanicien = User::factory()->create()->assignRole('chef_mecanicien');
+        $article = Article::factory()->create(['actif' => true]);
+
+        $response = $this->actingAs($mecanicien)->get(route('flotte.vehicules.index'));
+
+        $response->assertOk()->assertSee('Pièce utilisée')->assertSee($article->nom);
+    }
+
     public function test_admin_can_change_statut_quickly(): void
     {
         $admin = User::factory()->create()->assignRole('admin');
@@ -215,19 +269,10 @@ class VehiculeControllerTest extends TestCase
         $this->assertDatabaseHas('vehicules', ['id' => $vehicule->id, 'statut_id' => $statutDepannage->id, 'actif' => false]);
     }
 
-    public function test_gestionnaire_cannot_change_statut(): void
-    {
-        $gestionnaire = User::factory()->create()->assignRole('gestionnaire');
-        $statutCirculation = StatutVehicule::where('code', 'en_circulation')->firstOrFail();
-        $statutDepannage = StatutVehicule::where('code', 'depannage')->firstOrFail();
-        $vehicule = Vehicule::factory()->create(['statut_id' => $statutCirculation->id, 'gestionnaire_id' => $gestionnaire->id]);
-
-        $response = $this->actingAs($gestionnaire)->patchJson(route('flotte.vehicules.statut', $vehicule), [
-            'statut_id' => $statutDepannage->id,
-        ]);
-
-        $response->assertForbidden();
-    }
+    // Un gestionnaire PEUT changer le statut de ses propres véhicules
+    // pendant la fenêtre configurée (et est refusé hors fenêtre, ou sur un
+    // véhicule qui ne lui est pas affecté) : cf. StatutJournalierTest, qui
+    // fixe l'heure via travelTo() pour un résultat déterministe.
 
     public function test_index_kpis_reflect_statut_counts_and_recette_en_circulation(): void
     {

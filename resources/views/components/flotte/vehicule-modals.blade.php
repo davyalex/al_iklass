@@ -1,4 +1,4 @@
-@props(['statuts', 'gestionnaires' => collect(), 'fenetreStatut' => null])
+@props(['statuts', 'gestionnaires' => collect(), 'fenetreStatut' => null, 'articles' => collect()])
 
 @php
     $badgesStatut = \App\Support\StatutVehiculeBadges::classes();
@@ -46,17 +46,26 @@
                         </dl>
                     </div>
                     <div class="tab-pane fade" id="tab-historique">
-                        <div id="historique-liste" class="small">
+                        <div id="historique-liste" class="small" style="max-height: 420px; overflow-y: auto;">
                             <p class="text-muted">Chargement…</p>
                         </div>
                     </div>
                 </div>
             </div>
             <div class="modal-footer">
-                @canany(['flotte.vehicule.gerer', 'flotte.vehicule.remise_circulation'])
-                    <button type="button" class="btn btn-outline-success me-auto" id="btn-remise-circulation-depuis-detail">
-                        <i class="bi bi-arrow-repeat me-1"></i>Remise en circulation
-                    </button>
+                @canany(['flotte.vehicule.gerer', 'flotte.vehicule.remise_circulation', 'stock.sortie.interne'])
+                    <div class="d-flex flex-wrap gap-2 me-auto">
+                        @can('stock.sortie.interne')
+                            <button type="button" class="btn btn-outline-warning" id="btn-piece-utilisee-depuis-detail">
+                                <i class="bi bi-tools me-1"></i>Pièce utilisée
+                            </button>
+                        @endcan
+                        @canany(['flotte.vehicule.gerer', 'flotte.vehicule.remise_circulation'])
+                            <button type="button" class="btn btn-outline-success" id="btn-remise-circulation-depuis-detail">
+                                <i class="bi bi-arrow-repeat me-1"></i>Remise en circulation
+                            </button>
+                        @endcanany
+                    </div>
                 @endcanany
                 @can('flotte.vehicule.gerer')
                     <button type="button" class="btn btn-outline-danger" id="btn-archiver-depuis-detail">
@@ -98,6 +107,49 @@
         </div>
     </div>
 @endcanany
+
+@can('stock.sortie.interne')
+    {{-- Modale pièce utilisée (sortie de stock rapide depuis la fiche véhicule) --}}
+    <div class="modal fade" id="modal-piece-utilisee" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form id="form-piece-utilisee">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Pièce utilisée</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Article</label>
+                            <select name="article_id" class="form-select select2-article-piece" required>
+                                <option value=""></option>
+                                @foreach ($articles as $article)
+                                    <option value="{{ $article->id }}" data-stock="{{ $article->quantite_stock }}">{{ $article->reference }} — {{ $article->nom }} (stock : {{ $article->quantite_stock }})</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Quantité</label>
+                            <div class="input-group">
+                                <button type="button" class="btn btn-outline-secondary" id="piece-quantite-moins" tabindex="-1">−</button>
+                                <input type="number" name="quantite" id="piece-quantite" class="form-control text-center" min="1" value="1" required>
+                                <button type="button" class="btn btn-outline-secondary" id="piece-quantite-plus" tabindex="-1">+</button>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Motif <span class="text-muted">(optionnel)</span></label>
+                            <input type="text" name="motif" class="form-control" placeholder="Ex : Changement plaquettes de frein">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" class="btn btn-primary">Enregistrer</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+@endcan
 
 @can('flotte.vehicule.gerer')
     {{-- Modale création / édition véhicule --}}
@@ -343,9 +395,14 @@
                 const lignes = res.evenements.map(function (evt) {
                     const icone = evt.type === 'mouvement_stock' ? 'bi-box-arrow-up-right' : 'bi-arrow-repeat';
                     const date = evt.date ? new Date(evt.date).toLocaleString('fr-FR') : '';
-                    return `<div class="d-flex justify-content-between align-items-start border-bottom py-2">
-                        <div><i class="bi ${icone} me-2 text-muted"></i>${evt.libelle}${evt.detail ? ' <span class="text-muted">('+evt.detail+')</span>' : ''}</div>
-                        <div class="text-muted text-nowrap ms-2">${date}</div>
+                    const auteur = evt.auteur ? ' <span class="text-muted">— ' + evt.auteur + '</span>' : '';
+                    const commentaire = evt.commentaire ? `<div class="text-muted fst-italic mt-1">${evt.commentaire}</div>` : '';
+                    return `<div class="border-bottom py-2">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div><i class="bi ${icone} me-2 text-muted"></i>${evt.libelle}${auteur}</div>
+                            <div class="text-muted text-nowrap ms-2">${date}</div>
+                        </div>
+                        ${commentaire}
                     </div>`;
                 }).join('');
 
@@ -395,6 +452,70 @@
                 })
                 .fail(function (xhr) {
                     const msg = xhr.responseJSON?.errors?.rapport?.[0] || xhr.responseJSON?.message || 'Une erreur est survenue.';
+                    Swal.fire({ icon: 'error', text: msg });
+                });
+        });
+
+        const modalPieceEl = document.getElementById('modal-piece-utilisee');
+        const modalPiece = modalPieceEl ? new bootstrap.Modal(modalPieceEl) : null;
+        const $formPiece = $('#form-piece-utilisee');
+
+        $('.select2-article-piece').select2({ dropdownParent: $('#modal-piece-utilisee'), width: '100%' });
+
+        // La quantité ne doit jamais pouvoir dépasser le stock disponible de l'article choisi.
+        $('.select2-article-piece').on('change', function () {
+            const stock = parseInt($(this).find(':selected').data('stock'), 10) || 0;
+            const $quantite = $('#piece-quantite');
+            $quantite.attr('max', stock);
+            if (stock > 0 && parseInt($quantite.val(), 10) > stock) {
+                $quantite.val(stock);
+            }
+        });
+
+        $('#piece-quantite-plus').on('click', function () {
+            const max = parseInt($('#piece-quantite').attr('max'), 10);
+            const prochaine = (parseInt($('#piece-quantite').val(), 10) || 0) + 1;
+            $('#piece-quantite').val(max && prochaine > max ? max : prochaine);
+        });
+
+        $('#piece-quantite-moins').on('click', function () {
+            $('#piece-quantite').val(Math.max(1, (parseInt($('#piece-quantite').val(), 10) || 0) - 1));
+        });
+
+        $('#btn-piece-utilisee-depuis-detail').on('click', function () {
+            modalDetail.hide();
+            $formPiece[0].reset();
+            $('.select2-article-piece').val('').trigger('change');
+            modalPiece.show();
+        });
+
+        $formPiece.on('submit', function (e) {
+            e.preventDefault();
+
+            const data = {
+                nature: 'interne',
+                vehicule_id: vehiculeCourantId,
+                lignes: [{
+                    article_id: $('.select2-article-piece').val(),
+                    quantite: $('#piece-quantite').val(),
+                }],
+            };
+            const motif = $formPiece.find('[name=motif]').val().trim();
+            if (motif) {
+                data.motif = motif;
+            }
+
+            $.post('/stock/sorties', data)
+                .done(function (res) {
+                    modalPiece.hide();
+                    Swal.fire({ icon: 'success', text: res.message, timer: 1800, showConfirmButton: false })
+                        .then(() => window.location.reload());
+                })
+                .fail(function (xhr) {
+                    const resData = xhr.responseJSON;
+                    const msg = resData?.insufficient_stock
+                        ? resData.message
+                        : (resData?.errors ? Object.values(resData.errors).flat()[0] : (resData?.message || 'Une erreur est survenue.'));
                     Swal.fire({ icon: 'error', text: msg });
                 });
         });

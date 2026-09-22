@@ -79,7 +79,7 @@ return [
         ],
 
         'chef_mecanicien' => [
-            'stock' => ['only' => ['stock.demande.creer']],
+            'stock' => ['only' => ['stock.demande.creer', 'stock.sortie.interne']],
             'flotte' => ['only' => ['flotte.vehicule.remise_circulation']],
         ],
 

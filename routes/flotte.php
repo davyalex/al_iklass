@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Flotte\GestionnaireController;
+use App\Http\Controllers\Flotte\HistoriqueMecanicienController;
 use App\Http\Controllers\Flotte\VehiculeController;
 use App\Http\Controllers\Flotte\VersementController;
 use Illuminate\Support\Facades\Route;
@@ -44,5 +45,14 @@ Route::middleware(['auth', 'reinitialiser.statut.journalier'])->prefix('flotte')
 
     Route::middleware('permission:flotte.vehicule.gerer|flotte.vehicule.remise_circulation')->group(function () {
         Route::post('vehicules/{vehicule}/remise-circulation', [VehiculeController::class, 'remiseEnCirculation'])->name('vehicules.remise-circulation');
+    });
+
+    // Historique personnel d'un chef mécanicien (ses changements de statut
+    // et ses sorties de pièces, tous véhicules confondus).
+    Route::middleware('permission:flotte.vehicule.remise_circulation')->group(function () {
+        Route::get('mon-historique', [HistoriqueMecanicienController::class, 'index'])->name('mon-historique.index');
+        Route::get('mon-historique/kpis', [HistoriqueMecanicienController::class, 'kpis'])->name('mon-historique.kpis');
+        Route::get('mon-historique/statuts', [HistoriqueMecanicienController::class, 'statuts'])->name('mon-historique.statuts');
+        Route::get('mon-historique/sorties', [HistoriqueMecanicienController::class, 'sorties'])->name('mon-historique.sorties');
     });
 });

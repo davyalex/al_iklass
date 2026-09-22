@@ -205,7 +205,7 @@
         </div>
     @endcanany
 
-    <x-flotte.vehicule-modals :statuts="$statuts" :gestionnaires="$gestionnaires" :fenetre-statut="$fenetreStatut" />
+    <x-flotte.vehicule-modals :statuts="$statuts" :gestionnaires="$gestionnaires" :fenetre-statut="$fenetreStatut" :articles="$articles" />
 
     @push('scripts')
         <script>
@@ -392,6 +392,11 @@
                 $('#filtre-gestionnaire').val('');
                 appliquerFiltres();
             });
+
+            @if ($statutParDefaut)
+                $('#filtre-statut').val('{{ $statutParDefaut }}');
+                appliquerFiltres();
+            @endif
         });
         </script>
     @endpush

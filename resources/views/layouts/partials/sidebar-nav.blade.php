@@ -83,11 +83,11 @@
         </li>
     @endcan
 
-    @canany(['flotte.vehicule.voir', 'flotte.vehicule.voir_affectes', 'flotte.versement.gerer'])
+    @canany(['flotte.vehicule.voir', 'flotte.vehicule.voir_affectes', 'flotte.vehicule.remise_circulation', 'flotte.versement.gerer'])
         <li class="nav-item mt-3">
             <span class="px-3 text-uppercase small fw-semibold" style="color: rgba(255,255,255,0.45); letter-spacing: .04em;">Flotte</span>
         </li>
-        @canany(['flotte.vehicule.voir', 'flotte.vehicule.voir_affectes'])
+        @canany(['flotte.vehicule.voir', 'flotte.vehicule.voir_affectes', 'flotte.vehicule.remise_circulation'])
             <li class="nav-item">
                 <a href="{{ route('flotte.vehicules.index') }}" class="nav-link d-flex align-items-center gap-2 {{ request()->routeIs('flotte.vehicules.*') ? 'active' : '' }}">
                     <i class="bi bi-truck-front-fill"></i>
@@ -111,6 +111,14 @@
                 </a>
             </li>
         @endcanany
+        @can('flotte.vehicule.remise_circulation')
+            <li class="nav-item">
+                <a href="{{ route('flotte.mon-historique.index') }}" class="nav-link d-flex align-items-center gap-2 {{ request()->routeIs('flotte.mon-historique.*') ? 'active' : '' }}">
+                    <i class="bi bi-clock-history"></i>
+                    <span>Mon historique</span>
+                </a>
+            </li>
+        @endcan
     @endcanany
 
     @canany(['utilisateurs.voir', 'roles.voir', 'unites.voir', 'audit.voir', 'parametres.voir'])

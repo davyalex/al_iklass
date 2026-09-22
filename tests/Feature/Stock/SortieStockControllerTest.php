@@ -111,9 +111,9 @@ class SortieStockControllerTest extends TestCase
         $this->assertSame(0, SortieStock::count());
     }
 
-    public function test_chef_mecanicien_cannot_record_sortie(): void
+    public function test_gestionnaire_parc_cannot_record_sortie(): void
     {
-        $user = User::factory()->create()->assignRole('chef_mecanicien');
+        $user = User::factory()->create()->assignRole('gestionnaire');
         $article = Article::factory()->create(['quantite_stock' => 10]);
         $vehicule = Vehicule::factory()->create();
 
@@ -123,6 +123,30 @@ class SortieStockControllerTest extends TestCase
             'motif' => 'Test',
             'lignes' => [
                 ['article_id' => $article->id, 'quantite' => 1],
+            ],
+        ])->assertForbidden();
+
+        // Le chef mécanicien, lui, peut désormais sortir des pièces pour ses
+        // propres réparations (véhicules du parc) mais pas vendre à un tiers.
+        $mecanicien = User::factory()->create()->assignRole('chef_mecanicien');
+
+        $this->actingAs($mecanicien)->postJson(route('stock.sorties.store'), [
+            'nature' => 'interne',
+            'vehicule_id' => $vehicule->id,
+            'motif' => 'Test',
+            'lignes' => [
+                ['article_id' => $article->id, 'quantite' => 1],
+            ],
+        ])->assertCreated();
+
+        $article2 = Article::factory()->create(['quantite_stock' => 10]);
+        $this->actingAs($mecanicien)->postJson(route('stock.sorties.store'), [
+            'nature' => 'externe',
+            'vehicule_externe' => 'CI-0099-ZZ',
+            'acheteur' => 'Client',
+            'motif' => 'Test',
+            'lignes' => [
+                ['article_id' => $article2->id, 'quantite' => 1, 'prix_vente' => 1000],
             ],
         ])->assertForbidden();
     }
