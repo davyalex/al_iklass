@@ -1,4 +1,4 @@
-@props(['statuts', 'gestionnaires' => collect()])
+@props(['statuts', 'gestionnaires' => collect(), 'fenetreStatut' => null])
 
 @php
     $badgesStatut = \App\Support\StatutVehiculeBadges::classes();
@@ -202,6 +202,32 @@
         const badgesStatut = @json($badgesStatut);
         let vehiculeCourantId = null;
 
+        // Verrouille le sélecteur de statut hors de la fenêtre horaire
+        // autorisée (au lieu de laisser l'utilisateur choisir puis essuyer
+        // une erreur serveur) : ne s'applique qu'à un gestionnaire soumis au
+        // verrou, $fenetreStatut vaut null pour l'admin (jamais restreint).
+        const fenetreStatut = @json($fenetreStatut);
+        const fenetreDebut = fenetreStatut ? new Date(fenetreStatut.debut) : null;
+        const fenetreFin = fenetreStatut ? new Date(fenetreStatut.fin) : null;
+
+        function actualiserVerrouSelectStatut() {
+            if (!fenetreStatut) {
+                return;
+            }
+
+            const maintenant = new Date();
+            const ouverte = maintenant >= fenetreDebut && maintenant <= fenetreFin;
+
+            $('#detail-select-statut')
+                .prop('disabled', !ouverte)
+                .attr('title', ouverte ? '' : 'Modification possible uniquement pendant la fenêtre horaire autorisée.');
+        }
+
+        actualiserVerrouSelectStatut();
+        if (fenetreStatut) {
+            setInterval(actualiserVerrouSelectStatut, 30000);
+        }
+
         function resetValidation() {
             $form.removeClass('was-validated');
             $form.find('.is-invalid').removeClass('is-invalid');
@@ -288,6 +314,7 @@
                     .text(vehicule.statut?.libelle || 'Sans statut');
                 if ($('#detail-select-statut').length) {
                     $('#detail-select-statut').val(vehicule.statut_id);
+                    actualiserVerrouSelectStatut();
                 }
                 $('#detail-libelle').text(vehicule.libelle || '—');
                 $('#detail-marque-modele').text([vehicule.marque, vehicule.modele].filter(Boolean).join(' ') || '—');

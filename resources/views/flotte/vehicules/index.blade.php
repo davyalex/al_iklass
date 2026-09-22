@@ -118,7 +118,7 @@
         @endif
     </div>
 
-    <x-flotte.vehicule-modals :statuts="$statuts" :gestionnaires="$gestionnaires" />
+    <x-flotte.vehicule-modals :statuts="$statuts" :gestionnaires="$gestionnaires" :fenetre-statut="$fenetreStatut" />
 
     @push('scripts')
         <script>
@@ -128,6 +128,9 @@
                     const debutFenetre = new Date('{{ $fenetreStatut['debut'] }}');
                     const finFenetre = new Date('{{ $fenetreStatut['fin'] }}');
                     const formatHeure = (date) => date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+                    // Déclaré avant le premier appel (qui peut immédiatement conclure
+                    // que la fenêtre est fermée et tenter de stopper l'intervalle).
+                    let intervalFenetre;
 
                     function actualiserCompteAReboursFenetre() {
                         const maintenant = new Date();
@@ -162,7 +165,7 @@
                     }
 
                     actualiserCompteAReboursFenetre();
-                    const intervalFenetre = setInterval(actualiserCompteAReboursFenetre, 30000);
+                    intervalFenetre = setInterval(actualiserCompteAReboursFenetre, 30000);
                 })();
             @endif
 
