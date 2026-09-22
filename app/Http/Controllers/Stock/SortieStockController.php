@@ -27,22 +27,22 @@ class SortieStockController extends Controller
 {
     public function __construct(private readonly SortieStockService $sortieService) {}
 
-    public function index(): View
+    public function index(Request $request): View
     {
         Gate::authorize('viewAny', SortieStock::class);
 
         $articles = Article::where('actif', true)->orderBy('nom')->get();
         $vehicules = Vehicule::where('actif', true)->orderBy('code')->get();
-        $kpis = $this->calculerKpis();
+        $kpis = $this->calculerKpis($request);
 
         return view('stock.sorties.index', compact('articles', 'vehicules', 'kpis'));
     }
 
-    public function kpis(): JsonResponse
+    public function kpis(Request $request): JsonResponse
     {
         Gate::authorize('viewAny', SortieStock::class);
 
-        return response()->json($this->calculerKpis());
+        return response()->json($this->calculerKpis($request));
     }
 
     public function show(SortieStock $sortie): JsonResponse
@@ -148,17 +148,53 @@ class SortieStockController extends Controller
     }
 
     /**
-     * @return array{sorties_jour: int, sorties_mois: int, quantite_mois: int, valeur_mois: float}
+     * Les KPI "du jour" reflètent toujours la journée en cours, quel que soit le filtre de période.
+     * Les KPI de quantité/valeur suivent le filtre Du/Au s'il est renseigné, sinon le mois en cours par défaut.
+     *
+     * @return array{
+     *     sorties_jour_interne: int,
+     *     sorties_jour_externe: int,
+     *     quantite_interne: int,
+     *     valeur_interne: float,
+     *     quantite_externe: int,
+     *     valeur_externe: float,
+     * }
      */
-    private function calculerKpis(): array
+    private function calculerKpis(Request $request): array
     {
-        $duMois = SortieStock::duMois(now());
-
         return [
-            'sorties_jour' => SortieStock::whereDate('date_sortie', today())->count(),
-            'sorties_mois' => (clone $duMois)->count(),
-            'quantite_mois' => (int) SortieLigne::whereHas('sortie', fn (Builder $q) => $q->duMois())->sum('quantite'),
-            'valeur_mois' => (float) (clone $duMois)->sum('montant_total'),
+            'sorties_jour_interne' => SortieStock::interne()->whereDate('date_sortie', today())->count(),
+            'sorties_jour_externe' => SortieStock::externe()->whereDate('date_sortie', today())->count(),
+            'quantite_interne' => (int) SortieLigne::whereHas(
+                'sortie',
+                fn (Builder $q) => $this->filtrerPeriode($q->interne(), $request)
+            )->sum('quantite'),
+            'valeur_interne' => (float) $this->filtrerPeriode(SortieStock::interne(), $request)->sum('montant_total'),
+            'quantite_externe' => (int) SortieLigne::whereHas(
+                'sortie',
+                fn (Builder $q) => $this->filtrerPeriode($q->externe(), $request)
+            )->sum('quantite'),
+            'valeur_externe' => (float) $this->filtrerPeriode(SortieStock::externe(), $request)->sum('montant_total'),
         ];
+    }
+
+    /**
+     * Filtre de période partagé par les KPI : Du/Au s'ils sont renseignés, sinon le mois en cours.
+     * Le filtre Article, quand présent, s'applique également.
+     */
+    private function filtrerPeriode(Builder $query, Request $request): Builder
+    {
+        if ($request->filled('date_debut') || $request->filled('date_fin')) {
+            $query
+                ->when($request->filled('date_debut'), fn (Builder $q) => $q->whereDate('date_sortie', '>=', $request->string('date_debut')))
+                ->when($request->filled('date_fin'), fn (Builder $q) => $q->whereDate('date_sortie', '<=', $request->string('date_fin')));
+        } else {
+            $query->duMois();
+        }
+
+        return $query->when($request->filled('article_id'), fn (Builder $q) => $q->whereHas(
+            'lignes',
+            fn (Builder $l) => $l->where('article_id', $request->integer('article_id'))
+        ));
     }
 }

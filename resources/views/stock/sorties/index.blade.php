@@ -1,36 +1,63 @@
 <x-app-layout>
     <x-slot name="header">Sorties de stock</x-slot>
 
-    <div class="row g-3 mb-3 row-cols-2 row-cols-lg-4">
+    <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge bg-primary">Interne</span>
+        <span class="small text-muted" id="kpi-periode-label-interne">Période : mois en cours</span>
+    </div>
+    <div class="row g-3 mb-3 row-cols-1 row-cols-sm-3">
         <div class="col">
             <div class="card shadow-sm border-0 bg-white h-100">
                 <div class="card-body">
                     <div class="small text-muted">Sorties du jour</div>
-                    <div class="h5 mb-0" style="color: var(--al-navy);" id="kpi-sorties-jour">{{ $kpis['sorties_jour'] }}</div>
+                    <div class="h5 mb-0" style="color: var(--al-navy);" id="kpi-jour-interne">{{ $kpis['sorties_jour_interne'] }}</div>
                 </div>
             </div>
         </div>
         <div class="col">
             <div class="card shadow-sm border-0 bg-white h-100">
                 <div class="card-body">
-                    <div class="small text-muted">Sorties du mois</div>
-                    <div class="h5 mb-0" style="color: var(--al-navy);" id="kpi-sorties-mois">{{ $kpis['sorties_mois'] }}</div>
+                    <div class="small text-muted">Quantité sortie</div>
+                    <div class="h5 mb-0" style="color: var(--al-navy);" id="kpi-quantite-interne">{{ $kpis['quantite_interne'] }}</div>
                 </div>
             </div>
         </div>
         <div class="col">
             <div class="card shadow-sm border-0 bg-white h-100">
                 <div class="card-body">
-                    <div class="small text-muted">Quantité sortie (mois)</div>
-                    <div class="h5 mb-0" style="color: var(--al-navy);" id="kpi-quantite-mois">{{ $kpis['quantite_mois'] }}</div>
+                    <div class="small text-muted">Valeur</div>
+                    <div class="h5 mb-0" style="color: var(--al-navy);" id="kpi-valeur-interne">{{ \App\Support\Money::format($kpis['valeur_interne']) }} FCFA</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge bg-info text-dark">Vente externe</span>
+        <span class="small text-muted" id="kpi-periode-label-externe">Période : mois en cours</span>
+    </div>
+    <div class="row g-3 mb-3 row-cols-1 row-cols-sm-3">
+        <div class="col">
+            <div class="card shadow-sm border-0 bg-white h-100">
+                <div class="card-body">
+                    <div class="small text-muted">Ventes du jour</div>
+                    <div class="h5 mb-0" style="color: var(--al-navy);" id="kpi-jour-externe">{{ $kpis['sorties_jour_externe'] }}</div>
                 </div>
             </div>
         </div>
         <div class="col">
             <div class="card shadow-sm border-0 bg-white h-100">
                 <div class="card-body">
-                    <div class="small text-muted">Valeur du mois</div>
-                    <div class="h5 mb-0" style="color: var(--al-navy);" id="kpi-valeur-mois">{{ \App\Support\Money::format($kpis['valeur_mois']) }} FCFA</div>
+                    <div class="small text-muted">Quantité vendue</div>
+                    <div class="h5 mb-0" style="color: var(--al-navy);" id="kpi-quantite-externe">{{ $kpis['quantite_externe'] }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card shadow-sm border-0 bg-white h-100">
+                <div class="card-body">
+                    <div class="small text-muted">Valeur des ventes</div>
+                    <div class="h5 mb-0" style="color: var(--al-navy);" id="kpi-valeur-externe">{{ \App\Support\Money::format($kpis['valeur_externe']) }} FCFA</div>
                 </div>
             </div>
         </div>
@@ -125,7 +152,7 @@
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Motif</label>
-                                <input type="text" name="motif" class="form-control" required>
+                                <input type="text" name="motif" class="form-control">
                             </div>
                             <div class="col-md-3 mb-3">
                                 <label class="form-label">Référence</label>
@@ -332,7 +359,9 @@
 
             $('#lignes-sortie').on('click', '.btn-quantite-plus', function () {
                 const $input = $(this).closest('.input-group').find('.ligne-quantite');
-                $input.val((parseInt($input.val(), 10) || 0) + 1).trigger('input');
+                const max = parseInt($input.attr('max'), 10);
+                const prochaine = (parseInt($input.val(), 10) || 0) + 1;
+                $input.val(max && prochaine > max ? max : prochaine).trigger('input');
             });
 
             $('#lignes-sortie').on('click', '.btn-quantite-moins', function () {
@@ -340,11 +369,32 @@
                 $input.val(Math.max(1, (parseInt($input.val(), 10) || 0) - 1)).trigger('input');
             });
 
+            // La quantité ne doit jamais pouvoir dépasser le stock disponible de l'article choisi.
+            function actualiserMaxQuantite($select) {
+                const $quantite = $select.closest('.ligne-sortie').find('.ligne-quantite');
+                const stock = parseInt($select.find(':selected').data('stock'), 10) || 0;
+                $quantite.attr('max', stock);
+
+                if (stock > 0 && parseInt($quantite.val(), 10) > stock) {
+                    $quantite.val(stock);
+                }
+            }
+
             $('#lignes-sortie').on('change', '.select2-article-sortie', function () {
                 actualiserOptionsArticlesDisponiblesSortie();
+                actualiserMaxQuantite($(this));
             });
 
-            $('#lignes-sortie').on('input', '.ligne-quantite, .ligne-prix-vente', recalculerTotalSortie);
+            $('#lignes-sortie').on('input', '.ligne-quantite, .ligne-prix-vente', function () {
+                if ($(this).hasClass('ligne-quantite')) {
+                    const max = parseInt($(this).attr('max'), 10);
+                    if (max && parseInt($(this).val(), 10) > max) {
+                        $(this).val(max);
+                    }
+                }
+
+                recalculerTotalSortie();
+            });
 
             $('#lignes-sortie').on('click', '.btn-supprimer-ligne-sortie', function () {
                 $(this).closest('.ligne-sortie').remove();
@@ -384,12 +434,30 @@
             $('.select2-vehicule').select2({ dropdownParent: $('#modal-sortie'), width: '100%' });
             $('.select2-filtre-article').select2({ width: '100%', placeholder: 'Tous', selectionCssClass: 'select2-sm' });
 
+            function libellePeriodeKpis() {
+                const f = filtresSorties();
+
+                if (!f.date_debut && !f.date_fin) {
+                    return 'Période : mois en cours';
+                }
+
+                const du = f.date_debut ? new Date(f.date_debut).toLocaleDateString('fr-FR') : '…';
+                const au = f.date_fin ? new Date(f.date_fin).toLocaleDateString('fr-FR') : '…';
+
+                return `Période : du ${du} au ${au}`;
+            }
+
             function rafraichirKpisSorties() {
-                $.get('{{ route('stock.sorties.kpis') }}', function (kpis) {
-                    $('#kpi-sorties-jour').text(kpis.sorties_jour);
-                    $('#kpi-sorties-mois').text(kpis.sorties_mois);
-                    $('#kpi-quantite-mois').text(kpis.quantite_mois);
-                    $('#kpi-valeur-mois').text(formatMontant(kpis.valeur_mois) + ' FCFA');
+                $.get('{{ route('stock.sorties.kpis') }}', filtresSorties(), function (kpis) {
+                    $('#kpi-jour-interne').text(kpis.sorties_jour_interne);
+                    $('#kpi-quantite-interne').text(kpis.quantite_interne);
+                    $('#kpi-valeur-interne').text(formatMontant(kpis.valeur_interne) + ' FCFA');
+                    $('#kpi-jour-externe').text(kpis.sorties_jour_externe);
+                    $('#kpi-quantite-externe').text(kpis.quantite_externe);
+                    $('#kpi-valeur-externe').text(formatMontant(kpis.valeur_externe) + ' FCFA');
+
+                    const libelle = libellePeriodeKpis();
+                    $('#kpi-periode-label-interne, #kpi-periode-label-externe').text(libelle);
                 });
             }
 
@@ -466,12 +534,14 @@
 
             $('#btn-filtrer-sorties').on('click', function () {
                 tableSorties.ajax.reload();
+                rafraichirKpisSorties();
             });
 
             $('#btn-reset-sorties').on('click', function () {
                 $('#filtres-sorties')[0].reset();
                 $('.select2-filtre-article').val('').trigger('change');
                 tableSorties.ajax.reload();
+                rafraichirKpisSorties();
             });
 
             $('#table-sorties').on('click', '.btn-detail-sortie', function () {
@@ -488,7 +558,7 @@
                     $('#detail-sortie-destination').text(estExterne
                         ? [sortie.vehicule_externe, sortie.acheteur].filter(Boolean).join(' — ')
                         : (sortie.vehicule_code ?? '—'));
-                    $('#detail-sortie-motif').text(sortie.motif);
+                    $('#detail-sortie-motif').text(sortie.motif || '—');
                     $('#detail-sortie-entete-prix').text(estExterne ? 'Prix de vente' : 'Valorisation unitaire');
 
                     const $lignes = $('#detail-sortie-lignes').empty();

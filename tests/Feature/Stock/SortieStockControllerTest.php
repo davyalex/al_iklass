@@ -7,6 +7,7 @@ use App\Models\Caisse;
 use App\Models\SortieStock;
 use App\Models\User;
 use App\Models\Vehicule;
+use App\Services\Stock\SortieStockService;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -161,10 +162,11 @@ class SortieStockControllerTest extends TestCase
         $this->assertSame(1, $response->json('recordsFiltered'));
     }
 
-    public function test_kpis_reflechissent_les_sorties_du_jour_et_du_mois(): void
+    public function test_kpis_sont_dissocies_entre_interne_et_externe(): void
     {
         $user = User::factory()->create()->assignRole('gestionnaire_stock');
-        $article = Article::factory()->create(['quantite_stock' => 10, 'prix_achat' => 1000]);
+        $articleInterne = Article::factory()->create(['quantite_stock' => 10, 'prix_achat' => 1000]);
+        $articleExterne = Article::factory()->create(['quantite_stock' => 10]);
         $vehicule = Vehicule::factory()->create();
 
         $this->actingAs($user)->postJson(route('stock.sorties.store'), [
@@ -172,17 +174,94 @@ class SortieStockControllerTest extends TestCase
             'vehicule_id' => $vehicule->id,
             'motif' => 'Test',
             'lignes' => [
-                ['article_id' => $article->id, 'quantite' => 3],
+                ['article_id' => $articleInterne->id, 'quantite' => 3],
+            ],
+        ])->assertCreated();
+
+        $this->actingAs($user)->postJson(route('stock.sorties.store'), [
+            'nature' => 'externe',
+            'vehicule_externe' => 'CI-0003-CC',
+            'acheteur' => 'Client externe',
+            'motif' => 'Vente',
+            'lignes' => [
+                ['article_id' => $articleExterne->id, 'quantite' => 2, 'prix_vente' => 1500],
             ],
         ])->assertCreated();
 
         $response = $this->actingAs($user)->getJson(route('stock.sorties.kpis'));
 
         $response->assertOk();
-        $this->assertSame(1, $response->json('sorties_jour'));
-        $this->assertSame(1, $response->json('sorties_mois'));
-        $this->assertSame(3, $response->json('quantite_mois'));
-        $this->assertEquals(3000, $response->json('valeur_mois'));
+        $this->assertSame(1, $response->json('sorties_jour_interne'));
+        $this->assertSame(1, $response->json('sorties_jour_externe'));
+        $this->assertSame(3, $response->json('quantite_interne'));
+        $this->assertEquals(3000, $response->json('valeur_interne'));
+        $this->assertSame(2, $response->json('quantite_externe'));
+        $this->assertEquals(3000, $response->json('valeur_externe'));
+    }
+
+    public function test_kpis_periode_suivent_le_mois_par_defaut_mais_le_jour_reste_fixe(): void
+    {
+        $user = User::factory()->create()->assignRole('gestionnaire_stock');
+        $article = Article::factory()->create(['quantite_stock' => 10, 'prix_achat' => 1000]);
+        $vehicule = Vehicule::factory()->create();
+
+        // Une sortie le mois dernier ne doit pas compter dans les KPI "mois en cours" par défaut.
+        $this->service()->creerInterne([
+            'motif' => 'Ancien',
+            'vehicule_id' => $vehicule->id,
+            'date_sortie' => now()->subMonth(),
+            'user_id' => $user->id,
+            'lignes' => [
+                ['article_id' => $article->id, 'quantite' => 5],
+            ],
+        ]);
+
+        $this->actingAs($user)->postJson(route('stock.sorties.store'), [
+            'nature' => 'interne',
+            'vehicule_id' => $vehicule->id,
+            'motif' => 'Ce mois',
+            'lignes' => [
+                ['article_id' => $article->id, 'quantite' => 2],
+            ],
+        ])->assertCreated();
+
+        $reponseParDefaut = $this->actingAs($user)->getJson(route('stock.sorties.kpis'));
+        $reponseParDefaut->assertOk();
+        $this->assertSame(2, $reponseParDefaut->json('quantite_interne'));
+        $this->assertSame(1, $reponseParDefaut->json('sorties_jour_interne'));
+
+        // Avec un filtre de période couvrant le mois dernier, le KPI "jour" reste inchangé
+        // mais le KPI de quantité doit refléter la période filtrée.
+        $reponseFiltree = $this->actingAs($user)->getJson(route('stock.sorties.kpis', [
+            'date_debut' => now()->subMonth()->startOfMonth()->toDateString(),
+            'date_fin' => now()->subMonth()->endOfMonth()->toDateString(),
+        ]));
+        $reponseFiltree->assertOk();
+        $this->assertSame(5, $reponseFiltree->json('quantite_interne'));
+        $this->assertSame(1, $reponseFiltree->json('sorties_jour_interne'));
+    }
+
+    private function service(): SortieStockService
+    {
+        return app(SortieStockService::class);
+    }
+
+    public function test_motif_est_facultatif(): void
+    {
+        $user = User::factory()->create()->assignRole('gestionnaire_stock');
+        $article = Article::factory()->create(['quantite_stock' => 10]);
+        $vehicule = Vehicule::factory()->create();
+
+        $response = $this->actingAs($user)->postJson(route('stock.sorties.store'), [
+            'nature' => 'interne',
+            'vehicule_id' => $vehicule->id,
+            'lignes' => [
+                ['article_id' => $article->id, 'quantite' => 1],
+            ],
+        ]);
+
+        $response->assertCreated();
+        $this->assertNull(SortieStock::first()->motif);
     }
 
     public function test_show_retourne_la_sortie_avec_ses_lignes(): void

@@ -13,7 +13,7 @@ return new class extends Migration
             $table->string('reference')->unique();
             $table->string('nature'); // interne, externe
             $table->date('date_sortie');
-            $table->string('motif');
+            $table->string('motif')->nullable();
             $table->foreignId('vehicule_id')->nullable()->constrained('vehicules');
             $table->string('vehicule_code')->nullable(); // snapshot
             $table->string('vehicule_externe')->nullable();

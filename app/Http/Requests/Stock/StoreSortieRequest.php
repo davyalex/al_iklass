@@ -20,7 +20,7 @@ class StoreSortieRequest extends FormRequest
 
         return [
             'nature' => ['required', Rule::in(['interne', 'externe'])],
-            'motif' => ['required', 'string', 'max:255'],
+            'motif' => ['nullable', 'string', 'max:255'],
             'reference' => ['nullable', 'string', 'max:50'],
             'date_sortie' => ['nullable', 'date'],
             'vehicule_id' => ['required_if:nature,interne', 'nullable', 'exists:vehicules,id'],

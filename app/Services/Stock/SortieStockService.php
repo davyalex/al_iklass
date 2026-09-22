@@ -17,7 +17,7 @@ class SortieStockService
     /**
      * @param  array{
      *     vehicule_id: int,
-     *     motif: string,
+     *     motif?: ?string,
      *     date_sortie?: ?string,
      *     reference?: ?string,
      *     user_id: int,
@@ -35,7 +35,7 @@ class SortieStockService
                 'reference' => ($data['reference'] ?? null) ?: $this->genererReference(),
                 'nature' => 'interne',
                 'date_sortie' => $data['date_sortie'] ?? now(),
-                'motif' => $data['motif'],
+                'motif' => $data['motif'] ?? null,
                 'vehicule_id' => $vehicule->id,
                 'vehicule_code' => $vehicule->code,
                 'user_id' => $data['user_id'],
@@ -57,7 +57,7 @@ class SortieStockService
      * @param  array{
      *     vehicule_externe: string,
      *     acheteur: string,
-     *     motif: string,
+     *     motif?: ?string,
      *     date_sortie?: ?string,
      *     reference?: ?string,
      *     user_id: int,
@@ -73,7 +73,7 @@ class SortieStockService
                 'reference' => ($data['reference'] ?? null) ?: $this->genererReference(),
                 'nature' => 'externe',
                 'date_sortie' => $data['date_sortie'] ?? now(),
-                'motif' => $data['motif'],
+                'motif' => $data['motif'] ?? null,
                 'vehicule_externe' => $data['vehicule_externe'],
                 'acheteur' => $data['acheteur'],
                 'user_id' => $data['user_id'],

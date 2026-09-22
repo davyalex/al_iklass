@@ -42,7 +42,7 @@
             @endif
         </div>
         <h2 style="margin-top: 10px;">Motif</h2>
-        <div>{{ $sortie->motif }}</div>
+        <div>{{ $sortie->motif ?? '—' }}</div>
     </div>
 
     <table>
