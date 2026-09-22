@@ -26,21 +26,30 @@ class VersementController extends Controller
 {
     public function __construct(private readonly VersementService $versementService) {}
 
-    public function index(): View
+    public function index(Request $request): View
     {
         Gate::authorize('viewAny', Versement::class);
 
-        $gestionnaires = User::role('gestionnaire')->orderBy('name')->get();
+        $peutVoirTout = $request->user()->can('flotte.vehicule.voir');
+
+        $gestionnaires = $peutVoirTout ? User::role('gestionnaire')->orderBy('name')->get() : collect();
+        $vehicules = $peutVoirTout
+            ? Vehicule::whereNotNull('gestionnaire_id')->orderBy('code')->get(['id', 'code', 'gestionnaire_id'])
+            : Vehicule::where('gestionnaire_id', $request->user()->id)->orderBy('code')->get(['id', 'code']);
         $modesPaiement = ModePaiement::where('actif', true)->orderBy('libelle')->get();
 
-        return view('flotte.versements.index', compact('gestionnaires', 'modesPaiement'));
+        return view('flotte.versements.index', compact('gestionnaires', 'vehicules', 'modesPaiement', 'peutVoirTout'));
     }
 
     public function kpis(Request $request): JsonResponse
     {
         Gate::authorize('viewAny', Versement::class);
 
-        $gestionnaireId = $request->integer('gestionnaire_id') ?: null;
+        // Un gestionnaire limité à ses propres versements ne peut pas consulter
+        // les KPI d'un autre : la cible est forcée à lui-même quoi qu'il envoie.
+        $gestionnaireId = $request->user()->can('flotte.vehicule.voir')
+            ? ($request->integer('gestionnaire_id') ?: null)
+            : $request->user()->id;
 
         $attendu = Vehicule::with('statut')
             ->when($gestionnaireId, fn (Builder $q) => $q->where('gestionnaire_id', $gestionnaireId))
@@ -112,10 +121,16 @@ class VersementController extends Controller
 
     private function filtrer(Builder $query, Request $request): Builder
     {
+        // Un gestionnaire limité à ses propres versements (pas de flotte.vehicule.voir)
+        // ne voit jamais que les siens, quel que soit le gestionnaire_id envoyé.
+        $gestionnaireId = $request->user()->can('flotte.vehicule.voir')
+            ? $request->integer('gestionnaire_id')
+            : $request->user()->id;
+
         return $query
             ->when($request->filled('date_debut'), fn (Builder $q) => $q->whereDate('date_versement', '>=', $request->string('date_debut')))
             ->when($request->filled('date_fin'), fn (Builder $q) => $q->whereDate('date_versement', '<=', $request->string('date_fin')))
-            ->when($request->filled('gestionnaire_id'), fn (Builder $q) => $q->where('gestionnaire_id', $request->integer('gestionnaire_id')))
+            ->when($gestionnaireId, fn (Builder $q) => $q->where('gestionnaire_id', $gestionnaireId))
             ->when($request->filled('mode_paiement_id'), fn (Builder $q) => $q->where('mode_paiement_id', $request->integer('mode_paiement_id')));
     }
 }

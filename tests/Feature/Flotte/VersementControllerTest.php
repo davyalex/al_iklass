@@ -8,6 +8,7 @@ use App\Models\StatutVehicule;
 use App\Models\User;
 use App\Models\Vehicule;
 use App\Services\Flotte\VersementService;
+use Database\Seeders\ParametreSeeder;
 use Database\Seeders\RolePermissionSeeder;
 use Database\Seeders\StatutVehiculeSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -22,6 +23,10 @@ class VersementControllerTest extends TestCase
         parent::setUp();
 
         $this->seed(RolePermissionSeeder::class);
+        // Cf. GestionnaireControllerTest::setUp() : évite que le filet de
+        // sécurité de réinitialisation quotidienne ne modifie les statuts
+        // des véhicules du test au premier accès à une page flotte.
+        $this->seed(ParametreSeeder::class);
 
         Caisse::firstOrCreate(['type' => 'versements'], ['libelle' => 'Versements gestionnaires']);
     }
@@ -68,7 +73,7 @@ class VersementControllerTest extends TestCase
         ]);
     }
 
-    public function test_gestionnaire_cannot_record_a_versement(): void
+    public function test_gestionnaire_cannot_record_a_versement_for_someone_else(): void
     {
         $gestionnaire = User::factory()->create()->assignRole('gestionnaire');
         $autre = User::factory()->create()->assignRole('gestionnaire');
@@ -78,7 +83,42 @@ class VersementControllerTest extends TestCase
             'gestionnaire_id' => $autre->id,
             'montant' => 10000,
             'mode_paiement_id' => $modePaiement->id,
-        ])->assertForbidden();
+        ])->assertUnprocessable()->assertJsonValidationErrors('gestionnaire_id');
+    }
+
+    public function test_gestionnaire_can_record_a_versement_for_themselves(): void
+    {
+        $gestionnaire = User::factory()->create()->assignRole('gestionnaire');
+        $modePaiement = ModePaiement::create(['code' => 'especes', 'libelle' => 'Espèces', 'actif' => true]);
+
+        $response = $this->actingAs($gestionnaire)->postJson(route('flotte.versements.store'), [
+            'montant' => 10000,
+            'mode_paiement_id' => $modePaiement->id,
+        ]);
+
+        $response->assertCreated();
+        $this->assertDatabaseHas('versements', [
+            'gestionnaire_id' => $gestionnaire->id,
+            'montant' => 10000,
+            'user_id' => $gestionnaire->id,
+        ]);
+    }
+
+    public function test_gestionnaire_cannot_record_a_versement_for_a_vehicule_of_someone_else(): void
+    {
+        $this->seed(StatutVehiculeSeeder::class);
+
+        $gestionnaire = User::factory()->create()->assignRole('gestionnaire');
+        $autreGestionnaire = User::factory()->create()->assignRole('gestionnaire');
+        $statutCirculation = StatutVehicule::where('code', 'en_circulation')->firstOrFail();
+        $vehiculeDuneAutrePersonne = Vehicule::factory()->create(['statut_id' => $statutCirculation->id, 'gestionnaire_id' => $autreGestionnaire->id]);
+        $modePaiement = ModePaiement::create(['code' => 'especes', 'libelle' => 'Espèces', 'actif' => true]);
+
+        $this->actingAs($gestionnaire)->postJson(route('flotte.versements.store'), [
+            'vehicule_id' => $vehiculeDuneAutrePersonne->id,
+            'montant' => 10000,
+            'mode_paiement_id' => $modePaiement->id,
+        ])->assertUnprocessable()->assertJsonValidationErrors('vehicule_id');
     }
 
     public function test_admin_can_record_a_versement_for_a_specific_vehicule(): void
@@ -151,11 +191,60 @@ class VersementControllerTest extends TestCase
         $this->actingAs($admin)->get(route('flotte.versements.index'))->assertOk();
     }
 
-    public function test_gestionnaire_cannot_view_versements_index(): void
+    public function test_gestionnaire_can_view_own_versements_index(): void
     {
         $gestionnaire = User::factory()->create()->assignRole('gestionnaire');
 
-        $this->actingAs($gestionnaire)->get(route('flotte.versements.index'))->assertForbidden();
+        $this->actingAs($gestionnaire)->get(route('flotte.versements.index'))->assertOk();
+    }
+
+    public function test_user_without_any_flotte_permission_cannot_view_versements_index(): void
+    {
+        $user = User::factory()->create()->assignRole('chef_mecanicien');
+
+        $this->actingAs($user)->get(route('flotte.versements.index'))->assertForbidden();
+    }
+
+    public function test_gestionnaire_data_endpoint_only_shows_their_own_versements_even_if_filter_requests_another(): void
+    {
+        $gestionnaire = User::factory()->create()->assignRole('gestionnaire');
+        $autre = User::factory()->create()->assignRole('gestionnaire');
+        $admin = User::factory()->create()->assignRole('admin');
+        $modePaiement = ModePaiement::create(['code' => 'especes', 'libelle' => 'Espèces', 'actif' => true]);
+
+        app(VersementService::class)->enregistrer([
+            'gestionnaire_id' => $gestionnaire->id, 'montant' => 5000, 'mode_paiement_id' => $modePaiement->id, 'user_id' => $admin->id,
+        ]);
+        app(VersementService::class)->enregistrer([
+            'gestionnaire_id' => $autre->id, 'montant' => 8000, 'mode_paiement_id' => $modePaiement->id, 'user_id' => $admin->id,
+        ]);
+
+        $response = $this->actingAs($gestionnaire)->getJson(route('flotte.versements.data', [
+            'gestionnaire_id' => $autre->id,
+        ]));
+
+        $response->assertOk();
+        $this->assertSame(1, $response->json('recordsFiltered'));
+        $response->assertJsonFragment(['gestionnaire_nom' => $gestionnaire->name]);
+        $response->assertJsonMissing(['gestionnaire_nom' => $autre->name]);
+    }
+
+    public function test_gestionnaire_kpis_endpoint_ignores_requested_gestionnaire_id_and_uses_their_own(): void
+    {
+        $this->seed(StatutVehiculeSeeder::class);
+
+        $gestionnaire = User::factory()->create(['dette' => 3000])->assignRole('gestionnaire');
+        $autre = User::factory()->create(['dette' => 9000])->assignRole('gestionnaire');
+        $statutCirculation = StatutVehicule::where('code', 'en_circulation')->firstOrFail();
+
+        Vehicule::factory()->create(['statut_id' => $statutCirculation->id, 'recette_journaliere' => 20000, 'gestionnaire_id' => $gestionnaire->id]);
+        Vehicule::factory()->create(['statut_id' => $statutCirculation->id, 'recette_journaliere' => 99999, 'gestionnaire_id' => $autre->id]);
+
+        $response = $this->actingAs($gestionnaire)->getJson(route('flotte.versements.kpis', ['gestionnaire_id' => $autre->id]));
+
+        $response->assertOk();
+        $response->assertJsonPath('recette_journaliere', '20 000');
+        $response->assertJsonPath('montant_du', '3 000');
     }
 
     public function test_data_endpoint_can_be_filtered_by_gestionnaire(): void

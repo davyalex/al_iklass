@@ -1,6 +1,14 @@
 <x-app-layout>
     <x-slot name="header">Versements</x-slot>
 
+    @can('create', \App\Models\Versement::class)
+        <div class="d-flex justify-content-end mb-3">
+            <button type="button" class="btn btn-primary" id="btn-nouveau-versement">
+                <i class="bi bi-plus-lg me-1"></i>Nouveau versement
+            </button>
+        </div>
+    @endcan
+
     {{-- KPIs du jour — reflètent le gestionnaire sélectionné dans le filtre ci-dessous (agrégés sur tous les gestionnaires si "Tous") --}}
     <div class="row g-3 mb-3">
         <div class="col-6 col-lg-3">
@@ -48,15 +56,17 @@
                     <label class="form-label small mb-1">Au</label>
                     <input type="date" name="date_fin" class="form-control form-control-sm" value="{{ now()->endOfMonth()->format('Y-m-d') }}">
                 </div>
-                <div class="col-md-3">
-                    <label class="form-label small mb-1">Gestionnaire</label>
-                    <select name="gestionnaire_id" class="form-select form-select-sm select2-filtre-gestionnaire">
-                        <option value="">Tous</option>
-                        @foreach ($gestionnaires as $gestionnaire)
-                            <option value="{{ $gestionnaire->id }}" @selected(request('gestionnaire_id') == $gestionnaire->id)>{{ $gestionnaire->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
+                @if ($peutVoirTout)
+                    <div class="col-md-3">
+                        <label class="form-label small mb-1">Gestionnaire</label>
+                        <select name="gestionnaire_id" class="form-select form-select-sm select2-filtre-gestionnaire">
+                            <option value="">Tous</option>
+                            @foreach ($gestionnaires as $gestionnaire)
+                                <option value="{{ $gestionnaire->id }}" @selected(request('gestionnaire_id') == $gestionnaire->id)>{{ $gestionnaire->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                @endif
                 <div class="col-6 col-md-2">
                     <label class="form-label small mb-1">Mode</label>
                     <select name="mode_paiement_id" class="form-select form-select-sm">
@@ -87,7 +97,9 @@
                 <thead>
                     <tr>
                         <th>Date</th>
-                        <th>Gestionnaire</th>
+                        @if ($peutVoirTout)
+                            <th>Gestionnaire</th>
+                        @endif
                         <th>Véhicule</th>
                         <th>Montant</th>
                         <th>Mode</th>
@@ -96,6 +108,73 @@
                     </tr>
                 </thead>
             </table>
+        </div>
+    </div>
+
+    {{-- Modale nouveau versement --}}
+    <div class="modal fade" id="modal-versement" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form id="form-versement">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Nouveau versement</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        @if ($peutVoirTout)
+                            <div class="mb-3">
+                                <label class="form-label">Gestionnaire</label>
+                                <select name="gestionnaire_id" class="form-select select2-gestionnaire-versement" required>
+                                    <option value=""></option>
+                                    @foreach ($gestionnaires as $gestionnaire)
+                                        <option value="{{ $gestionnaire->id }}">{{ $gestionnaire->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        @endif
+                        <div class="mb-3">
+                            <label class="form-label">Véhicule <span class="text-muted">(optionnel)</span></label>
+                            <select name="vehicule_id" class="form-select select2-vehicule-versement">
+                                <option value=""></option>
+                                @foreach ($vehicules as $vehicule)
+                                    <option value="{{ $vehicule->id }}" data-gestionnaire-id="{{ $vehicule->gestionnaire_id ?? '' }}">{{ $vehicule->code }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Montant (FCFA)</label>
+                            <input type="number" name="montant" class="form-control" min="0.01" step="0.01" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Mode de paiement</label>
+                            <select name="mode_paiement_id" class="form-select" required>
+                                <option value=""></option>
+                                @foreach ($modesPaiement as $mode)
+                                    <option value="{{ $mode->id }}">{{ $mode->libelle }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="row">
+                            <div class="col-6 mb-3">
+                                <label class="form-label">Date</label>
+                                <input type="date" name="date_versement" class="form-control" value="{{ now()->format('Y-m-d') }}">
+                            </div>
+                            <div class="col-6 mb-3">
+                                <label class="form-label">Référence</label>
+                                <input type="text" name="reference" class="form-control">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Commentaire</label>
+                            <textarea name="commentaire" class="form-control" rows="2"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" class="btn btn-primary">Enregistrer le versement</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 
@@ -157,7 +236,9 @@
                 language: { url: 'https://cdn.datatables.net/plug-ins/2.1.8/i18n/fr-FR.json' },
                 columns: [
                     { data: 'date_versement', name: 'date_versement' },
-                    { data: 'gestionnaire_nom', name: 'gestionnaire_nom' },
+                    @if ($peutVoirTout)
+                        { data: 'gestionnaire_nom', name: 'gestionnaire_nom' },
+                    @endif
                     { data: 'vehicule_code', name: 'vehicule_code', defaultContent: '—' },
                     { data: 'montant', name: 'montant' },
                     { data: 'mode_paiement_libelle', name: 'mode_paiement_libelle', orderable: false },
@@ -190,6 +271,52 @@
             $('#btn-export-pdf-versements').on('click', function (e) {
                 e.preventDefault();
                 window.location = urlAvecFiltres('{{ route('flotte.versements.export.pdf') }}');
+            });
+
+            const modalVersement = new bootstrap.Modal('#modal-versement');
+
+            $('.select2-vehicule-versement').select2({ dropdownParent: $('#modal-versement'), width: '100%', placeholder: '—' });
+
+            @if ($peutVoirTout)
+                $('.select2-gestionnaire-versement').select2({ dropdownParent: $('#modal-versement'), width: '100%' });
+
+                // Le véhicule proposé dépend du gestionnaire choisi (un seul
+                // gestionnaire à la fois) : on grise les autres options.
+                function actualiserVehiculesDisponibles() {
+                    const gestionnaireId = $('#form-versement [name=gestionnaire_id]').val();
+                    $('.select2-vehicule-versement option').each(function () {
+                        const appartientA = $(this).data('gestionnaireId');
+                        $(this).prop('disabled', this.value !== '' && gestionnaireId && String(appartientA) !== String(gestionnaireId));
+                    });
+                }
+
+                $('.select2-gestionnaire-versement').on('change', function () {
+                    $('.select2-vehicule-versement').val('').trigger('change');
+                    actualiserVehiculesDisponibles();
+                });
+            @endif
+
+            $('#btn-nouveau-versement').on('click', function () {
+                $('#form-versement')[0].reset();
+                $('.select2-gestionnaire-versement, .select2-vehicule-versement').val('').trigger('change');
+                modalVersement.show();
+            });
+
+            $('#form-versement').on('submit', function (e) {
+                e.preventDefault();
+
+                $.post('{{ route('flotte.versements.store') }}', $(this).serialize())
+                    .done(function (res) {
+                        modalVersement.hide();
+                        Swal.fire({ icon: 'success', text: res.message, timer: 2200, showConfirmButton: false });
+                        tableVersements.ajax.reload();
+                        rafraichirKpisVersements();
+                    })
+                    .fail(function (xhr) {
+                        const erreurs = xhr.responseJSON?.errors;
+                        const msg = erreurs ? Object.values(erreurs).flat()[0] : (xhr.responseJSON?.message || 'Une erreur est survenue.');
+                        Swal.fire({ icon: 'error', text: msg });
+                    });
             });
         });
         </script>

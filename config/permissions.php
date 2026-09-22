@@ -50,6 +50,7 @@ return [
             'flotte.vehicule.voir_affectes',
             'flotte.vehicule.statut.gerer',
             'flotte.vehicule.remise_circulation',
+            'flotte.versement.gerer',
         ],
 
     ],
@@ -83,10 +84,11 @@ return [
         ],
 
         // Le rôle "gestionnaire" (parc) voit uniquement les véhicules qui lui sont
-        // attribués, et peut ajuster leur statut journalier (fenêtre horaire —
-        // cf. App\Support\FenetreStatutJournalier).
+        // attribués, peut ajuster leur statut journalier (fenêtre horaire —
+        // cf. App\Support\FenetreStatutJournalier) et enregistrer/consulter
+        // uniquement ses propres versements.
         'gestionnaire' => [
-            'flotte' => ['only' => ['flotte.vehicule.voir_affectes', 'flotte.vehicule.statut.gerer']],
+            'flotte' => ['only' => ['flotte.vehicule.voir_affectes', 'flotte.vehicule.statut.gerer', 'flotte.versement.gerer']],
         ],
 
     ],
