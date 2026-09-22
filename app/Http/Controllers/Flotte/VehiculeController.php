@@ -7,6 +7,7 @@ use App\Http\Requests\Flotte\RemiseEnCirculationRequest;
 use App\Http\Requests\Flotte\StoreVehiculeRequest;
 use App\Http\Requests\Flotte\UpdateVehiculeRequest;
 use App\Http\Requests\Flotte\UpdateVehiculeStatutRequest;
+use App\Models\ModePaiement;
 use App\Models\StatutVehicule;
 use App\Models\User;
 use App\Models\Vehicule;
@@ -43,6 +44,7 @@ class VehiculeController extends Controller
             : collect();
 
         $kpis = VehiculeKpis::calculer($vehicules, $statuts);
+        $modesPaiement = ModePaiement::where('actif', true)->orderBy('libelle')->get();
 
         // Compte à rebours de la fenêtre horaire : uniquement pertinent pour un
         // gestionnaire soumis au verrou (flotte.vehicule.statut.gerer sans le
@@ -53,7 +55,7 @@ class VehiculeController extends Controller
             $fenetreStatut = ['debut' => $debutFenetre->toIso8601String(), 'fin' => $finFenetre->toIso8601String()];
         }
 
-        return view('flotte.vehicules.index', compact('vehicules', 'statuts', 'vehiculesParStatut', 'gestionnaires', 'kpis', 'fenetreStatut'));
+        return view('flotte.vehicules.index', compact('vehicules', 'statuts', 'vehiculesParStatut', 'gestionnaires', 'kpis', 'fenetreStatut', 'modesPaiement'));
     }
 
     public function show(Vehicule $vehicule): JsonResponse

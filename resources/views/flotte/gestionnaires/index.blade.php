@@ -195,7 +195,7 @@
         @endforelse
     </div>
 
-    <x-flotte.vehicule-modals :statuts="$statuts" :gestionnaires="$gestionnaires" />
+    <x-flotte.vehicule-modals :statuts="$statuts" :gestionnaires="$gestionnaires" :modes-paiement="$modesPaiement" />
 
     @can('flotte.vehicule.gerer')
         {{-- Modale enregistrement d'un versement --}}
