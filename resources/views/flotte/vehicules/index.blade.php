@@ -118,7 +118,7 @@
         @endif
     </div>
 
-    <x-flotte.vehicule-modals :statuts="$statuts" :gestionnaires="$gestionnaires" :fenetre-statut="$fenetreStatut" :modes-paiement="$modesPaiement" />
+    <x-flotte.vehicule-modals :statuts="$statuts" :gestionnaires="$gestionnaires" :fenetre-statut="$fenetreStatut" />
 
     @push('scripts')
         <script>

@@ -1,4 +1,4 @@
-@props(['statuts', 'gestionnaires' => collect(), 'fenetreStatut' => null, 'modesPaiement' => collect()])
+@props(['statuts', 'gestionnaires' => collect(), 'fenetreStatut' => null])
 
 @php
     $badgesStatut = \App\Support\StatutVehiculeBadges::classes();
@@ -53,13 +53,8 @@
                 </div>
             </div>
             <div class="modal-footer">
-                @canany(['flotte.vehicule.gerer', 'flotte.versement.gerer'])
-                    <button type="button" class="btn btn-outline-primary me-auto d-none" id="btn-versement-depuis-detail">
-                        <i class="bi bi-cash-coin me-1"></i>Faire un versement
-                    </button>
-                @endcanany
                 @canany(['flotte.vehicule.gerer', 'flotte.vehicule.remise_circulation'])
-                    <button type="button" class="btn btn-outline-success{{ auth()->user()->canAny(['flotte.vehicule.gerer', 'flotte.versement.gerer']) ? '' : ' me-auto' }}" id="btn-remise-circulation-depuis-detail">
+                    <button type="button" class="btn btn-outline-success me-auto" id="btn-remise-circulation-depuis-detail">
                         <i class="bi bi-arrow-repeat me-1"></i>Remise en circulation
                     </button>
                 @endcanany
@@ -76,78 +71,6 @@
         </div>
     </div>
 </div>
-
-@canany(['flotte.vehicule.gerer', 'flotte.versement.gerer'])
-    {{-- Modale versement, pré-remplie depuis la fiche véhicule (gestionnaire et
-    véhicule déjà connus par le contexte : pas de sélecteur) --}}
-    <div class="modal fade" id="modal-versement-vehicule" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <form id="form-versement-vehicule">
-                    <input type="hidden" name="vehicule_id" id="versement-vehicule-id">
-                    <input type="hidden" name="gestionnaire_id" id="versement-vehicule-gestionnaire-id">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Nouveau versement</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="row g-3 mb-3">
-                            <div class="col-sm-6">
-                                <div class="small text-muted">Véhicule</div>
-                                <div class="fw-semibold" id="versement-vehicule-code">—</div>
-                            </div>
-                            <div class="col-sm-6">
-                                <div class="small text-muted">Gestionnaire</div>
-                                <div class="fw-semibold" id="versement-vehicule-gestionnaire-nom">—</div>
-                            </div>
-                        </div>
-                        <div class="form-text mb-2" id="versement-vehicule-reste-a-verser-info"></div>
-                        <div class="mb-3">
-                            <label class="form-label d-block">Type de versement</label>
-                            <div class="btn-group w-100" role="group">
-                                <input type="radio" class="btn-check" name="type_versement_vehicule" id="versement-vehicule-type-total" checked>
-                                <label class="btn btn-outline-primary" for="versement-vehicule-type-total">Versement total</label>
-                                <input type="radio" class="btn-check" name="type_versement_vehicule" id="versement-vehicule-type-partiel">
-                                <label class="btn btn-outline-primary" for="versement-vehicule-type-partiel">Versement partiel</label>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Montant (FCFA)</label>
-                            <input type="number" name="montant" id="versement-vehicule-montant" class="form-control" min="0.01" step="0.01" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Mode de paiement</label>
-                            <select name="mode_paiement_id" class="form-select" required>
-                                <option value=""></option>
-                                @foreach ($modesPaiement as $mode)
-                                    <option value="{{ $mode->id }}">{{ $mode->libelle }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="row">
-                            <div class="col-6 mb-3">
-                                <label class="form-label">Date</label>
-                                <input type="date" name="date_versement" class="form-control" value="{{ now()->format('Y-m-d') }}">
-                            </div>
-                            <div class="col-6 mb-3">
-                                <label class="form-label">Référence</label>
-                                <input type="text" name="reference" class="form-control">
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Commentaire</label>
-                            <textarea name="commentaire" class="form-control" rows="2"></textarea>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
-                        <button type="submit" class="btn btn-primary">Enregistrer le versement</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-@endcanany
 
 @canany(['flotte.vehicule.gerer', 'flotte.vehicule.remise_circulation'])
     {{-- Modale rapport de remise en circulation (chef mécanicien) --}}
@@ -402,74 +325,8 @@
                 $('#detail-gestionnaire').text(vehicule.gestionnaire?.name || 'Non affecté');
 
                 $('#btn-archiver-depuis-detail').data('code', vehicule.code);
-
-                // Le versement n'a de sens que si le véhicule a un gestionnaire :
-                // on garde son id/nom sous la main pour la modale de versement,
-                // et on masque le bouton sinon.
-                $('#btn-versement-depuis-detail')
-                    .data('vehicule-code', vehicule.code)
-                    .data('gestionnaire-id', vehicule.gestionnaire_id)
-                    .data('gestionnaire-nom', vehicule.gestionnaire?.name)
-                    .toggleClass('d-none', !vehicule.gestionnaire_id);
-
                 modalDetail.show();
             });
-        });
-
-        // Versement depuis la fiche véhicule : véhicule et gestionnaire déjà
-        // connus par le contexte (pas de sélecteur), même bascule
-        // total/partiel que sur la page Versements.
-        const modalVersementVehiculeEl = document.getElementById('modal-versement-vehicule');
-        const modalVersementVehicule = modalVersementVehiculeEl ? new bootstrap.Modal(modalVersementVehiculeEl) : null;
-
-        function appliquerTypeVersementVehicule() {
-            const reste = $('#form-versement-vehicule').data('reste-a-verser') || 0;
-
-            if ($('#versement-vehicule-type-total').is(':checked')) {
-                $('#versement-vehicule-montant').val(reste > 0 ? reste : '').prop('readonly', true);
-            } else {
-                $('#versement-vehicule-montant').val('').prop('readonly', false).trigger('focus');
-            }
-        }
-
-        $('#modal-versement-vehicule input[name=type_versement_vehicule]').on('change', appliquerTypeVersementVehicule);
-
-        $('#btn-versement-depuis-detail').on('click', function () {
-            const gestionnaireId = $(this).data('gestionnaire-id');
-
-            $('#form-versement-vehicule')[0].reset();
-            $('#versement-vehicule-id').val(vehiculeCourantId);
-            $('#versement-vehicule-gestionnaire-id').val(gestionnaireId);
-            $('#versement-vehicule-code').text($(this).data('vehicule-code'));
-            $('#versement-vehicule-gestionnaire-nom').text($(this).data('gestionnaire-nom'));
-            $('#versement-vehicule-reste-a-verser-info').text('Chargement…');
-            $('#form-versement-vehicule').removeData('reste-a-verser');
-
-            modalDetail.hide();
-
-            $.get('{{ route('flotte.versements.kpis') }}', { gestionnaire_id: gestionnaireId }, function (kpis) {
-                const reste = parseFloat(kpis.reste_a_verser_jour.replace(/\s/g, '').replace(',', '.')) || 0;
-                $('#form-versement-vehicule').data('reste-a-verser', reste);
-                $('#versement-vehicule-reste-a-verser-info').text('Reste à verser (jour) : ' + kpis.reste_a_verser_jour + ' FCFA');
-                appliquerTypeVersementVehicule();
-            });
-
-            modalVersementVehicule.show();
-        });
-
-        $('#form-versement-vehicule').on('submit', function (e) {
-            e.preventDefault();
-
-            $.post('{{ route('flotte.versements.store') }}', $(this).serialize())
-                .done(function (res) {
-                    modalVersementVehicule.hide();
-                    Swal.fire({ icon: 'success', text: res.message, timer: 1800, showConfirmButton: false });
-                })
-                .fail(function (xhr) {
-                    const erreurs = xhr.responseJSON?.errors;
-                    const msg = erreurs ? Object.values(erreurs).flat()[0] : (xhr.responseJSON?.message || 'Une erreur est survenue.');
-                    Swal.fire({ icon: 'error', text: msg });
-                });
         });
 
         $('[data-bs-target="#tab-historique"]').on('shown.bs.tab', function () {
