@@ -71,6 +71,11 @@
                     <button type="button" class="btn btn-sm btn-outline-secondary d-none" id="btn-reset-filtre-vehicule" title="Réinitialiser les filtres">
                         <i class="bi bi-arrow-counterclockwise"></i>
                     </button>
+                    @canany(['flotte.vehicule.gerer', 'flotte.versement.gerer'])
+                        <button type="button" class="btn btn-outline-primary{{ Auth::user()->can('create', \App\Models\Vehicule::class) ? '' : ' ms-md-auto' }}" id="btn-nouveau-versement-vehicules">
+                            <i class="bi bi-cash-coin me-1"></i>Nouveau versement
+                        </button>
+                    @endcanany
                     @can('create', \App\Models\Vehicule::class)
                         <button type="button" class="btn btn-primary ms-md-auto" id="btn-nouveau-vehicule">
                             <i class="bi bi-plus-lg me-1"></i>Nouveau véhicule
@@ -117,6 +122,88 @@
             <p class="text-muted">Aucun véhicule pour le moment.</p>
         @endif
     </div>
+
+    @canany(['flotte.vehicule.gerer', 'flotte.versement.gerer'])
+        {{-- Modale versement, accessible globalement depuis la page Véhicules
+        (pas de bouton par véhicule) : pour un gestionnaire self-service, le
+        gestionnaire est implicite (lui-même) et seul son propre véhicule est
+        proposé en option ; pour l'admin, gestionnaire + véhicule à choisir. --}}
+        <div class="modal fade" id="modal-nouveau-versement" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <form id="form-nouveau-versement">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Nouveau versement</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            @if ($gestionnaires->isNotEmpty())
+                                <div class="mb-3">
+                                    <label class="form-label">Gestionnaire</label>
+                                    <select name="gestionnaire_id" class="form-select select2-gestionnaire-nv" required>
+                                        <option value=""></option>
+                                        @foreach ($gestionnaires as $gestionnaire)
+                                            <option value="{{ $gestionnaire->id }}">{{ $gestionnaire->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            @endif
+                            <div class="mb-3">
+                                <label class="form-label">Véhicule <span class="text-muted">(optionnel)</span></label>
+                                <select name="vehicule_id" class="form-select select2-vehicule-nv">
+                                    <option value=""></option>
+                                    @foreach ($vehicules as $vehicule)
+                                        <option value="{{ $vehicule->id }}" data-gestionnaire-id="{{ $vehicule->gestionnaire_id ?? '' }}">{{ $vehicule->code }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="form-text mb-2" id="nv-reste-a-verser-info"></div>
+                            <div class="mb-3">
+                                <label class="form-label d-block">Type de versement</label>
+                                <div class="btn-group w-100" role="group">
+                                    <input type="radio" class="btn-check" name="type_versement_nv" id="nv-type-total" checked>
+                                    <label class="btn btn-outline-primary" for="nv-type-total">Versement total</label>
+                                    <input type="radio" class="btn-check" name="type_versement_nv" id="nv-type-partiel">
+                                    <label class="btn btn-outline-primary" for="nv-type-partiel">Versement partiel</label>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Montant (FCFA)</label>
+                                <input type="number" name="montant" id="nv-montant" class="form-control" min="0.01" step="0.01" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Mode de paiement</label>
+                                <select name="mode_paiement_id" class="form-select" required>
+                                    <option value=""></option>
+                                    @foreach ($modesPaiement as $mode)
+                                        <option value="{{ $mode->id }}">{{ $mode->libelle }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="row">
+                                <div class="col-6 mb-3">
+                                    <label class="form-label">Date</label>
+                                    <input type="date" name="date_versement" class="form-control" value="{{ now()->format('Y-m-d') }}">
+                                </div>
+                                <div class="col-6 mb-3">
+                                    <label class="form-label">Référence</label>
+                                    <input type="text" name="reference" class="form-control">
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Commentaire</label>
+                                <textarea name="commentaire" class="form-control" rows="2"></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+                            <button type="submit" class="btn btn-primary">Enregistrer le versement</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    @endcanany
 
     <x-flotte.vehicule-modals :statuts="$statuts" :gestionnaires="$gestionnaires" :fenetre-statut="$fenetreStatut" />
 
@@ -168,6 +255,92 @@
                     intervalFenetre = setInterval(actualiserCompteAReboursFenetre, 30000);
                 })();
             @endif
+
+            @canany(['flotte.vehicule.gerer', 'flotte.versement.gerer'])
+                (function () {
+                    const modalNouveauVersement = new bootstrap.Modal('#modal-nouveau-versement');
+                    const peutChoisirGestionnaire = $('.select2-gestionnaire-nv').length > 0;
+
+                    $('.select2-vehicule-nv').select2({ dropdownParent: $('#modal-nouveau-versement'), width: '100%', placeholder: '—' });
+
+                    function appliquerTypeVersementNv() {
+                        const reste = $('#form-nouveau-versement').data('reste-a-verser') || 0;
+
+                        if ($('#nv-type-total').is(':checked')) {
+                            $('#nv-montant').val(reste > 0 ? reste : '').prop('readonly', true);
+                        } else {
+                            $('#nv-montant').val('').prop('readonly', false).trigger('focus');
+                        }
+                    }
+
+                    $('#modal-nouveau-versement input[name=type_versement_nv]').on('change', appliquerTypeVersementNv);
+
+                    function chargerResteAVerserNv(gestionnaireId) {
+                        $('#form-nouveau-versement').removeData('reste-a-verser');
+                        $('#nv-reste-a-verser-info').text('Chargement…');
+
+                        $.get('{{ route('flotte.versements.kpis') }}', gestionnaireId ? { gestionnaire_id: gestionnaireId } : {}, function (kpis) {
+                            const reste = parseFloat(kpis.reste_a_verser_jour.replace(/\s/g, '').replace(',', '.')) || 0;
+                            $('#form-nouveau-versement').data('reste-a-verser', reste);
+                            $('#nv-reste-a-verser-info').text('Reste à verser (jour) : ' + kpis.reste_a_verser_jour + ' FCFA');
+                            appliquerTypeVersementNv();
+                        });
+                    }
+
+                    if (peutChoisirGestionnaire) {
+                        $('.select2-gestionnaire-nv').select2({ dropdownParent: $('#modal-nouveau-versement'), width: '100%' });
+
+                        // Le véhicule proposé dépend du gestionnaire choisi : on grise
+                        // les autres options (même pattern qu'ailleurs dans l'app).
+                        $('.select2-gestionnaire-nv').on('change', function () {
+                            const gestionnaireId = $(this).val();
+
+                            $('.select2-vehicule-nv option').each(function () {
+                                const appartientA = $(this).data('gestionnaireId');
+                                $(this).prop('disabled', this.value !== '' && gestionnaireId && String(appartientA) !== String(gestionnaireId));
+                            });
+                            $('.select2-vehicule-nv').val('').trigger('change');
+
+                            if (gestionnaireId) {
+                                chargerResteAVerserNv(gestionnaireId);
+                            } else {
+                                $('#form-nouveau-versement').removeData('reste-a-verser');
+                                $('#nv-reste-a-verser-info').text("Choisissez d'abord un gestionnaire.");
+                                $('#nv-montant').val('').prop('readonly', false);
+                            }
+                        });
+                    }
+
+                    $('#btn-nouveau-versement-vehicules').on('click', function () {
+                        $('#form-nouveau-versement')[0].reset();
+                        $('.select2-gestionnaire-nv, .select2-vehicule-nv').val('').trigger('change');
+                        $('#nv-montant').prop('readonly', false);
+
+                        if (peutChoisirGestionnaire) {
+                            $('#nv-reste-a-verser-info').text("Choisissez d'abord un gestionnaire.");
+                        } else {
+                            chargerResteAVerserNv();
+                        }
+
+                        modalNouveauVersement.show();
+                    });
+
+                    $('#form-nouveau-versement').on('submit', function (e) {
+                        e.preventDefault();
+
+                        $.post('{{ route('flotte.versements.store') }}', $(this).serialize())
+                            .done(function (res) {
+                                modalNouveauVersement.hide();
+                                Swal.fire({ icon: 'success', text: res.message, timer: 1800, showConfirmButton: false });
+                            })
+                            .fail(function (xhr) {
+                                const erreurs = xhr.responseJSON?.errors;
+                                const msg = erreurs ? Object.values(erreurs).flat()[0] : (xhr.responseJSON?.message || 'Une erreur est survenue.');
+                                Swal.fire({ icon: 'error', text: msg });
+                            });
+                    });
+                })();
+            @endcanany
 
             function appliquerFiltres() {
                 const q = $('#recherche-vehicule').val().trim().toLowerCase();
