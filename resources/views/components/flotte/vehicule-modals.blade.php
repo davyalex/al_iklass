@@ -46,6 +46,11 @@
                         </dl>
                     </div>
                     <div class="tab-pane fade" id="tab-historique">
+                        <div class="d-flex justify-content-end mb-2">
+                            <a href="#" id="lien-rapport-vehicule" class="small">
+                                <i class="bi bi-file-earmark-text me-1"></i>Rapport complet du véhicule
+                            </a>
+                        </div>
                         <div id="historique-liste" class="small" style="max-height: 420px; overflow-y: auto;">
                             <p class="text-muted">Chargement…</p>
                         </div>
@@ -358,6 +363,7 @@
 
             new bootstrap.Tab(document.querySelector('[data-bs-target="#tab-details"]')).show();
             $('#historique-liste').html('<p class="text-muted">Chargement…</p>');
+            $('#lien-rapport-vehicule').attr('href', `/flotte/vehicules/${vehiculeCourantId}/rapport`);
 
             $.get(`/flotte/vehicules/${vehiculeCourantId}`, function (vehicule) {
                 $('#detail-vehicule-code').text(vehicule.code);

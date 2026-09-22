@@ -3,6 +3,7 @@
 use App\Http\Controllers\Flotte\GestionnaireController;
 use App\Http\Controllers\Flotte\HistoriqueMecanicienController;
 use App\Http\Controllers\Flotte\VehiculeController;
+use App\Http\Controllers\Flotte\VehiculeRapportController;
 use App\Http\Controllers\Flotte\VersementController;
 use Illuminate\Support\Facades\Route;
 
@@ -10,6 +11,9 @@ Route::middleware(['auth', 'reinitialiser.statut.journalier'])->prefix('flotte')
     Route::middleware('permission:flotte.vehicule.voir|flotte.vehicule.voir_affectes|flotte.vehicule.remise_circulation')->group(function () {
         Route::get('vehicules', [VehiculeController::class, 'index'])->name('vehicules.index');
         Route::get('vehicules/{vehicule}/historique', [VehiculeController::class, 'historique'])->name('vehicules.historique');
+        Route::get('vehicules/{vehicule}/rapport', [VehiculeRapportController::class, 'index'])->name('vehicules.rapport');
+        Route::get('vehicules/{vehicule}/rapport/statuts', [VehiculeRapportController::class, 'statuts'])->name('vehicules.rapport.statuts');
+        Route::get('vehicules/{vehicule}/rapport/sorties', [VehiculeRapportController::class, 'sorties'])->name('vehicules.rapport.sorties');
         Route::get('vehicules/{vehicule}', [VehiculeController::class, 'show'])->name('vehicules.show');
     });
 
