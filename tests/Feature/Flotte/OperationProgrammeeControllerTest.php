@@ -197,6 +197,32 @@ class OperationProgrammeeControllerTest extends TestCase
         $this->assertSame('2026-05-02', $suivante->date_echeance->toDateString());
     }
 
+    public function test_realiser_avec_une_date_de_renouvellement_choisie_lutilise_au_lieu_du_calcul_automatique(): void
+    {
+        $admin = User::factory()->create()->assignRole('admin');
+        $vehicule = Vehicule::factory()->create();
+        $vidange = TypeOperation::where('code', 'vidange')->firstOrFail();
+
+        $operation = OperationProgrammee::create([
+            'vehicule_id' => $vehicule->id, 'vehicule_code' => $vehicule->code,
+            'type_operation_id' => $vidange->id, 'type_operation_code' => 'vidange', 'type_operation_libelle' => 'Vidange',
+            'date_echeance' => '2026-02-01', 'rappel_jours' => 15, 'periodicite_jours' => 90,
+            'statut' => 'planifiee', 'user_id' => $admin->id,
+        ]);
+
+        // Périodicité 90j depuis le 01/02 donnerait le 02/05 par défaut ;
+        // l'utilisateur choisit explicitement une autre date de renouvellement.
+        $response = $this->actingAs($admin)->postJson(route('flotte.operations.realiser', $operation), [
+            'date_realisation' => '2026-02-01',
+            'date_renouvellement' => '2026-06-15',
+        ]);
+
+        $response->assertOk();
+
+        $suivante = OperationProgrammee::where('statut', 'planifiee')->firstOrFail();
+        $this->assertSame('2026-06-15', $suivante->date_echeance->toDateString());
+    }
+
     public function test_realiser_sans_periodicite_ne_renouvelle_pas(): void
     {
         $admin = User::factory()->create()->assignRole('admin');

@@ -15,6 +15,7 @@ class RealiserOperationRequest extends FormRequest
     {
         return [
             'date_realisation' => ['nullable', 'date'],
+            'date_renouvellement' => ['nullable', 'date'],
             'commentaire' => ['nullable', 'string', 'max:500'],
         ];
     }

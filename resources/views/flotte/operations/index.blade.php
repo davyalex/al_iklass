@@ -353,7 +353,7 @@
                     } else {
                         $('#detail-operation-actives').html(res.actives.map(function (o) {
                             const boutonRealiser = @json(auth()->user()->can('operations.realiser'))
-                                ? `<button type="button" class="btn btn-sm btn-success btn-realiser-operation" data-id="${o.id}" data-type="${o.type_operation_libelle}" data-echeance-iso="${o.date_echeance_iso}">Réaliser</button>`
+                                ? `<button type="button" class="btn btn-sm btn-success btn-realiser-operation" data-id="${o.id}" data-type="${o.type_operation_libelle}" data-echeance-iso="${o.date_echeance_iso}" data-periodicite="${o.periodicite_jours ?? ''}">Réaliser</button>`
                                 : '';
                             return `<div class="d-flex justify-content-between align-items-center border-bottom py-2">
                                 <div>
@@ -389,11 +389,25 @@
                 chargerDetail($(this).data('id'), $(this).data('vehicule-code'));
             });
 
-            // --- Réaliser (clôture + renouvellement automatique) ---
+            // --- Réaliser (clôture + renouvellement, confirmé et daté explicitement) ---
+            function ajouterJours(dateIso, jours) {
+                const d = new Date(dateIso + 'T00:00:00');
+                d.setDate(d.getDate() + Number(jours));
+                return d.toISOString().slice(0, 10);
+            }
+
             $(document).on('click', '.btn-realiser-operation', function () {
                 const id = $(this).data('id');
                 const type = $(this).data('type');
                 const echeanceIso = $(this).data('echeance-iso');
+                const periodicite = $(this).data('periodicite');
+
+                const blocRenouvellement = periodicite
+                    ? `<div class="border-top pt-2 mt-2 text-start">
+                        <label class="form-label small mb-1">Prochaine échéance (renouvellement automatique, périodicité : ${periodicite} j)</label>
+                        <input type="date" id="swal-date-renouvellement" class="swal2-input m-0" value="${ajouterJours(echeanceIso, periodicite)}">
+                    </div>`
+                    : '';
 
                 Swal.fire({
                     icon: 'question',
@@ -404,6 +418,7 @@
                             <input type="date" id="swal-date-realisation" class="swal2-input m-0 mb-2" value="${echeanceIso}">
                             <label class="form-label small mb-1">Commentaire <span class="text-muted">(optionnel)</span></label>
                             <textarea id="swal-commentaire-realisation" class="swal2-textarea m-0" placeholder="Commentaire"></textarea>
+                            ${blocRenouvellement}
                         </div>
                     `,
                     showCancelButton: true,
@@ -417,9 +432,17 @@
                             return false;
                         }
 
+                        const dateRenouvellement = document.getElementById('swal-date-renouvellement');
+
+                        if (dateRenouvellement && !dateRenouvellement.value) {
+                            Swal.showValidationMessage('La date de la prochaine échéance est obligatoire.');
+                            return false;
+                        }
+
                         return {
                             date_realisation: dateRealisation,
                             commentaire: document.getElementById('swal-commentaire-realisation').value || null,
+                            date_renouvellement: dateRenouvellement?.value || null,
                         };
                     },
                 }).then(function (result) {

@@ -147,6 +147,7 @@ class OperationProgrammeeController extends Controller
                 $request->user(),
                 $request->validated('commentaire'),
                 $request->validated('date_realisation'),
+                $request->validated('date_renouvellement'),
             );
         } catch (ValidationException $e) {
             return response()->json(['message' => collect($e->errors())->flatten()->first()], 422);
@@ -172,6 +173,7 @@ class OperationProgrammeeController extends Controller
             'date_echeance' => $operation->date_echeance->format('d/m/Y'),
             'date_echeance_iso' => $operation->date_echeance->toDateString(),
             'rappel_jours' => $operation->rappel_jours,
+            'periodicite_jours' => $operation->periodicite_jours,
             'statut' => $operation->statut,
             'date_realisation' => $operation->date_realisation?->format('d/m/Y'),
             'commentaire' => $operation->commentaire,
