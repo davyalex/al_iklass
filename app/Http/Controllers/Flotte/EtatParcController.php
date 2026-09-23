@@ -15,9 +15,12 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
 /**
- * Photo du parc à une date passée (par défaut hier) : quel statut avait
- * chaque véhicule à cette date, reconstitué depuis historique_statuts_vehicule
- * (aucune nouvelle table nécessaire, le changelog existe déjà).
+ * Photo du parc à une date passée, ou sur un intervalle (par défaut hier) :
+ * quel statut avait chaque véhicule, reconstitué depuis
+ * historique_statuts_vehicule (aucune nouvelle table nécessaire, le
+ * changelog existe déjà). La photo de statut se fixe à la fin de
+ * l'intervalle ; la situation financière, elle, s'agrège jour par jour sur
+ * tout l'intervalle.
  */
 class EtatParcController extends Controller
 {
@@ -25,7 +28,13 @@ class EtatParcController extends Controller
     {
         Gate::authorize('viewAny', Vehicule::class);
 
-        $date = $request->filled('date') ? Carbon::parse($request->string('date')) : now()->subDay();
+        $hier = now()->subDay();
+        $du = ($request->filled('date_debut') ? Carbon::parse($request->string('date_debut')) : $hier->copy())->startOfDay();
+        $au = ($request->filled('date_fin') ? Carbon::parse($request->string('date_fin')) : $hier->copy())->startOfDay();
+
+        if ($du->gt($au)) {
+            [$du, $au] = [$au, $du];
+        }
 
         $peutVoirTout = $request->user()->can('flotte.vehicule.voir') || $request->user()->can('flotte.vehicule.remise_circulation');
 
@@ -43,12 +52,13 @@ class EtatParcController extends Controller
 
         $statuts = StatutVehicule::where('actif', true)->orderBy('id')->get();
 
-        $historiques = $this->dernierStatutADate($vehicules->pluck('id'), $date->copy()->endOfDay());
+        // Photo du parc à la fin de l'intervalle.
+        $historiquesFinPeriode = $this->dernierStatutADate($vehicules->pluck('id'), $au->copy()->endOfDay());
 
-        $vehiculesConnus = $vehicules->filter(fn (Vehicule $v) => $historiques->has($v->id));
+        $vehiculesConnus = $vehicules->filter(fn (Vehicule $v) => $historiquesFinPeriode->has($v->id));
         $vehiculesInexistants = $vehicules->count() - $vehiculesConnus->count();
 
-        $vehiculesParStatut = $vehiculesConnus->groupBy(fn (Vehicule $v) => $historiques[$v->id]->nouveau_statut_code);
+        $vehiculesParStatut = $vehiculesConnus->groupBy(fn (Vehicule $v) => $historiquesFinPeriode[$v->id]->nouveau_statut_code);
 
         $kpisParStatut = $statuts->mapWithKeys(
             fn (StatutVehicule $statut) => [$statut->code => $vehiculesParStatut->get($statut->code, collect())->count()]
@@ -64,47 +74,91 @@ class EtatParcController extends Controller
                 : User::role('gestionnaire')->orderBy('name')->get())
             : collect([$request->user()]);
 
-        $situationFinanciere = $gestionnairesConcernes->map(
-            fn (User $gestionnaire) => $this->situationFinanciereADate($gestionnaire, $vehicules, $historiques, $date)
-        );
+        $situationFinanciere = $this->situationFinancierePeriode($gestionnairesConcernes, $vehicules, $du, $au);
 
         return view('flotte.vehicules.etat-parc', compact(
-            'date', 'statuts', 'vehiculesParStatut', 'kpisParStatut', 'gestionnaires', 'vehiculesInexistants', 'situationFinanciere'
+            'du', 'au', 'statuts', 'vehiculesParStatut', 'kpisParStatut', 'gestionnaires', 'vehiculesInexistants', 'situationFinanciere'
         ));
     }
 
     /**
-     * Situation financière d'un gestionnaire à la date demandée : recette
-     * attendue des véhicules qui étaient en circulation ce jour-là, montant
-     * déjà versé ce jour-là, reste à verser. Le solde de dette affiché est
-     * l'actuel (running, pas reconstitué pour cette date) : c'est un solde
-     * cumulé, la valeur qui intéresse au moment de la consultation.
+     * Situation financière de chaque gestionnaire sur l'intervalle [du, au]
+     * (bornes incluses), agrégée jour par jour : recette attendue selon le
+     * statut réel de chaque véhicule ce jour-là, versements du jour, reste à
+     * verser cumulé — somme des manques quotidiens, pas la différence
+     * globale (un jour excédentaire ne compense pas un jour déficitaire,
+     * cohérent avec le moteur de bascule de dette qui raisonne jour par
+     * jour). Se réduit exactement au calcul "un seul jour" quand du === au.
      *
+     * @param  Collection<int, User>  $gestionnaires
      * @param  Collection<int, Vehicule>  $vehicules
-     * @param  Collection<int, HistoriqueStatutVehicule>  $historiques
-     * @return array{gestionnaire: User, attendu: float, deja_verse: float, reste_a_verser: float, solde_dette: float, a_jour: bool}
+     * @return Collection<int, array{gestionnaire: User, attendu: float, deja_verse: float, reste_a_verser: float, solde_dette: float, a_jour: bool}>
      */
-    private function situationFinanciereADate(User $gestionnaire, Collection $vehicules, Collection $historiques, Carbon $date): array
+    private function situationFinancierePeriode(Collection $gestionnaires, Collection $vehicules, Carbon $du, Carbon $au): Collection
     {
-        $attendu = (float) $vehicules
-            ->where('gestionnaire_id', $gestionnaire->id)
-            ->filter(fn (Vehicule $v) => ($historiques[$v->id]->nouveau_statut_code ?? null) === 'en_circulation')
-            ->sum('recette_journaliere');
+        $historiquesParVehicule = HistoriqueStatutVehicule::whereIn('vehicule_id', $vehicules->pluck('id'))
+            ->where('created_at', '<=', $au->copy()->endOfDay())
+            ->orderBy('created_at')
+            ->get()
+            ->groupBy('vehicule_id');
 
-        $dejaVerse = (float) Versement::whereDate('date_versement', $date)
-            ->where('gestionnaire_id', $gestionnaire->id)
-            ->sum('montant');
+        $versementsParGestionnaireEtJour = Versement::whereIn('gestionnaire_id', $gestionnaires->pluck('id'))
+            ->whereDate('date_versement', '>=', $du)
+            ->whereDate('date_versement', '<=', $au)
+            ->selectRaw('gestionnaire_id, DATE(date_versement) as jour, SUM(montant) as total')
+            ->groupBy('gestionnaire_id', 'jour')
+            ->get()
+            ->groupBy('gestionnaire_id');
 
-        $resteAVerser = max(0, $attendu - $dejaVerse);
+        return $gestionnaires->map(function (User $gestionnaire) use ($vehicules, $historiquesParVehicule, $versementsParGestionnaireEtJour, $du, $au) {
+            $verseParJour = ($versementsParGestionnaireEtJour->get($gestionnaire->id) ?? collect())->pluck('total', 'jour');
 
-        return [
-            'gestionnaire' => $gestionnaire,
-            'attendu' => $attendu,
-            'deja_verse' => $dejaVerse,
-            'reste_a_verser' => $resteAVerser,
-            'solde_dette' => (float) $gestionnaire->dette,
-            'a_jour' => $resteAVerser <= 0,
-        ];
+            $attenduParJour = [];
+
+            foreach ($vehicules->where('gestionnaire_id', $gestionnaire->id) as $vehicule) {
+                $historique = $historiquesParVehicule->get($vehicule->id, collect())->values();
+                $nombreLignes = $historique->count();
+                $pointeur = 0;
+                $statutCourant = null;
+
+                for ($jour = $du->copy(); $jour->lte($au); $jour->addDay()) {
+                    $finJour = $jour->copy()->endOfDay();
+
+                    while ($pointeur < $nombreLignes && $historique[$pointeur]->created_at->lte($finJour)) {
+                        $statutCourant = $historique[$pointeur]->nouveau_statut_code;
+                        $pointeur++;
+                    }
+
+                    if ($statutCourant === 'en_circulation') {
+                        $cle = $jour->format('Y-m-d');
+                        $attenduParJour[$cle] = ($attenduParJour[$cle] ?? 0) + (float) $vehicule->recette_journaliere;
+                    }
+                }
+            }
+
+            $attenduTotal = 0.0;
+            $verseTotal = 0.0;
+            $resteTotal = 0.0;
+
+            for ($jour = $du->copy(); $jour->lte($au); $jour->addDay()) {
+                $cle = $jour->format('Y-m-d');
+                $attenduJour = $attenduParJour[$cle] ?? 0.0;
+                $verseJour = (float) ($verseParJour[$cle] ?? 0);
+
+                $attenduTotal += $attenduJour;
+                $verseTotal += $verseJour;
+                $resteTotal += max(0, $attenduJour - $verseJour);
+            }
+
+            return [
+                'gestionnaire' => $gestionnaire,
+                'attendu' => $attenduTotal,
+                'deja_verse' => $verseTotal,
+                'reste_a_verser' => $resteTotal,
+                'solde_dette' => (float) $gestionnaire->dette,
+                'a_jour' => $resteTotal <= 0,
+            ];
+        });
     }
 
     /**

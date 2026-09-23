@@ -9,9 +9,13 @@
     <div class="card border-0 bg-light mb-3">
         <div class="card-body">
             <form method="GET" action="{{ route('flotte.etat-parc.index') }}" class="row g-2 align-items-end">
-                <div class="col-6 col-md-3">
-                    <label class="form-label small mb-1">Date</label>
-                    <input type="date" name="date" class="form-control form-control-sm" value="{{ $date->format('Y-m-d') }}" max="{{ now()->format('Y-m-d') }}">
+                <div class="col-6 col-md-2">
+                    <label class="form-label small mb-1">Du</label>
+                    <input type="date" name="date_debut" class="form-control form-control-sm" value="{{ $du->format('Y-m-d') }}" max="{{ now()->format('Y-m-d') }}">
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label small mb-1">Au</label>
+                    <input type="date" name="date_fin" class="form-control form-control-sm" value="{{ $au->format('Y-m-d') }}" max="{{ now()->format('Y-m-d') }}">
                 </div>
                 @if ($gestionnaires->isNotEmpty())
                     <div class="col-6 col-md-3">
@@ -34,7 +38,11 @@
     </div>
 
     <p class="text-muted small mb-3">
-        Situation du parc au <strong>{{ $date->format('d/m/Y') }}</strong>, reconstituée depuis l'historique des changements de statut.
+        @if ($du->isSameDay($au))
+            Statut du parc au <strong>{{ $au->format('d/m/Y') }}</strong>, reconstitué depuis l'historique des changements de statut.
+        @else
+            Statut du parc au <strong>{{ $au->format('d/m/Y') }}</strong> (fin de période), situation financière agrégée du <strong>{{ $du->format('d/m/Y') }}</strong> au <strong>{{ $au->format('d/m/Y') }}</strong>.
+        @endif
         @if ($vehiculesInexistants > 0)
             {{ $vehiculesInexistants }} véhicule(s) n'existai{{ $vehiculesInexistants > 1 ? 'en' : '' }}t pas encore à cette date et {{ $vehiculesInexistants > 1 ? 'sont' : 'est' }} exclu{{ $vehiculesInexistants > 1 ? 's' : '' }}.
         @endif
@@ -54,9 +62,12 @@
         @endforeach
     </div>
 
-    {{-- Situation financière par gestionnaire, à la même date --}}
+    {{-- Situation financière par gestionnaire, sur la même période --}}
     @if ($situationFinanciere->isNotEmpty())
-        <h2 class="h6 text-uppercase text-muted mb-2">Situation financière au {{ $date->format('d/m/Y') }}</h2>
+        <h2 class="h6 text-uppercase text-muted mb-2">
+            Situation financière
+            {{ $du->isSameDay($au) ? 'au '.$au->format('d/m/Y') : 'du '.$du->format('d/m/Y').' au '.$au->format('d/m/Y') }}
+        </h2>
 
         @foreach ($situationFinanciere as $ligne)
             <div class="card shadow-sm border-0 bg-white mb-3 {{ $ligne['reste_a_verser'] > 0 || $ligne['solde_dette'] > 0 ? 'border-start border-4 border-danger' : '' }}">
@@ -93,7 +104,7 @@
                             </div>
                         </div>
                         <div class="col-6 col-md-3">
-                            <div class="border rounded p-2 text-center {{ $ligne['solde_dette'] > 0 ? 'bg-danger-subtle' : '' }}" title="Solde actuel, non reconstitué pour cette date">
+                            <div class="border rounded p-2 text-center {{ $ligne['solde_dette'] > 0 ? 'bg-danger-subtle' : '' }}" title="Solde actuel, non reconstitué pour cette période">
                                 <div class="small text-muted">Solde dette (actuel)</div>
                                 <div class="fw-semibold small">{{ \App\Support\Money::format($ligne['solde_dette']) }}</div>
                             </div>
