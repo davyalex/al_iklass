@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Flotte\EtatParcController;
 use App\Http\Controllers\Flotte\GestionnaireController;
 use App\Http\Controllers\Flotte\HistoriqueMecanicienController;
 use App\Http\Controllers\Flotte\VehiculeController;
@@ -15,6 +16,8 @@ Route::middleware(['auth', 'reinitialiser.statut.journalier'])->prefix('flotte')
         Route::get('vehicules/{vehicule}/rapport/statuts', [VehiculeRapportController::class, 'statuts'])->name('vehicules.rapport.statuts');
         Route::get('vehicules/{vehicule}/rapport/sorties', [VehiculeRapportController::class, 'sorties'])->name('vehicules.rapport.sorties');
         Route::get('vehicules/{vehicule}', [VehiculeController::class, 'show'])->name('vehicules.show');
+
+        Route::get('etat-parc', [EtatParcController::class, 'index'])->name('etat-parc.index');
     });
 
     Route::middleware('permission:flotte.vehicule.voir')->group(function () {

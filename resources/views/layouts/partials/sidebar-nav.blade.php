@@ -94,6 +94,12 @@
                     <span>Véhicules</span>
                 </a>
             </li>
+            <li class="nav-item">
+                <a href="{{ route('flotte.etat-parc.index') }}" class="nav-link d-flex align-items-center gap-2 {{ request()->routeIs('flotte.etat-parc.*') ? 'active' : '' }}">
+                    <i class="bi bi-calendar-week"></i>
+                    <span>État du parc</span>
+                </a>
+            </li>
         @endcanany
         @can('flotte.vehicule.voir')
             <li class="nav-item">
