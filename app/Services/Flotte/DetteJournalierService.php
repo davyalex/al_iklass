@@ -76,6 +76,8 @@ class DetteJournalierService
                     'dette_avant' => $detteAvant,
                     'dette_apres' => $gestionnaire->dette,
                     'date_reference' => $hier->toDateString(),
+                    'attendu' => $attendu,
+                    'deja_verse' => $dejaVerseHier,
                     'user_id' => null,
                 ]);
 

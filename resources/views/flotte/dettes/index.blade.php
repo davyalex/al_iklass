@@ -1,12 +1,12 @@
 <x-app-layout>
-    <x-slot name="header">Historique de la dette</x-slot>
+    <x-slot name="header">Dette</x-slot>
 
     <div class="row g-3 mb-3 row-cols-1 row-cols-sm-2">
         <div class="col">
             <div class="card shadow-sm border-0 bg-white h-100">
                 <div class="card-body">
                     <div class="small text-muted">Gestionnaires en dette</div>
-                    <div class="h5 mb-0" style="color: var(--al-navy);" id="kpi-gestionnaires-en-dette">{{ $kpis['gestionnaires_en_dette'] }}</div>
+                    <div class="h5 mb-0" style="color: var(--al-navy);">{{ $kpis['gestionnaires_en_dette'] }}</div>
                 </div>
             </div>
         </div>
@@ -14,61 +14,20 @@
             <div class="card shadow-sm border-0 bg-white h-100">
                 <div class="card-body">
                     <div class="small text-muted">Total dû</div>
-                    <div class="h5 mb-0" style="color: var(--al-navy);" id="kpi-total-du">{{ \App\Support\Money::format($kpis['total_du']) }} FCFA</div>
+                    <div class="h5 mb-0" style="color: var(--al-navy);">{{ \App\Support\Money::format($kpis['total_du']) }} FCFA</div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="card shadow-sm border-0 bg-white mb-3">
-        <div class="card-body">
-            <form id="filtres-dettes" class="row g-2 align-items-end">
-                <div class="col-6 col-md-2">
-                    <label class="form-label small mb-1">Du</label>
-                    <input type="date" name="date_debut" class="form-control form-control-sm">
-                </div>
-                <div class="col-6 col-md-2">
-                    <label class="form-label small mb-1">Au</label>
-                    <input type="date" name="date_fin" class="form-control form-control-sm">
-                </div>
-                <div class="col-6 col-md-2">
-                    <label class="form-label small mb-1">Type</label>
-                    <select name="type" class="form-select form-select-sm">
-                        <option value="">Tous</option>
-                        <option value="bascule">Bascule</option>
-                        <option value="reglement">Règlement</option>
-                        <option value="annulation">Annulation</option>
-                    </select>
-                </div>
-                @if ($gestionnaires->isNotEmpty())
-                    <div class="col-6 col-md-3">
-                        <label class="form-label small mb-1">Gestionnaire</label>
-                        <select name="gestionnaire_id" class="form-select form-select-sm select2-filtre-gestionnaire-dette">
-                            <option value="">Tous les gestionnaires</option>
-                            @foreach ($gestionnaires as $gestionnaire)
-                                <option value="{{ $gestionnaire->id }}">{{ $gestionnaire->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                @endif
-                <div class="col-12 col-md-3 d-flex flex-wrap gap-2">
-                    <button type="button" class="btn btn-sm btn-primary" id="btn-filtrer-dettes">
-                        <i class="bi bi-funnel me-1"></i>Filtrer
-                    </button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary d-none" id="btn-reset-dettes">
-                        Réinitialiser
-                    </button>
-                    <div class="ms-md-auto">
-                        <x-export-dropdown id-suffix="dettes" />
-                    </div>
-                </div>
-            </form>
+    @if ($gestionnairesEnDette->isEmpty())
+        <div class="card shadow-sm border-0 bg-white">
+            <div class="card-body text-center text-muted py-5">
+                <i class="bi bi-check-circle fs-1 d-block mb-2"></i>
+                Aucun gestionnaire en dette pour le moment.
+            </div>
         </div>
-    </div>
-
-    @if ($gestionnairesEnDette->isNotEmpty())
-        <h2 class="h6 text-uppercase text-muted mb-2">Gestionnaires en dette</h2>
-
+    @else
         @foreach ($gestionnairesEnDette as $gestionnaire)
             <div class="card shadow-sm border-0 bg-white mb-3 border-start border-4 border-danger">
                 <div class="card-body d-flex align-items-center flex-wrap gap-3">
@@ -77,7 +36,10 @@
                         <div class="small text-muted">Solde dû</div>
                         <div class="h6 mb-0 text-danger">{{ \App\Support\Money::format($gestionnaire->dette) }} FCFA</div>
                     </div>
-                    <div class="d-flex gap-2">
+                    <div class="d-flex flex-wrap gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-primary btn-detail-dette" data-id="{{ $gestionnaire->id }}">
+                            <i class="bi bi-eye me-1"></i>Détail
+                        </button>
                         @can('flotte.dette.regler')
                             <button type="button" class="btn btn-sm btn-success btn-regler-dette" data-id="{{ $gestionnaire->id }}" data-nom="{{ $gestionnaire->name }}" data-solde="{{ (float) $gestionnaire->dette }}">
                                 <i class="bi bi-cash-coin me-1"></i>Régler
@@ -94,23 +56,42 @@
         @endforeach
     @endif
 
-    <div class="card shadow-sm border-0 bg-white">
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0 w-100" id="table-dettes">
-                <thead>
-                    <tr>
-                        <th>Date</th>
-                        @if ($gestionnaires->isNotEmpty())
-                            <th>Gestionnaire</th>
-                        @endif
-                        <th>Type</th>
-                        <th class="text-end">Montant</th>
-                        <th class="text-end">Dette après</th>
-                        <th>Motif</th>
-                        <th>Auteur</th>
-                    </tr>
-                </thead>
-            </table>
+    {{-- Modale détail : jours ayant généré de la dette + règlements/annulations --}}
+    <div class="modal fade" id="modal-detail-dette" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div>
+                        <h5 class="modal-title mb-1">Détail — <span id="detail-dette-nom"></span></h5>
+                        <span class="small text-muted">Solde dû : <strong id="detail-dette-solde"></strong></span>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <h6 class="small text-uppercase text-muted">Jours ayant généré de la dette</h6>
+                    <div class="table-responsive mb-3">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th class="text-end">Montant à verser</th>
+                                    <th class="text-end">Montant versé</th>
+                                    <th class="text-end">Reste (dette)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="detail-dette-jours"></tbody>
+                        </table>
+                    </div>
+
+                    <div id="detail-dette-mouvements-bloc" class="d-none">
+                        <h6 class="small text-uppercase text-muted">Règlements et annulations</h6>
+                        <div id="detail-dette-mouvements" class="small"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fermer</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -196,77 +177,52 @@
     @push('scripts')
         <script>
         document.addEventListener('DOMContentLoaded', function () {
-            const avecColonneGestionnaire = @json($gestionnaires->isNotEmpty());
+            // --- Détail ---
+            const modalDetailEl = document.getElementById('modal-detail-dette');
+            const modalDetail = modalDetailEl ? new bootstrap.Modal(modalDetailEl) : null;
 
-            $('.select2-filtre-gestionnaire-dette').select2({ width: '100%', selectionCssClass: 'select2-sm' });
+            $(document).on('click', '.btn-detail-dette', function () {
+                const id = $(this).data('id');
 
-            function filtresDettes() {
-                return {
-                    date_debut: $('#filtres-dettes [name=date_debut]').val(),
-                    date_fin: $('#filtres-dettes [name=date_fin]').val(),
-                    type: $('#filtres-dettes [name=type]').val(),
-                    gestionnaire_id: $('#filtres-dettes [name=gestionnaire_id]').val(),
-                };
-            }
+                $('#detail-dette-jours').html('<tr><td colspan="4" class="text-muted">Chargement…</td></tr>');
+                $('#detail-dette-mouvements-bloc').addClass('d-none');
 
-            function actualiserBoutonReset() {
-                const actif = Object.values(filtresDettes()).some((v) => !!v);
-                $('#btn-reset-dettes').toggleClass('d-none', !actif);
-            }
+                $.get(`/flotte/gestionnaires/${id}/dette/detail`, function (res) {
+                    $('#detail-dette-nom').text(res.gestionnaire.name);
+                    $('#detail-dette-solde').text(res.solde_du + ' FCFA');
 
-            $('#filtres-dettes').on('change input', actualiserBoutonReset);
+                    if (!res.jours.length) {
+                        $('#detail-dette-jours').html('<tr><td colspan="4" class="text-muted">Aucun jour en dette.</td></tr>');
+                    } else {
+                        $('#detail-dette-jours').html(res.jours.map(function (j) {
+                            return `<tr>
+                                <td>${j.date}</td>
+                                <td class="text-end">${j.attendu} FCFA</td>
+                                <td class="text-end">${j.deja_verse} FCFA</td>
+                                <td class="text-end text-danger fw-semibold">${j.reste} FCFA</td>
+                            </tr>`;
+                        }).join(''));
+                    }
 
-            const colonnes = [
-                { data: 'created_at', name: 'created_at' },
-            ];
-            if (avecColonneGestionnaire) {
-                colonnes.push({ data: 'gestionnaire_nom', name: 'gestionnaire_nom', orderable: false });
-            }
-            colonnes.push(
-                { data: 'type_badge', name: 'type', orderable: false },
-                { data: 'montant', name: 'montant', className: 'text-end' },
-                { data: 'dette_apres_fmt', name: 'dette_apres', className: 'text-end' },
-                { data: 'motif', name: 'motif', orderable: false },
-                { data: 'auteur', name: 'auteur', orderable: false },
-            );
+                    if (res.mouvements.length) {
+                        $('#detail-dette-mouvements-bloc').removeClass('d-none');
+                        $('#detail-dette-mouvements').html(res.mouvements.map(function (m) {
+                            const badge = m.type === 'reglement'
+                                ? '<span class="badge bg-success">Règlement</span>'
+                                : '<span class="badge bg-secondary">Annulation</span>';
+                            return `<div class="d-flex justify-content-between align-items-start border-bottom py-2">
+                                <div>
+                                    ${badge} <strong>${m.montant} FCFA</strong>
+                                    ${m.auteur ? ' <span class="text-muted">— ' + m.auteur + '</span>' : ''}
+                                    ${m.motif ? '<br><span class="text-muted">' + m.motif + '</span>' : ''}
+                                </div>
+                                <div class="text-muted text-nowrap ms-2">${m.date}</div>
+                            </div>`;
+                        }).join(''));
+                    }
 
-            const tableDettes = $('#table-dettes').DataTable({
-                processing: true,
-                serverSide: true,
-                ajax: { url: '{{ route('flotte.dettes.data') }}', data: (d) => Object.assign(d, filtresDettes()) },
-                language: { url: 'https://cdn.datatables.net/plug-ins/2.1.8/i18n/fr-FR.json' },
-                columns: colonnes,
-                order: [[0, 'desc']],
-            });
-
-            function rafraichirKpis() {
-                $.get('{{ route('flotte.dettes.kpis') }}', function (kpis) {
-                    $('#kpi-gestionnaires-en-dette').text(kpis.gestionnaires_en_dette);
-                    $('#kpi-total-du').text(formatMontant(kpis.total_du) + ' FCFA');
+                    modalDetail.show();
                 });
-            }
-
-            $('#btn-filtrer-dettes').on('click', () => tableDettes.ajax.reload());
-
-            $('#btn-reset-dettes').on('click', function () {
-                $('#filtres-dettes')[0].reset();
-                $('.select2-filtre-gestionnaire-dette').val('').trigger('change');
-                tableDettes.ajax.reload();
-            });
-
-            function urlAvecFiltres(base) {
-                const params = new URLSearchParams(filtresDettes());
-                return base + '?' + params.toString();
-            }
-
-            $('#btn-export-excel-dettes').on('click', function (e) {
-                e.preventDefault();
-                window.location = urlAvecFiltres('{{ route('flotte.dettes.export.excel') }}');
-            });
-
-            $('#btn-export-pdf-dettes').on('click', function (e) {
-                e.preventDefault();
-                window.location = urlAvecFiltres('{{ route('flotte.dettes.export.pdf') }}');
             });
 
             // --- Règlement ---

@@ -59,15 +59,13 @@ Route::middleware(['auth', 'reinitialiser.statut.journalier'])->prefix('flotte')
         Route::post('gestionnaires/{gestionnaire}/dette/annuler', [GestionnaireController::class, 'annulerDette'])->name('gestionnaires.dette.annuler');
     });
 
-    // Page d'audit de la dette : un admin (flotte.dette.gerer) voit tous les
-    // gestionnaires, un gestionnaire (flotte.dette.regler seul) ne voit et
-    // ne règle que sa propre dette (contrôlé dans DetteController/ReglerDetteRequest).
+    // Page dette : un admin (flotte.dette.gerer) voit tous les gestionnaires,
+    // un gestionnaire (flotte.dette.regler seul) ne voit et ne règle que sa
+    // propre dette (contrôlé dans DetteController/ReglerDetteRequest).
     Route::middleware('permission:flotte.dette.gerer|flotte.dette.regler')->group(function () {
         Route::get('dettes', [DetteController::class, 'index'])->name('dettes.index');
         Route::get('dettes/kpis', [DetteController::class, 'kpis'])->name('dettes.kpis');
-        Route::get('dettes/data', [DetteController::class, 'data'])->name('dettes.data');
-        Route::get('dettes/export/excel', [DetteController::class, 'exportExcel'])->name('dettes.export.excel');
-        Route::get('dettes/export/pdf', [DetteController::class, 'exportPdf'])->name('dettes.export.pdf');
+        Route::get('gestionnaires/{gestionnaire}/dette/detail', [DetteController::class, 'detail'])->name('gestionnaires.dette.detail');
         Route::post('gestionnaires/{gestionnaire}/dette/regler', [DetteController::class, 'regler'])->name('gestionnaires.dette.regler');
     });
 

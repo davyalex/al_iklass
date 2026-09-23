@@ -20,7 +20,8 @@ class HistoriqueDette extends Model
 
     protected $fillable = [
         'gestionnaire_id', 'gestionnaire_nom', 'type', 'montant',
-        'dette_avant', 'dette_apres', 'motif', 'date_reference', 'user_id',
+        'dette_avant', 'dette_apres', 'motif', 'date_reference',
+        'attendu', 'deja_verse', 'user_id',
     ];
 
     protected function casts(): array
@@ -30,6 +31,8 @@ class HistoriqueDette extends Model
             'dette_avant' => 'decimal:2',
             'dette_apres' => 'decimal:2',
             'date_reference' => 'date',
+            'attendu' => 'decimal:2',
+            'deja_verse' => 'decimal:2',
         ];
     }
 

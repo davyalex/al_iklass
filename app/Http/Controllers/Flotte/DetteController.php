@@ -2,26 +2,20 @@
 
 namespace App\Http\Controllers\Flotte;
 
-use App\Exports\Flotte\HistoriqueDettesExport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Flotte\ReglerDetteRequest;
 use App\Models\HistoriqueDette;
 use App\Models\User;
 use App\Services\Flotte\DetteJournalierService;
 use App\Support\Money;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
-use Maatwebsite\Excel\Facades\Excel;
-use Symfony\Component\HttpFoundation\BinaryFileResponse;
-use Yajra\DataTables\Facades\DataTables;
 
 /**
- * Audit de la dette des gestionnaires : bascules automatiques, annulations
+ * Gestion de la dette des gestionnaires : bascules automatiques, annulations
  * (admin) et règlements (gestionnaire ou admin en son nom). Un admin
  * (flotte.dette.gerer) voit tous les gestionnaires ; un gestionnaire
  * (flotte.dette.regler seul) ne voit et ne règle que sa propre dette.
@@ -36,13 +30,8 @@ class DetteController extends Controller
 
         $peutVoirTout = $request->user()->can('flotte.dette.gerer');
 
-        // Options du filtre "Gestionnaire" : uniquement pertinent pour un
-        // admin qui peut choisir qui regarder.
-        $gestionnaires = $peutVoirTout ? User::role('gestionnaire')->orderBy('name')->get() : collect();
-
         // Gestionnaires actuellement en dette, dans le périmètre déjà scopé
-        // (tous pour un admin, uniquement soi-même sinon) : sert aux cartes
-        // "Régler"/"Annuler" ci-dessous, présentes pour les deux profils.
+        // (tous pour un admin, uniquement soi-même sinon).
         $gestionnairesEnDette = User::role('gestionnaire')
             ->when(! $peutVoirTout, fn (Builder $q) => $q->whereKey($request->user()->id))
             ->where('dette', '>', 0)
@@ -51,7 +40,7 @@ class DetteController extends Controller
 
         $kpis = $this->calculerKpis($request, $peutVoirTout);
 
-        return view('flotte.dettes.index', compact('gestionnaires', 'gestionnairesEnDette', 'kpis', 'peutVoirTout'));
+        return view('flotte.dettes.index', compact('gestionnairesEnDette', 'kpis', 'peutVoirTout'));
     }
 
     public function kpis(Request $request): JsonResponse
@@ -61,26 +50,46 @@ class DetteController extends Controller
         return response()->json($this->calculerKpis($request, $request->user()->can('flotte.dette.gerer')));
     }
 
-    public function data(Request $request): JsonResponse
+    /**
+     * Détail de la dette d'un gestionnaire : les jours qui ont généré de la
+     * dette (bascule), avec pour chacun ce qu'il devait verser, ce qu'il a
+     * versé et ce qu'il reste — et séparément les règlements/annulations
+     * qui ont depuis réduit le solde.
+     */
+    public function detail(User $gestionnaire): JsonResponse
     {
-        $this->autoriserAcces($request);
+        $this->autoriserAccesGestionnaire($gestionnaire);
 
-        $query = $this->filtrer(HistoriqueDette::query()->with(['gestionnaire', 'user']), $request)->select('historique_dettes.*');
+        $jours = HistoriqueDette::where('gestionnaire_id', $gestionnaire->id)
+            ->where('type', 'bascule')
+            ->orderByDesc('date_reference')
+            ->get()
+            ->map(fn (HistoriqueDette $h) => [
+                'date' => $h->date_reference?->format('d/m/Y'),
+                'attendu' => Money::format((float) $h->attendu),
+                'deja_verse' => Money::format((float) $h->deja_verse),
+                'reste' => Money::format((float) $h->montant),
+            ]);
 
-        return DataTables::of($query)
-            ->editColumn('created_at', fn (HistoriqueDette $h) => $h->created_at->format('d/m/Y H:i'))
-            ->addColumn('gestionnaire_nom', fn (HistoriqueDette $h) => $h->gestionnaire_nom)
-            ->addColumn('type_badge', fn (HistoriqueDette $h) => match ($h->type) {
-                'bascule' => '<span class="badge bg-danger">Bascule</span>',
-                'reglement' => '<span class="badge bg-success">Règlement</span>',
-                default => '<span class="badge bg-secondary">Annulation</span>',
-            })
-            ->editColumn('montant', fn (HistoriqueDette $h) => Money::format((float) $h->montant).' FCFA')
-            ->addColumn('dette_apres_fmt', fn (HistoriqueDette $h) => Money::format((float) $h->dette_apres).' FCFA')
-            ->addColumn('auteur', fn (HistoriqueDette $h) => $h->user?->name ?? '—')
-            ->editColumn('motif', fn (HistoriqueDette $h) => $h->motif ?? ($h->date_reference ? 'Reste à verser du '.$h->date_reference->format('d/m/Y') : '—'))
-            ->rawColumns(['type_badge'])
-            ->make(true);
+        $mouvements = HistoriqueDette::where('gestionnaire_id', $gestionnaire->id)
+            ->whereIn('type', ['reglement', 'annulation'])
+            ->with('user')
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(fn (HistoriqueDette $h) => [
+                'date' => $h->created_at->format('d/m/Y'),
+                'type' => $h->type,
+                'montant' => Money::format((float) $h->montant),
+                'motif' => $h->motif,
+                'auteur' => $h->user?->name,
+            ]);
+
+        return response()->json([
+            'gestionnaire' => $gestionnaire->only(['id', 'name']),
+            'solde_du' => Money::format((float) $gestionnaire->dette),
+            'jours' => $jours,
+            'mouvements' => $mouvements,
+        ]);
     }
 
     public function regler(User $gestionnaire, ReglerDetteRequest $request): JsonResponse
@@ -105,28 +114,6 @@ class DetteController extends Controller
         ]);
     }
 
-    public function exportExcel(Request $request): BinaryFileResponse
-    {
-        $this->autoriserAcces($request);
-
-        $historiques = $this->filtrer(HistoriqueDette::query()->with(['gestionnaire', 'user']), $request)
-            ->orderByDesc('created_at')->get();
-
-        return Excel::download(new HistoriqueDettesExport($historiques), 'historique-dettes-'.now()->format('Y-m-d-His').'.xlsx');
-    }
-
-    public function exportPdf(Request $request): Response
-    {
-        $this->autoriserAcces($request);
-
-        $historiques = $this->filtrer(HistoriqueDette::query()->with(['gestionnaire', 'user']), $request)
-            ->orderByDesc('created_at')->get();
-
-        return Pdf::loadView('exports.pdf.historique-dettes', ['historiques' => $historiques])
-            ->setPaper('a4', 'landscape')
-            ->download('historique-dettes-'.now()->format('Y-m-d-His').'.pdf');
-    }
-
     private function autoriserAcces(Request $request): void
     {
         abort_unless(
@@ -135,19 +122,14 @@ class DetteController extends Controller
         );
     }
 
-    private function filtrer(Builder $query, Request $request): Builder
+    private function autoriserAccesGestionnaire(User $gestionnaire): void
     {
-        // Un gestionnaire limité à flotte.dette.regler ne voit jamais que sa
-        // propre dette, quel que soit le gestionnaire_id envoyé.
-        $gestionnaireId = $request->user()->can('flotte.dette.gerer')
-            ? $request->integer('gestionnaire_id')
-            : $request->user()->id;
+        $user = request()->user();
 
-        return $query
-            ->when($gestionnaireId, fn (Builder $q) => $q->where('gestionnaire_id', $gestionnaireId))
-            ->when($request->filled('type'), fn (Builder $q) => $q->where('type', $request->string('type')))
-            ->when($request->filled('date_debut'), fn (Builder $q) => $q->whereDate('created_at', '>=', $request->string('date_debut')))
-            ->when($request->filled('date_fin'), fn (Builder $q) => $q->whereDate('created_at', '<=', $request->string('date_fin')));
+        abort_unless(
+            $user->can('flotte.dette.gerer') || ($user->can('flotte.dette.regler') && $gestionnaire->id === $user->id),
+            403
+        );
     }
 
     /**

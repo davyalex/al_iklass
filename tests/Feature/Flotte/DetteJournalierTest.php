@@ -60,6 +60,8 @@ class DetteJournalierTest extends TestCase
         // via le cast Eloquent plutôt qu'une chaîne brute dans assertDatabaseHas.
         $historique = HistoriqueDette::first();
         $this->assertSame('2026-01-01', $historique->date_reference->toDateString());
+        $this->assertEquals(20000, (float) $historique->attendu);
+        $this->assertEquals(0, (float) $historique->deja_verse);
     }
 
     public function test_pas_de_double_bascule_le_meme_jour_puis_redevient_effective_le_lendemain(): void
