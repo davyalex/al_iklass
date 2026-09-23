@@ -35,8 +35,16 @@
                     <button type="button" class="btn btn-sm btn-outline-secondary d-none" id="btn-reset-filtre-operation" title="Réinitialiser les filtres">
                         <i class="bi bi-arrow-counterclockwise"></i>
                     </button>
+                    <a href="{{ route('flotte.operations.historique.index') }}" class="btn btn-outline-secondary ms-md-auto">
+                        <i class="bi bi-clock-history me-1"></i>Historique
+                    </a>
+                    @can('operations.type.gerer')
+                        <button type="button" class="btn btn-outline-secondary" id="btn-gerer-types-operation">
+                            <i class="bi bi-tags me-1"></i>Types
+                        </button>
+                    @endcan
                     @can('operations.gerer')
-                        <button type="button" class="btn btn-primary ms-md-auto" id="btn-planifier-operation">
+                        <button type="button" class="btn btn-primary" id="btn-planifier-operation">
                             <i class="bi bi-plus-lg me-1"></i>Planifier
                         </button>
                     @endcan
@@ -198,6 +206,92 @@
                             <button type="submit" class="btn btn-primary">Planifier</button>
                         </div>
                     </form>
+                </div>
+            </div>
+        </div>
+    @endcan
+
+    @can('operations.type.gerer')
+        {{-- Modale gestion des types d'opération (référentiel) --}}
+        <div class="modal fade" id="modal-types-operation" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Types d'opération</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="table-responsive mb-3">
+                            <table class="table table-sm align-middle">
+                                <thead>
+                                    <tr>
+                                        <th>Libellé</th>
+                                        <th class="text-end">Périodicité (jours)</th>
+                                        <th>Statut</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($tousLesTypesOperation as $type)
+                                        <tr class="{{ $type->actif ? '' : 'text-muted' }}">
+                                            <td>{{ $type->libelle }}</td>
+                                            <td class="text-end">{{ $type->periodicite_jours ?? '—' }}</td>
+                                            <td>
+                                                @if ($type->actif)
+                                                    <span class="badge bg-success">Actif</span>
+                                                @else
+                                                    <span class="badge bg-secondary">Inactif</span>
+                                                @endif
+                                            </td>
+                                            <td class="text-end">
+                                                <button type="button" class="btn btn-sm btn-outline-secondary btn-modifier-type-operation"
+                                                        data-id="{{ $type->id }}" data-libelle="{{ $type->libelle }}"
+                                                        data-periodicite="{{ $type->periodicite_jours }}" data-actif="{{ $type->actif ? 1 : 0 }}">
+                                                    <i class="bi bi-pencil"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <button type="button" class="btn btn-sm btn-outline-primary mb-3" id="btn-nouveau-type-operation">
+                            <i class="bi bi-plus-lg me-1"></i>Nouveau type
+                        </button>
+
+                        <form id="form-type-operation" class="needs-validation border-top pt-3 d-none" novalidate>
+                            <input type="hidden" name="id" id="type-operation-id">
+                            <h6 class="small text-uppercase text-muted" id="form-type-operation-titre">Nouveau type</h6>
+                            <div class="row g-2">
+                                <div class="col-md-4">
+                                    <label class="form-label small">Code</label>
+                                    <input type="text" name="code" id="type-operation-code" class="form-control form-control-sm" placeholder="ex: vidange" required>
+                                    <div class="invalid-feedback">Obligatoire, sans espaces (ex: vidange).</div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small">Libellé</label>
+                                    <input type="text" name="libelle" class="form-control form-control-sm" required>
+                                    <div class="invalid-feedback">Le libellé est obligatoire.</div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small">Périodicité (jours)</label>
+                                    <input type="number" name="periodicite_jours" class="form-control form-control-sm" min="1">
+                                </div>
+                            </div>
+                            <div class="form-check mt-2">
+                                <input type="checkbox" name="actif" id="type-operation-actif" class="form-check-input" value="1" checked>
+                                <label class="form-check-label small" for="type-operation-actif">Actif</label>
+                            </div>
+                            <div class="d-flex gap-2 mt-3">
+                                <button type="submit" class="btn btn-sm btn-primary">Enregistrer</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-annuler-type-operation">Annuler</button>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fermer</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -372,6 +466,77 @@
                     $.post('{{ route('flotte.operations.store') }}', $formPlanifier.serialize())
                         .done(function (res) {
                             modalPlanifier.hide();
+                            Swal.fire({ icon: 'success', text: res.message, timer: 1800, showConfirmButton: false })
+                                .then(() => window.location.reload());
+                        })
+                        .fail(function (xhr) {
+                            const erreurs = xhr.responseJSON?.errors;
+                            const msg = erreurs ? Object.values(erreurs).flat()[0] : (xhr.responseJSON?.message || 'Une erreur est survenue.');
+                            Swal.fire({ icon: 'error', text: msg });
+                        });
+                });
+            @endcan
+
+            @can('operations.type.gerer')
+                // --- Gestion des types d'opération ---
+                const modalTypesEl = document.getElementById('modal-types-operation');
+                const modalTypes = modalTypesEl ? new bootstrap.Modal(modalTypesEl) : null;
+                const $formType = $('#form-type-operation');
+
+                function resetFormType() {
+                    $formType[0].reset();
+                    $formType.removeClass('was-validated');
+                    $formType.addClass('d-none');
+                    $('#type-operation-id').val('');
+                    $('#type-operation-code').prop('disabled', false);
+                }
+
+                $('#btn-gerer-types-operation').on('click', function () {
+                    resetFormType();
+                    modalTypes.show();
+                });
+
+                $('#btn-nouveau-type-operation').on('click', function () {
+                    resetFormType();
+                    $('#form-type-operation-titre').text('Nouveau type');
+                    $formType.removeClass('d-none');
+                });
+
+                $('#btn-annuler-type-operation').on('click', resetFormType);
+
+                $('.btn-modifier-type-operation').on('click', function () {
+                    resetFormType();
+                    $('#form-type-operation-titre').text("Modifier le type");
+                    $('#type-operation-id').val($(this).data('id'));
+                    $('#type-operation-code').prop('disabled', true);
+                    $formType.find('[name=code]').val('(non modifiable)');
+                    $formType.find('[name=libelle]').val($(this).data('libelle'));
+                    $formType.find('[name=periodicite_jours]').val($(this).data('periodicite'));
+                    $('#type-operation-actif').prop('checked', $(this).data('actif') == 1);
+                    $formType.removeClass('d-none');
+                });
+
+                $formType.on('submit', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    if (!$formType[0].checkValidity()) {
+                        $formType.addClass('was-validated');
+                        return;
+                    }
+
+                    const id = $('#type-operation-id').val();
+                    const url = id ? `/flotte/operations/types/${id}` : '/flotte/operations/types';
+                    const data = $formType.serializeArray().filter((f) => f.name !== 'code' || !id);
+                    if (id) {
+                        data.push({ name: '_method', value: 'PUT' });
+                    }
+                    if (!$('#type-operation-actif').is(':checked')) {
+                        data.push({ name: 'actif', value: '0' });
+                    }
+
+                    $.post(url, $.param(data))
+                        .done(function (res) {
                             Swal.fire({ icon: 'success', text: res.message, timer: 1800, showConfirmButton: false })
                                 .then(() => window.location.reload());
                         })

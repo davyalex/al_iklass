@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Flotte;
 
+use App\Exports\Flotte\HistoriqueOperationsExport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Flotte\RealiserOperationRequest;
 use App\Http\Requests\Flotte\StoreOperationProgrammeeRequest;
@@ -9,9 +10,16 @@ use App\Models\OperationProgrammee;
 use App\Models\TypeOperation;
 use App\Models\Vehicule;
 use App\Services\Flotte\OperationProgrammeeService;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Yajra\DataTables\Facades\DataTables;
 
 class OperationProgrammeeController extends Controller
 {
@@ -22,6 +30,9 @@ class OperationProgrammeeController extends Controller
     {
         $vehicules = Vehicule::orderBy('code')->get(['id', 'code', 'marque', 'modele', 'immatriculation']);
         $typesOperation = TypeOperation::where('actif', true)->orderBy('id')->get();
+        // Le référentiel complet (actifs + inactifs) n'alimente que la modale
+        // de gestion des types ; la grille/KPI/filtres restent sur les actifs.
+        $tousLesTypesOperation = TypeOperation::orderBy('id')->get();
 
         $operationsPlanifiees = OperationProgrammee::where('statut', 'planifiee')->get();
         $operationsParType = $operationsPlanifiees->groupBy('type_operation_id');
@@ -37,7 +48,59 @@ class OperationProgrammeeController extends Controller
             ];
         });
 
-        return view('flotte.operations.index', compact('vehicules', 'typesOperation', 'operationsParType', 'kpisParType'));
+        return view('flotte.operations.index', compact('vehicules', 'typesOperation', 'tousLesTypesOperation', 'operationsParType', 'kpisParType'));
+    }
+
+    public function historique(): View
+    {
+        $vehicules = Vehicule::orderBy('code')->get(['id', 'code']);
+        $typesOperation = TypeOperation::where('actif', true)->orderBy('id')->get();
+
+        return view('flotte.operations.historique', compact('vehicules', 'typesOperation'));
+    }
+
+    public function historiqueData(Request $request): JsonResponse
+    {
+        $query = $this->filtrerHistorique(OperationProgrammee::where('statut', 'realisee'), $request)
+            ->with('realisePar')
+            ->select('operations_programmees.*');
+
+        return DataTables::of($query)
+            ->editColumn('date_realisation', fn (OperationProgrammee $o) => $o->date_realisation->format('d/m/Y'))
+            ->editColumn('date_echeance', fn (OperationProgrammee $o) => $o->date_echeance->format('d/m/Y'))
+            ->addColumn('realise_par', fn (OperationProgrammee $o) => $o->realisePar?->name ?? '—')
+            ->make(true);
+    }
+
+    public function historiqueExportExcel(Request $request): BinaryFileResponse
+    {
+        $operations = $this->filtrerHistorique(OperationProgrammee::where('statut', 'realisee'), $request)
+            ->with('realisePar')
+            ->orderByDesc('date_realisation')
+            ->get();
+
+        return Excel::download(new HistoriqueOperationsExport($operations), 'historique-operations-'.now()->format('Y-m-d-His').'.xlsx');
+    }
+
+    public function historiqueExportPdf(Request $request): Response
+    {
+        $operations = $this->filtrerHistorique(OperationProgrammee::where('statut', 'realisee'), $request)
+            ->with('realisePar')
+            ->orderByDesc('date_realisation')
+            ->get();
+
+        return Pdf::loadView('exports.pdf.historique-operations', ['operations' => $operations])
+            ->setPaper('a4', 'landscape')
+            ->download('historique-operations-'.now()->format('Y-m-d-His').'.pdf');
+    }
+
+    private function filtrerHistorique(Builder $query, Request $request): Builder
+    {
+        return $query
+            ->when($request->filled('vehicule_id'), fn (Builder $q) => $q->where('vehicule_id', $request->integer('vehicule_id')))
+            ->when($request->filled('type_operation_id'), fn (Builder $q) => $q->where('type_operation_id', $request->integer('type_operation_id')))
+            ->when($request->filled('date_debut'), fn (Builder $q) => $q->whereDate('date_realisation', '>=', $request->string('date_debut')))
+            ->when($request->filled('date_fin'), fn (Builder $q) => $q->whereDate('date_realisation', '<=', $request->string('date_fin')));
     }
 
     public function detail(Vehicule $vehicule): JsonResponse

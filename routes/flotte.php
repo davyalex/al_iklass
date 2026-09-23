@@ -5,6 +5,7 @@ use App\Http\Controllers\Flotte\EtatParcController;
 use App\Http\Controllers\Flotte\GestionnaireController;
 use App\Http\Controllers\Flotte\HistoriqueMecanicienController;
 use App\Http\Controllers\Flotte\OperationProgrammeeController;
+use App\Http\Controllers\Flotte\TypeOperationController;
 use App\Http\Controllers\Flotte\VehiculeController;
 use App\Http\Controllers\Flotte\VehiculeRapportController;
 use App\Http\Controllers\Flotte\VersementController;
@@ -75,6 +76,10 @@ Route::middleware(['auth', 'reinitialiser.statut.journalier'])->prefix('flotte')
     Route::middleware('permission:operations.voir')->group(function () {
         Route::get('operations', [OperationProgrammeeController::class, 'index'])->name('operations.index');
         Route::get('operations/vehicules/{vehicule}/detail', [OperationProgrammeeController::class, 'detail'])->name('operations.detail');
+        Route::get('operations/historique', [OperationProgrammeeController::class, 'historique'])->name('operations.historique.index');
+        Route::get('operations/historique/data', [OperationProgrammeeController::class, 'historiqueData'])->name('operations.historique.data');
+        Route::get('operations/historique/export/excel', [OperationProgrammeeController::class, 'historiqueExportExcel'])->name('operations.historique.export.excel');
+        Route::get('operations/historique/export/pdf', [OperationProgrammeeController::class, 'historiqueExportPdf'])->name('operations.historique.export.pdf');
     });
 
     Route::middleware('permission:operations.gerer')->group(function () {
@@ -83,6 +88,12 @@ Route::middleware(['auth', 'reinitialiser.statut.journalier'])->prefix('flotte')
 
     Route::middleware('permission:operations.realiser')->group(function () {
         Route::post('operations/{operation}/realiser', [OperationProgrammeeController::class, 'realiser'])->name('operations.realiser');
+    });
+
+    // Référentiel des types d'opération programmée (vidange, assurance...).
+    Route::middleware('permission:operations.type.gerer')->group(function () {
+        Route::post('operations/types', [TypeOperationController::class, 'store'])->name('operations.types.store');
+        Route::put('operations/types/{type}', [TypeOperationController::class, 'update'])->name('operations.types.update');
     });
 
     // Historique personnel d'un chef mécanicien (ses changements de statut,
