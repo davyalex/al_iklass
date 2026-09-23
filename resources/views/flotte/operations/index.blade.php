@@ -111,7 +111,7 @@
                                     @endif
                                     <i class="bi bi-truck-front-fill fs-3"></i>
                                     <span class="small fw-semibold text-truncate" style="max-width: 100%;">{{ $operation->vehicule_code }}</span>
-                                    <span class="chip-operation-date text-muted">{{ $operation->date_echeance->format('d/m') }}</span>
+                                    <span class="chip-operation-date text-muted">{{ $operation->date_echeance->format('d/m/y') }}</span>
                                 </button>
                             @endforeach
                         </div>
