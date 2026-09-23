@@ -87,6 +87,81 @@ class OperationProgrammeeControllerTest extends TestCase
         $this->assertDatabaseCount('operations_programmees', 1);
     }
 
+    public function test_admin_peut_modifier_une_echeance_non_depassee(): void
+    {
+        $this->travelTo(Carbon::parse('2026-03-01'));
+
+        $admin = User::factory()->create()->assignRole('admin');
+        $vehicule = Vehicule::factory()->create();
+        $vidange = TypeOperation::where('code', 'vidange')->firstOrFail();
+
+        $operation = OperationProgrammee::create([
+            'vehicule_id' => $vehicule->id, 'vehicule_code' => $vehicule->code,
+            'type_operation_id' => $vidange->id, 'type_operation_code' => 'vidange', 'type_operation_libelle' => 'Vidange',
+            'date_echeance' => '2026-03-20', 'rappel_jours' => 15, 'periodicite_jours' => 90,
+            'statut' => 'planifiee', 'user_id' => $admin->id,
+        ]);
+
+        $response = $this->actingAs($admin)->putJson(route('flotte.operations.update', $operation), [
+            'date_echeance' => '2026-04-01',
+            'rappel_jours' => 10,
+            'periodicite_jours' => 120,
+            'commentaire' => 'Reporté suite à indisponibilité garage',
+        ]);
+
+        $response->assertOk();
+
+        $operation->refresh();
+        $this->assertSame('2026-04-01', $operation->date_echeance->toDateString());
+        $this->assertSame(10, $operation->rappel_jours);
+        $this->assertSame(120, $operation->periodicite_jours);
+        $this->assertSame('Reporté suite à indisponibilité garage', $operation->commentaire);
+    }
+
+    public function test_modifier_une_echeance_depassee_est_rejete(): void
+    {
+        $this->travelTo(Carbon::parse('2026-03-01'));
+
+        $admin = User::factory()->create()->assignRole('admin');
+        $vehicule = Vehicule::factory()->create();
+        $vidange = TypeOperation::where('code', 'vidange')->firstOrFail();
+
+        $operation = OperationProgrammee::create([
+            'vehicule_id' => $vehicule->id, 'vehicule_code' => $vehicule->code,
+            'type_operation_id' => $vidange->id, 'type_operation_code' => 'vidange', 'type_operation_libelle' => 'Vidange',
+            'date_echeance' => '2026-02-15', 'rappel_jours' => 15, 'periodicite_jours' => 90,
+            'statut' => 'planifiee', 'user_id' => $admin->id,
+        ]);
+
+        $response = $this->actingAs($admin)->putJson(route('flotte.operations.update', $operation), [
+            'date_echeance' => '2026-05-01',
+            'rappel_jours' => 15,
+        ]);
+
+        $response->assertStatus(422);
+        $this->assertSame('2026-02-15', $operation->fresh()->date_echeance->toDateString());
+    }
+
+    public function test_chef_mecanicien_ne_peut_pas_modifier_une_echeance(): void
+    {
+        $admin = User::factory()->create()->assignRole('admin');
+        $chefMecanicien = User::factory()->create()->assignRole('chef_mecanicien');
+        $vehicule = Vehicule::factory()->create();
+        $vidange = TypeOperation::where('code', 'vidange')->firstOrFail();
+
+        $operation = OperationProgrammee::create([
+            'vehicule_id' => $vehicule->id, 'vehicule_code' => $vehicule->code,
+            'type_operation_id' => $vidange->id, 'type_operation_code' => 'vidange', 'type_operation_libelle' => 'Vidange',
+            'date_echeance' => now()->addDays(30), 'rappel_jours' => 15, 'periodicite_jours' => 90,
+            'statut' => 'planifiee', 'user_id' => $admin->id,
+        ]);
+
+        $this->actingAs($chefMecanicien)->putJson(route('flotte.operations.update', $operation), [
+            'date_echeance' => now()->addDays(45)->toDateString(),
+            'rappel_jours' => 15,
+        ])->assertForbidden();
+    }
+
     public function test_gestionnaire_stock_peut_planifier_mais_pas_realiser(): void
     {
         $gestionnaireStock = User::factory()->create()->assignRole('gestionnaire_stock');

@@ -209,6 +209,82 @@
                 </div>
             </div>
         </div>
+
+        {{-- Modale modification d'une échéance encore active (non dépassée) --}}
+        <div class="modal fade" id="modal-modifier-operation" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <form id="form-modifier-operation" class="needs-validation" novalidate>
+                        <div class="modal-header">
+                            <h5 class="modal-title">Modifier — <span id="modifier-operation-type"></span></h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <label class="form-label">Échéance</label>
+                                    <input type="date" name="date_echeance" class="form-control" required>
+                                    <div class="invalid-feedback">La date d'échéance est obligatoire.</div>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label">Rappel (jours avant)</label>
+                                    <input type="number" name="rappel_jours" class="form-control" min="0" required>
+                                    <div class="invalid-feedback">Le rappel est obligatoire.</div>
+                                </div>
+                            </div>
+                            <div class="mb-3 mt-2">
+                                <label class="form-label">Périodicité de renouvellement (jours) <span class="text-muted">(optionnel)</span></label>
+                                <input type="number" name="periodicite_jours" class="form-control" min="1">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Commentaire <span class="text-muted">(optionnel)</span></label>
+                                <textarea name="commentaire" class="form-control" rows="2" maxlength="500"></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+                            <button type="submit" class="btn btn-primary">Enregistrer</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    @endcan
+
+    @can('operations.realiser')
+        {{-- Modale confirmation de réalisation (+ renouvellement) --}}
+        <div class="modal fade" id="modal-realiser-operation" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <form id="form-realiser-operation" class="needs-validation" novalidate>
+                        <div class="modal-header">
+                            <h5 class="modal-title">Marquer réalisée — <span id="realiser-operation-type"></span></h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label class="form-label">Date de réalisation</label>
+                                <input type="date" name="date_realisation" class="form-control" required>
+                                <div class="invalid-feedback">La date de réalisation est obligatoire.</div>
+                            </div>
+                            <div class="mb-3 d-none" id="realiser-bloc-renouvellement">
+                                <label class="form-label">Prochaine échéance <span class="text-muted" id="realiser-periodicite-info"></span></label>
+                                <input type="date" name="date_renouvellement" class="form-control">
+                                <div class="invalid-feedback">La date de la prochaine échéance est obligatoire.</div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Commentaire <span class="text-muted">(optionnel)</span></label>
+                                <textarea name="commentaire" class="form-control" rows="2" maxlength="500"></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+                            <button type="submit" class="btn btn-success">Confirmer</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
     @endcan
 
     @can('operations.type.gerer')
@@ -352,6 +428,10 @@
                         $('#detail-operation-actives').html('<p class="text-muted mb-0">Aucune programmation active.</p>');
                     } else {
                         $('#detail-operation-actives').html(res.actives.map(function (o) {
+                            const commentaireAttr = (o.commentaire || '').replace(/"/g, '&quot;');
+                            const boutonModifier = (@json(auth()->user()->can('operations.gerer')) && o.badge !== 'depasse')
+                                ? `<button type="button" class="btn btn-sm btn-outline-secondary btn-modifier-operation-active" data-id="${o.id}" data-type="${o.type_operation_libelle}" data-echeance-iso="${o.date_echeance_iso}" data-rappel="${o.rappel_jours}" data-periodicite="${o.periodicite_jours ?? ''}" data-commentaire="${commentaireAttr}">Modifier</button>`
+                                : '';
                             const boutonRealiser = @json(auth()->user()->can('operations.realiser'))
                                 ? `<button type="button" class="btn btn-sm btn-success btn-realiser-operation" data-id="${o.id}" data-type="${o.type_operation_libelle}" data-echeance-iso="${o.date_echeance_iso}" data-periodicite="${o.periodicite_jours ?? ''}">Réaliser</button>`
                                 : '';
@@ -361,7 +441,10 @@
                                     <span class="ms-1">Échéance : <strong>${o.date_echeance}</strong></span>
                                     <span class="text-muted ms-1">(rappel ${o.rappel_jours}j avant)</span>
                                 </div>
-                                ${boutonRealiser}
+                                <div class="d-flex gap-2">
+                                    ${boutonModifier}
+                                    ${boutonRealiser}
+                                </div>
                             </div>`;
                         }).join(''));
                     }
@@ -389,76 +472,62 @@
                 chargerDetail($(this).data('id'), $(this).data('vehicule-code'));
             });
 
-            // --- Réaliser (clôture + renouvellement, confirmé et daté explicitement) ---
             function ajouterJours(dateIso, jours) {
                 const d = new Date(dateIso + 'T00:00:00');
                 d.setDate(d.getDate() + Number(jours));
                 return d.toISOString().slice(0, 10);
             }
 
+            // --- Réaliser (clôture + renouvellement, confirmé et daté explicitement) ---
+            const modalRealiserEl = document.getElementById('modal-realiser-operation');
+            const modalRealiser = modalRealiserEl ? new bootstrap.Modal(modalRealiserEl) : null;
+            const $formRealiser = $('#form-realiser-operation');
+            let realiserOperationId = null;
+
             $(document).on('click', '.btn-realiser-operation', function () {
-                const id = $(this).data('id');
-                const type = $(this).data('type');
+                realiserOperationId = $(this).data('id');
                 const echeanceIso = $(this).data('echeance-iso');
                 const periodicite = $(this).data('periodicite');
 
-                const blocRenouvellement = periodicite
-                    ? `<div class="border-top pt-2 mt-2 text-start">
-                        <label class="form-label small mb-1">Prochaine échéance (renouvellement automatique, périodicité : ${periodicite} j)</label>
-                        <input type="date" id="swal-date-renouvellement" class="swal2-input m-0" value="${ajouterJours(echeanceIso, periodicite)}">
-                    </div>`
-                    : '';
+                $formRealiser[0].reset();
+                $formRealiser.removeClass('was-validated');
+                $('#realiser-operation-type').text($(this).data('type'));
+                $formRealiser.find('[name=date_realisation]').val(echeanceIso);
 
-                Swal.fire({
-                    icon: 'question',
-                    title: `Marquer "${type}" comme réalisée ?`,
-                    html: `
-                        <div class="text-start">
-                            <label class="form-label small mb-1">Date de réalisation</label>
-                            <input type="date" id="swal-date-realisation" class="swal2-input m-0 mb-2" value="${echeanceIso}">
-                            <label class="form-label small mb-1">Commentaire <span class="text-muted">(optionnel)</span></label>
-                            <textarea id="swal-commentaire-realisation" class="swal2-textarea m-0" placeholder="Commentaire"></textarea>
-                            ${blocRenouvellement}
-                        </div>
-                    `,
-                    showCancelButton: true,
-                    confirmButtonText: 'Confirmer',
-                    cancelButtonText: 'Annuler',
-                    preConfirm: function () {
-                        const dateRealisation = document.getElementById('swal-date-realisation').value;
+                const $dateRenouvellement = $formRealiser.find('[name=date_renouvellement]');
+                if (periodicite) {
+                    $('#realiser-periodicite-info').text(`(périodicité : ${periodicite} j)`);
+                    $dateRenouvellement.val(ajouterJours(echeanceIso, periodicite)).prop('required', true);
+                    $('#realiser-bloc-renouvellement').removeClass('d-none');
+                } else {
+                    $dateRenouvellement.val('').prop('required', false);
+                    $('#realiser-bloc-renouvellement').addClass('d-none');
+                }
 
-                        if (!dateRealisation) {
-                            Swal.showValidationMessage('La date de réalisation est obligatoire.');
-                            return false;
-                        }
+                modalDetail.hide();
+                modalRealiser.show();
+            });
 
-                        const dateRenouvellement = document.getElementById('swal-date-renouvellement');
+            $formRealiser.on('submit', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
 
-                        if (dateRenouvellement && !dateRenouvellement.value) {
-                            Swal.showValidationMessage('La date de la prochaine échéance est obligatoire.');
-                            return false;
-                        }
+                if (!$formRealiser[0].checkValidity()) {
+                    $formRealiser.addClass('was-validated');
+                    return;
+                }
 
-                        return {
-                            date_realisation: dateRealisation,
-                            commentaire: document.getElementById('swal-commentaire-realisation').value || null,
-                            date_renouvellement: dateRenouvellement?.value || null,
-                        };
-                    },
-                }).then(function (result) {
-                    if (!result.isConfirmed) {
-                        return;
-                    }
-
-                    $.post(`/flotte/operations/${id}/realiser`, result.value)
-                        .done(function (res) {
-                            Swal.fire({ icon: 'success', text: res.message, timer: 1800, showConfirmButton: false })
-                                .then(() => window.location.reload());
-                        })
-                        .fail(function (xhr) {
-                            Swal.fire({ icon: 'error', text: xhr.responseJSON?.message || 'Une erreur est survenue.' });
-                        });
-                });
+                $.post(`/flotte/operations/${realiserOperationId}/realiser`, $formRealiser.serialize())
+                    .done(function (res) {
+                        modalRealiser.hide();
+                        Swal.fire({ icon: 'success', text: res.message, timer: 1800, showConfirmButton: false })
+                            .then(() => window.location.reload());
+                    })
+                    .fail(function (xhr) {
+                        const erreurs = xhr.responseJSON?.errors;
+                        const msg = erreurs ? Object.values(erreurs).flat()[0] : (xhr.responseJSON?.message || 'Une erreur est survenue.');
+                        Swal.fire({ icon: 'error', text: msg });
+                    });
             });
 
             @can('operations.gerer')
@@ -481,6 +550,49 @@
                     if (periodicite && !$('#po-periodicite').val()) {
                         $('#po-periodicite').val(periodicite);
                     }
+                });
+
+                // --- Modifier une programmation active ---
+                const modalModifierEl = document.getElementById('modal-modifier-operation');
+                const modalModifier = modalModifierEl ? new bootstrap.Modal(modalModifierEl) : null;
+                const $formModifier = $('#form-modifier-operation');
+                let modifierOperationId = null;
+
+                $(document).on('click', '.btn-modifier-operation-active', function () {
+                    modifierOperationId = $(this).data('id');
+
+                    $formModifier[0].reset();
+                    $formModifier.removeClass('was-validated');
+                    $('#modifier-operation-type').text($(this).data('type'));
+                    $formModifier.find('[name=date_echeance]').val($(this).data('echeance-iso'));
+                    $formModifier.find('[name=rappel_jours]').val($(this).data('rappel'));
+                    $formModifier.find('[name=periodicite_jours]').val($(this).data('periodicite') || '');
+                    $formModifier.find('[name=commentaire]').val($(this).data('commentaire') || '');
+
+                    modalDetail.hide();
+                    modalModifier.show();
+                });
+
+                $formModifier.on('submit', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    if (!$formModifier[0].checkValidity()) {
+                        $formModifier.addClass('was-validated');
+                        return;
+                    }
+
+                    $.post(`/flotte/operations/${modifierOperationId}`, $formModifier.serialize() + '&_method=PUT')
+                        .done(function (res) {
+                            modalModifier.hide();
+                            Swal.fire({ icon: 'success', text: res.message, timer: 1800, showConfirmButton: false })
+                                .then(() => window.location.reload());
+                        })
+                        .fail(function (xhr) {
+                            const erreurs = xhr.responseJSON?.errors;
+                            const msg = erreurs ? Object.values(erreurs).flat()[0] : (xhr.responseJSON?.message || 'Une erreur est survenue.');
+                            Swal.fire({ icon: 'error', text: msg });
+                        });
                 });
 
                 $formPlanifier.on('submit', function (e) {

@@ -116,4 +116,37 @@ class OperationProgrammeeService
             return ['cloturee' => $operation, 'suivante' => $suivante];
         });
     }
+
+    /**
+     * Modifie une échéance encore active (date, rappel, périodicité,
+     * commentaire). Rejette si l'échéance est déjà dépassée : à ce stade,
+     * l'action attendue est de la réaliser, pas de repousser sa date.
+     *
+     * @param  array{date_echeance: string, rappel_jours: int, periodicite_jours?: int|null, commentaire?: string|null}  $data
+     *
+     * @throws ValidationException
+     */
+    public function modifier(OperationProgrammee $operation, array $data): OperationProgrammee
+    {
+        if ($operation->statut !== 'planifiee') {
+            throw ValidationException::withMessages([
+                'operation' => 'Cette opération a déjà été réalisée.',
+            ]);
+        }
+
+        if ($operation->badge() === 'depasse') {
+            throw ValidationException::withMessages([
+                'operation' => 'Cette échéance est dépassée : elle ne peut plus être modifiée, seulement réalisée.',
+            ]);
+        }
+
+        $operation->update([
+            'date_echeance' => $data['date_echeance'],
+            'rappel_jours' => $data['rappel_jours'],
+            'periodicite_jours' => $data['periodicite_jours'] ?? null,
+            'commentaire' => $data['commentaire'] ?? null,
+        ]);
+
+        return $operation;
+    }
 }

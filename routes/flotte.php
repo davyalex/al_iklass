@@ -84,6 +84,7 @@ Route::middleware(['auth', 'reinitialiser.statut.journalier'])->prefix('flotte')
 
     Route::middleware('permission:operations.gerer')->group(function () {
         Route::post('operations', [OperationProgrammeeController::class, 'store'])->name('operations.store');
+        Route::put('operations/{operation}', [OperationProgrammeeController::class, 'update'])->name('operations.update');
     });
 
     Route::middleware('permission:operations.realiser')->group(function () {

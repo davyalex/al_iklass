@@ -6,6 +6,7 @@ use App\Exports\Flotte\HistoriqueOperationsExport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Flotte\RealiserOperationRequest;
 use App\Http\Requests\Flotte\StoreOperationProgrammeeRequest;
+use App\Http\Requests\Flotte\UpdateOperationProgrammeeRequest;
 use App\Models\OperationProgrammee;
 use App\Models\TypeOperation;
 use App\Models\Vehicule;
@@ -137,6 +138,20 @@ class OperationProgrammeeController extends Controller
             'message' => "Échéance {$operation->type_operation_libelle} planifiée pour {$operation->vehicule_code}.",
             'operation' => $this->formaterOperation($operation),
         ], 201);
+    }
+
+    public function update(OperationProgrammee $operation, UpdateOperationProgrammeeRequest $request): JsonResponse
+    {
+        try {
+            $operation = $this->service->modifier($operation, $request->validated());
+        } catch (ValidationException $e) {
+            return response()->json(['message' => collect($e->errors())->flatten()->first()], 422);
+        }
+
+        return response()->json([
+            'message' => "Échéance {$operation->type_operation_libelle} mise à jour pour {$operation->vehicule_code}.",
+            'operation' => $this->formaterOperation($operation),
+        ]);
     }
 
     public function realiser(OperationProgrammee $operation, RealiserOperationRequest $request): JsonResponse
