@@ -147,7 +147,7 @@
     @push('scripts')
         <script>
         document.addEventListener('DOMContentLoaded', function () {
-            $('.select2-filtre-gestionnaire-parc').select2({ width: '100%', placeholder: 'Tous les gestionnaires', allowClear: true });
+            $('.select2-filtre-gestionnaire-parc').select2({ width: '100%' });
         });
         </script>
     @endpush
