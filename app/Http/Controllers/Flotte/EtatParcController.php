@@ -7,6 +7,7 @@ use App\Models\HistoriqueStatutVehicule;
 use App\Models\StatutVehicule;
 use App\Models\User;
 use App\Models\Vehicule;
+use App\Models\Versement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -57,9 +58,53 @@ class EtatParcController extends Controller
             ? User::role('gestionnaire')->orderBy('name')->get()
             : collect();
 
+        $gestionnairesConcernes = $peutVoirTout
+            ? ($request->filled('gestionnaire_id')
+                ? User::role('gestionnaire')->whereKey($request->integer('gestionnaire_id'))->orderBy('name')->get()
+                : User::role('gestionnaire')->orderBy('name')->get())
+            : collect([$request->user()]);
+
+        $situationFinanciere = $gestionnairesConcernes->map(
+            fn (User $gestionnaire) => $this->situationFinanciereADate($gestionnaire, $vehicules, $historiques, $date)
+        );
+
         return view('flotte.vehicules.etat-parc', compact(
-            'date', 'statuts', 'vehiculesParStatut', 'kpisParStatut', 'gestionnaires', 'vehiculesInexistants'
+            'date', 'statuts', 'vehiculesParStatut', 'kpisParStatut', 'gestionnaires', 'vehiculesInexistants', 'situationFinanciere'
         ));
+    }
+
+    /**
+     * Situation financière d'un gestionnaire à la date demandée : recette
+     * attendue des véhicules qui étaient en circulation ce jour-là, montant
+     * déjà versé ce jour-là, reste à verser. Le solde de dette affiché est
+     * l'actuel (running, pas reconstitué pour cette date) : c'est un solde
+     * cumulé, la valeur qui intéresse au moment de la consultation.
+     *
+     * @param  Collection<int, Vehicule>  $vehicules
+     * @param  Collection<int, HistoriqueStatutVehicule>  $historiques
+     * @return array{gestionnaire: User, attendu: float, deja_verse: float, reste_a_verser: float, solde_dette: float, a_jour: bool}
+     */
+    private function situationFinanciereADate(User $gestionnaire, Collection $vehicules, Collection $historiques, Carbon $date): array
+    {
+        $attendu = (float) $vehicules
+            ->where('gestionnaire_id', $gestionnaire->id)
+            ->filter(fn (Vehicule $v) => ($historiques[$v->id]->nouveau_statut_code ?? null) === 'en_circulation')
+            ->sum('recette_journaliere');
+
+        $dejaVerse = (float) Versement::whereDate('date_versement', $date)
+            ->where('gestionnaire_id', $gestionnaire->id)
+            ->sum('montant');
+
+        $resteAVerser = max(0, $attendu - $dejaVerse);
+
+        return [
+            'gestionnaire' => $gestionnaire,
+            'attendu' => $attendu,
+            'deja_verse' => $dejaVerse,
+            'reste_a_verser' => $resteAVerser,
+            'solde_dette' => (float) $gestionnaire->dette,
+            'a_jour' => $resteAVerser <= 0,
+        ];
     }
 
     /**
