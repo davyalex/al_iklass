@@ -127,10 +127,18 @@
         @endcanany
     @endcanany
 
-    @canany(['utilisateurs.voir', 'roles.voir', 'unites.voir', 'audit.voir', 'parametres.voir'])
+    @canany(['utilisateurs.voir', 'roles.voir', 'unites.voir', 'audit.voir', 'parametres.voir', 'caisse.voir'])
         <li class="nav-item mt-3">
             <span class="px-3 text-uppercase small fw-semibold" style="color: rgba(255,255,255,0.45); letter-spacing: .04em;">Administration</span>
         </li>
+        @can('caisse.voir')
+            <li class="nav-item">
+                <a href="{{ route('admin.caisses.index') }}" class="nav-link d-flex align-items-center gap-2 {{ request()->routeIs('admin.caisses.*') ? 'active' : '' }}">
+                    <i class="bi bi-wallet2"></i>
+                    <span>Caisses</span>
+                </a>
+            </li>
+        @endcan
         @can('utilisateurs.voir')
             <li class="nav-item">
                 <a href="{{ route('admin.users.index') }}" class="nav-link d-flex align-items-center gap-2 {{ request()->routeIs('admin.users.*') ? 'active' : '' }}">

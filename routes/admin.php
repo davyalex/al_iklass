@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AuditLogController;
+use App\Http\Controllers\Admin\CaisseController;
 use App\Http\Controllers\Admin\ParametreController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\UniteController;
@@ -48,6 +49,13 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
         Route::get('audit/data', [AuditLogController::class, 'data'])->name('audit.data');
         Route::get('audit/export/excel', [AuditLogController::class, 'exportExcel'])->name('audit.export.excel');
         Route::get('audit/export/pdf', [AuditLogController::class, 'exportPdf'])->name('audit.export.pdf');
+    });
+
+    Route::middleware('permission:caisse.voir')->group(function () {
+        Route::get('caisses', [CaisseController::class, 'index'])->name('caisses.index');
+        Route::get('caisses/data', [CaisseController::class, 'data'])->name('caisses.data');
+        Route::get('caisses/export/excel', [CaisseController::class, 'exportExcel'])->name('caisses.export.excel');
+        Route::get('caisses/export/pdf', [CaisseController::class, 'exportPdf'])->name('caisses.export.pdf');
     });
 
     Route::middleware('permission:parametres.voir')->group(function () {

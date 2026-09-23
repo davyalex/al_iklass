@@ -55,6 +55,12 @@ return [
             'flotte.dette.regler',
         ],
 
+        // Vue consolidée des 4 caisses (versements, ventes externes, emprunt,
+        // paiements fournisseurs) : oversight admin, transverse à Flotte et Stock.
+        'caisse' => [
+            'caisse.voir',
+        ],
+
     ],
 
     /*
@@ -73,7 +79,7 @@ return [
 
         'superadmin' => [],
 
-        'admin' => ['stock', 'utilisateurs', 'administration', 'flotte' => ['except' => ['flotte.vehicule.voir_affectes']]],
+        'admin' => ['stock', 'utilisateurs', 'administration', 'caisse', 'flotte' => ['except' => ['flotte.vehicule.voir_affectes']]],
 
         'gestionnaire_stock' => [
             'stock' => ['except' => ['stock.demande.creer']],
