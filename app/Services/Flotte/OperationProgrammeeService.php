@@ -6,6 +6,7 @@ use App\Models\OperationProgrammee;
 use App\Models\TypeOperation;
 use App\Models\User;
 use App\Models\Vehicule;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -55,13 +56,17 @@ class OperationProgrammeeService
      * Clôture une opération réalisée et enchaîne immédiatement le cycle
      * suivant (nouvelle ligne 'planifiee', échéance = date de réalisation +
      * périodicité) dans la même transaction — pas de renouvellement si aucune
-     * périodicité n'est définie (opération ponctuelle).
+     * périodicité n'est définie (opération ponctuelle). La date de réalisation
+     * est celle saisie par l'utilisateur (par défaut l'échéance elle-même côté
+     * vue), pas systématiquement "aujourd'hui" : le prochain cycle se calcule
+     * à partir de cette date réelle.
+     *
      *
      * @return array{cloturee: OperationProgrammee, suivante: ?OperationProgrammee}
      *
      * @throws ValidationException
      */
-    public function realiser(OperationProgrammee $operation, User $auteur, ?string $commentaire = null): array
+    public function realiser(OperationProgrammee $operation, User $auteur, ?string $commentaire = null, ?string $dateRealisation = null): array
     {
         if ($operation->statut !== 'planifiee') {
             throw ValidationException::withMessages([
@@ -69,9 +74,9 @@ class OperationProgrammeeService
             ]);
         }
 
-        return DB::transaction(function () use ($operation, $auteur, $commentaire) {
-            $dateRealisation = now()->toDateString();
+        $dateRealisation = $dateRealisation ? Carbon::parse($dateRealisation)->toDateString() : now()->toDateString();
 
+        return DB::transaction(function () use ($operation, $auteur, $commentaire, $dateRealisation) {
             $operation->statut = 'realisee';
             $operation->date_realisation = $dateRealisation;
             $operation->realise_par_id = $auteur->id;
@@ -91,7 +96,7 @@ class OperationProgrammeeService
                     'type_operation_id' => $operation->type_operation_id,
                     'type_operation_code' => $operation->type_operation_code,
                     'type_operation_libelle' => $operation->type_operation_libelle,
-                    'date_echeance' => now()->addDays($operation->periodicite_jours)->toDateString(),
+                    'date_echeance' => Carbon::parse($dateRealisation)->addDays($operation->periodicite_jours)->toDateString(),
                     'rappel_jours' => $operation->rappel_jours,
                     'periodicite_jours' => $operation->periodicite_jours,
                     'statut' => 'planifiee',

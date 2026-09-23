@@ -15,7 +15,6 @@ class StoreTypeOperationRequest extends FormRequest
     {
         return [
             'libelle' => ['required', 'string', 'max:100'],
-            'periodicite_jours' => ['nullable', 'integer', 'min:1'],
             'actif' => ['boolean'],
         ];
     }

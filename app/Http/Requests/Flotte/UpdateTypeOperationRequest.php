@@ -17,7 +17,6 @@ class UpdateTypeOperationRequest extends FormRequest
             // Le code n'est pas modifiable une fois créé (identifiant stable,
             // référencé en snapshot sur chaque ligne operations_programmees).
             'libelle' => ['required', 'string', 'max:100'],
-            'periodicite_jours' => ['nullable', 'integer', 'min:1'],
             'actif' => ['boolean'],
         ];
     }

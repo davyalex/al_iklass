@@ -27,14 +27,12 @@ class TypeOperationControllerTest extends TestCase
 
         $response = $this->actingAs($admin)->postJson(route('flotte.operations.types.store'), [
             'libelle' => 'Peinture carrosserie',
-            'periodicite_jours' => 730,
         ]);
 
         $response->assertCreated();
         $this->assertDatabaseHas('types_operation', [
             'code' => 'peinture_carrosserie',
             'libelle' => 'Peinture carrosserie',
-            'periodicite_jours' => 730,
             'actif' => true,
         ]);
     }
@@ -87,7 +85,6 @@ class TypeOperationControllerTest extends TestCase
 
         $response = $this->actingAs($admin)->putJson(route('flotte.operations.types.update', $type), [
             'libelle' => 'Vidange moteur',
-            'periodicite_jours' => 100,
             'actif' => false,
         ]);
 
@@ -95,7 +92,6 @@ class TypeOperationControllerTest extends TestCase
         $this->assertDatabaseHas('types_operation', [
             'id' => $type->id,
             'libelle' => 'Vidange moteur',
-            'periodicite_jours' => 100,
             'actif' => false,
         ]);
     }

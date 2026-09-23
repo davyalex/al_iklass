@@ -166,6 +166,37 @@ class OperationProgrammeeControllerTest extends TestCase
         $this->assertDatabaseCount('operations_programmees', 2);
     }
 
+    public function test_realiser_avec_une_date_de_realisation_choisie_calcule_le_cycle_suivant_depuis_celle_ci(): void
+    {
+        $this->travelTo(Carbon::parse('2026-02-10'));
+
+        $admin = User::factory()->create()->assignRole('admin');
+        $vehicule = Vehicule::factory()->create();
+        $vidange = TypeOperation::where('code', 'vidange')->firstOrFail();
+
+        $operation = OperationProgrammee::create([
+            'vehicule_id' => $vehicule->id, 'vehicule_code' => $vehicule->code,
+            'type_operation_id' => $vidange->id, 'type_operation_code' => 'vidange', 'type_operation_libelle' => 'Vidange',
+            'date_echeance' => '2026-02-01', 'rappel_jours' => 15, 'periodicite_jours' => 90,
+            'statut' => 'planifiee', 'user_id' => $admin->id,
+        ]);
+
+        // La vidange a en réalité été faite à l'échéance (01/02), pas le jour
+        // de la saisie (10/02) : la date choisie doit être celle enregistrée,
+        // et le prochain cycle doit se calculer à partir d'elle.
+        $response = $this->actingAs($admin)->postJson(route('flotte.operations.realiser', $operation), [
+            'date_realisation' => '2026-02-01',
+        ]);
+
+        $response->assertOk();
+
+        $operation->refresh();
+        $this->assertSame('2026-02-01', $operation->date_realisation->toDateString());
+
+        $suivante = OperationProgrammee::where('statut', 'planifiee')->firstOrFail();
+        $this->assertSame('2026-05-02', $suivante->date_echeance->toDateString());
+    }
+
     public function test_realiser_sans_periodicite_ne_renouvelle_pas(): void
     {
         $admin = User::factory()->create()->assignRole('admin');

@@ -14,6 +14,7 @@ class RealiserOperationRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'date_realisation' => ['nullable', 'date'],
             'commentaire' => ['nullable', 'string', 'max:500'],
         ];
     }

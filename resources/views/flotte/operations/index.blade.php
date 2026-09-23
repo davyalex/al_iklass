@@ -226,7 +226,6 @@
                                 <thead>
                                     <tr>
                                         <th>Libellé</th>
-                                        <th class="text-end">Périodicité (jours)</th>
                                         <th>Statut</th>
                                         <th></th>
                                     </tr>
@@ -235,7 +234,6 @@
                                     @foreach ($tousLesTypesOperation as $type)
                                         <tr class="{{ $type->actif ? '' : 'text-muted' }}">
                                             <td>{{ $type->libelle }}</td>
-                                            <td class="text-end">{{ $type->periodicite_jours ?? '—' }}</td>
                                             <td>
                                                 @if ($type->actif)
                                                     <span class="badge bg-success">Actif</span>
@@ -246,7 +244,7 @@
                                             <td class="text-end">
                                                 <button type="button" class="btn btn-sm btn-outline-secondary btn-modifier-type-operation"
                                                         data-id="{{ $type->id }}" data-libelle="{{ $type->libelle }}"
-                                                        data-periodicite="{{ $type->periodicite_jours }}" data-actif="{{ $type->actif ? 1 : 0 }}">
+                                                        data-actif="{{ $type->actif ? 1 : 0 }}">
                                                     <i class="bi bi-pencil"></i>
                                                 </button>
                                             </td>
@@ -263,16 +261,10 @@
                         <form id="form-type-operation" class="needs-validation border-top pt-3 d-none" novalidate>
                             <input type="hidden" name="id" id="type-operation-id">
                             <h6 class="small text-uppercase text-muted" id="form-type-operation-titre">Nouveau type</h6>
-                            <div class="row g-2">
-                                <div class="col-md-6">
-                                    <label class="form-label small">Libellé</label>
-                                    <input type="text" name="libelle" class="form-control form-control-sm" required>
-                                    <div class="invalid-feedback">Le libellé est obligatoire.</div>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label small">Périodicité (jours) <span class="text-muted">(optionnel)</span></label>
-                                    <input type="number" name="periodicite_jours" class="form-control form-control-sm" min="1">
-                                </div>
+                            <div class="mb-2">
+                                <label class="form-label small">Libellé</label>
+                                <input type="text" name="libelle" class="form-control form-control-sm" required>
+                                <div class="invalid-feedback">Le libellé est obligatoire.</div>
                             </div>
                             <div class="form-check mt-2">
                                 <input type="checkbox" name="actif" id="type-operation-actif" class="form-check-input" value="1" checked>
@@ -361,7 +353,7 @@
                     } else {
                         $('#detail-operation-actives').html(res.actives.map(function (o) {
                             const boutonRealiser = @json(auth()->user()->can('operations.realiser'))
-                                ? `<button type="button" class="btn btn-sm btn-success btn-realiser-operation" data-id="${o.id}" data-type="${o.type_operation_libelle}">Réaliser</button>`
+                                ? `<button type="button" class="btn btn-sm btn-success btn-realiser-operation" data-id="${o.id}" data-type="${o.type_operation_libelle}" data-echeance-iso="${o.date_echeance_iso}">Réaliser</button>`
                                 : '';
                             return `<div class="d-flex justify-content-between align-items-center border-bottom py-2">
                                 <div>
@@ -401,22 +393,41 @@
             $(document).on('click', '.btn-realiser-operation', function () {
                 const id = $(this).data('id');
                 const type = $(this).data('type');
+                const echeanceIso = $(this).data('echeance-iso');
 
                 Swal.fire({
                     icon: 'question',
                     title: `Marquer "${type}" comme réalisée ?`,
-                    text: 'La prochaine échéance sera calculée automatiquement.',
-                    input: 'textarea',
-                    inputPlaceholder: 'Commentaire (optionnel)',
+                    html: `
+                        <div class="text-start">
+                            <label class="form-label small mb-1">Date de réalisation</label>
+                            <input type="date" id="swal-date-realisation" class="swal2-input m-0 mb-2" value="${echeanceIso}">
+                            <label class="form-label small mb-1">Commentaire <span class="text-muted">(optionnel)</span></label>
+                            <textarea id="swal-commentaire-realisation" class="swal2-textarea m-0" placeholder="Commentaire"></textarea>
+                        </div>
+                    `,
                     showCancelButton: true,
                     confirmButtonText: 'Confirmer',
                     cancelButtonText: 'Annuler',
+                    preConfirm: function () {
+                        const dateRealisation = document.getElementById('swal-date-realisation').value;
+
+                        if (!dateRealisation) {
+                            Swal.showValidationMessage('La date de réalisation est obligatoire.');
+                            return false;
+                        }
+
+                        return {
+                            date_realisation: dateRealisation,
+                            commentaire: document.getElementById('swal-commentaire-realisation').value || null,
+                        };
+                    },
                 }).then(function (result) {
                     if (!result.isConfirmed) {
                         return;
                     }
 
-                    $.post(`/flotte/operations/${id}/realiser`, { commentaire: result.value || null })
+                    $.post(`/flotte/operations/${id}/realiser`, result.value)
                         .done(function (res) {
                             Swal.fire({ icon: 'success', text: res.message, timer: 1800, showConfirmButton: false })
                                 .then(() => window.location.reload());
@@ -490,10 +501,6 @@
                     modalTypes.show();
                 });
 
-                @if (request()->has('types'))
-                    modalTypes?.show();
-                @endif
-
                 $('#btn-nouveau-type-operation').on('click', function () {
                     resetFormType();
                     $('#form-type-operation-titre').text('Nouveau type');
@@ -507,7 +514,6 @@
                     $('#form-type-operation-titre').text("Modifier le type");
                     $('#type-operation-id').val($(this).data('id'));
                     $formType.find('[name=libelle]').val($(this).data('libelle'));
-                    $formType.find('[name=periodicite_jours]').val($(this).data('periodicite'));
                     $('#type-operation-actif').prop('checked', $(this).data('actif') == 1);
                     $formType.removeClass('d-none');
                 });

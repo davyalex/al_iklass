@@ -142,7 +142,12 @@ class OperationProgrammeeController extends Controller
     public function realiser(OperationProgrammee $operation, RealiserOperationRequest $request): JsonResponse
     {
         try {
-            $resultat = $this->service->realiser($operation, $request->user(), $request->validated('commentaire'));
+            $resultat = $this->service->realiser(
+                $operation,
+                $request->user(),
+                $request->validated('commentaire'),
+                $request->validated('date_realisation'),
+            );
         } catch (ValidationException $e) {
             return response()->json(['message' => collect($e->errors())->flatten()->first()], 422);
         }
@@ -165,6 +170,7 @@ class OperationProgrammeeController extends Controller
             'type_operation_code' => $operation->type_operation_code,
             'type_operation_libelle' => $operation->type_operation_libelle,
             'date_echeance' => $operation->date_echeance->format('d/m/Y'),
+            'date_echeance_iso' => $operation->date_echeance->toDateString(),
             'rappel_jours' => $operation->rappel_jours,
             'statut' => $operation->statut,
             'date_realisation' => $operation->date_realisation?->format('d/m/Y'),
