@@ -15,7 +15,7 @@
                     <select name="vehicule_id" class="form-select form-select-sm select2-filtre-historique-vehicule">
                         <option value="">Tous les véhicules</option>
                         @foreach ($vehicules as $vehicule)
-                            <option value="{{ $vehicule->id }}">{{ $vehicule->code }}</option>
+                            <option value="{{ $vehicule->id }}" @selected(request('vehicule_id') == $vehicule->id)>{{ $vehicule->code }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -68,6 +68,10 @@
         document.addEventListener('DOMContentLoaded', function () {
             $('.select2-filtre-historique-vehicule').select2({ width: '100%', selectionCssClass: 'select2-sm' });
 
+            // Le véhicule peut arriver pré-sélectionné (lien "Voir tout
+            // l'historique" depuis le détail d'un véhicule sur la page
+            // Opérations programmées) : le bouton réinitialiser doit déjà
+            // être visible dans ce cas.
             function filtresHistorique() {
                 return {
                     vehicule_id: $('#filtres-historique-operations [name=vehicule_id]').val(),
@@ -81,6 +85,8 @@
                 const actif = Object.values(filtresHistorique()).some((v) => v !== undefined && v !== null && v !== '');
                 $('#btn-reset-historique-operations').toggleClass('d-none', !actif);
             }
+
+            actualiserBoutonReset();
 
             const table = $('#table-historique-operations').DataTable({
                 processing: true,

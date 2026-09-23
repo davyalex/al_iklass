@@ -40,6 +40,17 @@ class OperationProgrammeeHistoriqueTest extends TestCase
         $this->actingAs($admin)->get(route('flotte.operations.historique.index'))->assertOk();
     }
 
+    public function test_le_vehicule_est_preselectionne_depuis_le_lien_du_detail(): void
+    {
+        $admin = User::factory()->create()->assignRole('admin');
+        $vehicule = Vehicule::factory()->create(['code' => 'AL-042']);
+
+        $response = $this->actingAs($admin)->get(route('flotte.operations.historique.index', ['vehicule_id' => $vehicule->id]));
+
+        $response->assertOk();
+        $response->assertSee("value=\"{$vehicule->id}\" selected", false);
+    }
+
     public function test_role_sans_droit_est_rejete(): void
     {
         $gestionnaire = User::factory()->create()->assignRole('gestionnaire');

@@ -138,7 +138,10 @@
                     <h6 class="small text-uppercase text-muted">Programmations actives</h6>
                     <div id="detail-operation-actives" class="small mb-3"></div>
 
-                    <h6 class="small text-uppercase text-muted">Historique</h6>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="small text-uppercase text-muted mb-0">Historique</h6>
+                        <a href="#" id="lien-historique-operation-vehicule" class="small">Voir tout l'historique</a>
+                    </div>
                     <div id="detail-operation-historique" class="small"></div>
                 </div>
                 <div class="modal-footer">
@@ -422,6 +425,7 @@
                 $('#detail-operation-code').text(vehiculeCode);
                 $('#detail-operation-actives').html('<p class="text-muted mb-0">Chargement…</p>');
                 $('#detail-operation-historique').html('');
+                $('#lien-historique-operation-vehicule').attr('href', '{{ route('flotte.operations.historique.index') }}?vehicule_id=' + vehiculeId);
 
                 $.get(`/flotte/operations/vehicules/${vehiculeId}/detail`, function (res) {
                     if (!res.actives.length) {
@@ -508,15 +512,7 @@
                 modalRealiser.show();
             });
 
-            $formRealiser.on('submit', function (e) {
-                e.preventDefault();
-                e.stopPropagation();
-
-                if (!$formRealiser[0].checkValidity()) {
-                    $formRealiser.addClass('was-validated');
-                    return;
-                }
-
+            function envoyerRealisation() {
                 $.post(`/flotte/operations/${realiserOperationId}/realiser`, $formRealiser.serialize())
                     .done(function (res) {
                         modalRealiser.hide();
@@ -528,6 +524,40 @@
                         const msg = erreurs ? Object.values(erreurs).flat()[0] : (xhr.responseJSON?.message || 'Une erreur est survenue.');
                         Swal.fire({ icon: 'error', text: msg });
                     });
+            }
+
+            $formRealiser.on('submit', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                if (!$formRealiser[0].checkValidity()) {
+                    $formRealiser.addClass('was-validated');
+                    return;
+                }
+
+                const dateRenouvellement = $formRealiser.find('[name=date_renouvellement]').val();
+
+                // Renouvellement automatique : on demande une confirmation
+                // explicite avec la date visible avant d'envoyer, plutôt que
+                // de renouveler silencieusement.
+                if (dateRenouvellement) {
+                    const dateAffichee = new Date(dateRenouvellement + 'T00:00:00').toLocaleDateString('fr-FR');
+
+                    Swal.fire({
+                        icon: 'question',
+                        title: 'Confirmer le renouvellement',
+                        html: `Le renouvellement sera fait le <strong>${dateAffichee}</strong>. Êtes-vous d'accord ?`,
+                        showCancelButton: true,
+                        confirmButtonText: 'Oui, confirmer',
+                        cancelButtonText: 'Annuler',
+                    }).then(function (result) {
+                        if (result.isConfirmed) {
+                            envoyerRealisation();
+                        }
+                    });
+                } else {
+                    envoyerRealisation();
+                }
             });
 
             @can('operations.gerer')
