@@ -74,9 +74,18 @@
                     <i class="bi bi-tools"></i>
                     <h2 class="h6 text-uppercase text-muted mb-0">{{ $type->libelle }}</h2>
                     <span class="badge bg-light text-dark border">{{ $operationsDuType->count() }}</span>
-                    <span class="badge bg-warning text-dark" title="À venir">{{ $kpi['a_venir'] }} à venir</span>
-                    <span class="badge bg-jour-j" title="Échéance aujourd'hui">{{ $kpi['jour_j'] }} jour J</span>
-                    <span class="badge bg-danger" title="Dépassé">{{ $kpi['depasse'] }} en retard</span>
+                    <span class="d-inline-flex align-items-center gap-1">
+                        <span class="badge bg-warning text-dark">{{ $kpi['a_venir'] }}</span>
+                        <span class="small text-muted">à venir</span>
+                    </span>
+                    <span class="d-inline-flex align-items-center gap-1">
+                        <span class="badge bg-jour-j">{{ $kpi['jour_j'] }}</span>
+                        <span class="small text-muted">jour J</span>
+                    </span>
+                    <span class="d-inline-flex align-items-center gap-1">
+                        <span class="badge bg-danger">{{ $kpi['depasse'] }}</span>
+                        <span class="small text-muted">en retard</span>
+                    </span>
                 </div>
                 <div class="card-body pt-2">
                     @if ($operationsDuType->isEmpty())
@@ -92,7 +101,7 @@
                                     @if ($operation->badge())
                                         <span class="chip-operation-marqueur"></span>
                                     @endif
-                                    <i class="bi bi-truck-front fs-3"></i>
+                                    <i class="bi bi-truck-front-fill fs-3"></i>
                                     <span class="small fw-semibold text-truncate" style="max-width: 100%;">{{ $operation->vehicule_code }}</span>
                                     <span class="chip-operation-date text-muted">{{ $operation->date_echeance->format('d/m') }}</span>
                                 </button>
