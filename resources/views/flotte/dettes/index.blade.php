@@ -28,32 +28,35 @@
             </div>
         </div>
     @else
-        @foreach ($gestionnairesEnDette as $gestionnaire)
-            <div class="card shadow-sm border-0 bg-white mb-3 border-start border-4 border-danger">
-                <div class="card-body d-flex align-items-center flex-wrap gap-3">
-                    <div class="flex-grow-1">
-                        <div class="fw-semibold">{{ $gestionnaire->name }}</div>
-                        <div class="small text-muted">Solde dû</div>
-                        <div class="h6 mb-0 text-danger">{{ \App\Support\Money::format($gestionnaire->dette) }} FCFA</div>
-                    </div>
-                    <div class="d-flex flex-wrap gap-2">
-                        <button type="button" class="btn btn-sm btn-outline-primary btn-detail-dette" data-id="{{ $gestionnaire->id }}">
-                            <i class="bi bi-eye me-1"></i>Détail
-                        </button>
-                        @can('flotte.dette.regler')
-                            <button type="button" class="btn btn-sm btn-success btn-regler-dette" data-id="{{ $gestionnaire->id }}" data-nom="{{ $gestionnaire->name }}" data-solde="{{ (float) $gestionnaire->dette }}">
-                                <i class="bi bi-cash-coin me-1"></i>Régler
-                            </button>
-                        @endcan
-                        @can('flotte.dette.gerer')
-                            <button type="button" class="btn btn-sm btn-outline-danger btn-annuler-dette" data-id="{{ $gestionnaire->id }}" data-nom="{{ $gestionnaire->name }}" data-solde="{{ (float) $gestionnaire->dette }}">
-                                <i class="bi bi-x-circle me-1"></i>Annuler
-                            </button>
-                        @endcan
+        <div class="row g-3 row-cols-1 row-cols-md-2 row-cols-lg-3">
+            @foreach ($gestionnairesEnDette as $gestionnaire)
+                <div class="col">
+                    <div class="card shadow-sm border-0 bg-white h-100 border-start border-4 border-danger">
+                        <div class="card-body d-flex flex-column h-100">
+                            <div class="fw-semibold">{{ $gestionnaire->name }}</div>
+                            <div class="small text-muted">Solde dû</div>
+                            <div class="h6 mb-3 text-danger">{{ \App\Support\Money::format($gestionnaire->dette) }} FCFA</div>
+
+                            <div class="d-flex flex-wrap gap-2 mt-auto">
+                                <button type="button" class="btn btn-sm btn-outline-primary btn-detail-dette" data-id="{{ $gestionnaire->id }}">
+                                    <i class="bi bi-eye me-1"></i>Détail
+                                </button>
+                                @can('flotte.dette.regler')
+                                    <button type="button" class="btn btn-sm btn-success btn-regler-dette" data-id="{{ $gestionnaire->id }}" data-nom="{{ $gestionnaire->name }}" data-solde="{{ (float) $gestionnaire->dette }}">
+                                        <i class="bi bi-cash-coin me-1"></i>Régler
+                                    </button>
+                                @endcan
+                                @can('flotte.dette.gerer')
+                                    <button type="button" class="btn btn-sm btn-outline-danger btn-annuler-dette" data-id="{{ $gestionnaire->id }}" data-nom="{{ $gestionnaire->name }}" data-solde="{{ (float) $gestionnaire->dette }}">
+                                        <i class="bi bi-x-circle me-1"></i>Annuler
+                                    </button>
+                                @endcan
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
-        @endforeach
+            @endforeach
+        </div>
     @endif
 
     {{-- Modale détail : jours ayant généré de la dette + règlements/annulations --}}
