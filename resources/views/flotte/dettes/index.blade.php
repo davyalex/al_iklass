@@ -24,10 +24,15 @@
         <div class="card shadow-sm border-0 bg-white">
             <div class="card-body text-center text-muted py-5">
                 <i class="bi bi-check-circle fs-1 d-block mb-2"></i>
-                Aucun gestionnaire en dette pour le moment.
+                @if ($peutVoirTout)
+                    Aucun gestionnaire en dette pour le moment.
+                @else
+                    Vous n'avez aucune dette pour le moment.
+                @endif
             </div>
         </div>
-    @else
+    @elseif ($peutVoirTout)
+        {{-- Admin : vue d'ensemble en cartes, le détail de chacun s'ouvre dans une modale --}}
         <div class="row g-3 row-cols-1 row-cols-md-2 row-cols-lg-3">
             @foreach ($gestionnairesEnDette as $gestionnaire)
                 <div class="col">
@@ -57,6 +62,75 @@
                 </div>
             @endforeach
         </div>
+    @else
+        {{-- Gestionnaire : un seul cas à regarder (lui-même), autant afficher
+        directement le tableau plutôt qu'une carte + une modale. --}}
+        <div class="card shadow-sm border-0 bg-white mb-3">
+            <div class="card-body d-flex align-items-center flex-wrap gap-3">
+                <div class="flex-grow-1">
+                    <div class="small text-muted">Solde dû</div>
+                    <div class="h5 mb-0 text-danger">{{ $detailGestionnaire['solde_du'] }} FCFA</div>
+                </div>
+                <button type="button" class="btn btn-success btn-regler-dette" data-id="{{ $gestionnairesEnDette->first()->id }}" data-nom="{{ $gestionnairesEnDette->first()->name }}" data-solde="{{ (float) $gestionnairesEnDette->first()->dette }}">
+                    <i class="bi bi-cash-coin me-1"></i>Régler
+                </button>
+            </div>
+        </div>
+
+        <h2 class="h6 text-uppercase text-muted mb-2">Jours ayant généré de la dette</h2>
+        <div class="card shadow-sm border-0 bg-white mb-3">
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th class="text-end">Montant à verser</th>
+                            <th class="text-end">Montant versé</th>
+                            <th class="text-end">Reste (dette)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse ($detailGestionnaire['jours'] as $jour)
+                            <tr>
+                                <td>{{ $jour['date'] }}</td>
+                                <td class="text-end">{{ $jour['attendu'] }} FCFA</td>
+                                <td class="text-end">{{ $jour['deja_verse'] }} FCFA</td>
+                                <td class="text-end text-danger fw-semibold">{{ $jour['reste'] }} FCFA</td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="4" class="text-muted">Aucun jour en dette.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        @if ($detailGestionnaire['mouvements']->isNotEmpty())
+            <h2 class="h6 text-uppercase text-muted mb-2">Règlements et annulations</h2>
+            <div class="card shadow-sm border-0 bg-white">
+                <div class="card-body small">
+                    @foreach ($detailGestionnaire['mouvements'] as $mouvement)
+                        <div class="d-flex justify-content-between align-items-start border-bottom py-2">
+                            <div>
+                                @if ($mouvement['type'] === 'reglement')
+                                    <span class="badge bg-success">Règlement</span>
+                                @else
+                                    <span class="badge bg-secondary">Annulation</span>
+                                @endif
+                                <strong>{{ $mouvement['montant'] }} FCFA</strong>
+                                @if ($mouvement['auteur'])
+                                    <span class="text-muted">— {{ $mouvement['auteur'] }}</span>
+                                @endif
+                                @if ($mouvement['motif'])
+                                    <br><span class="text-muted">{{ $mouvement['motif'] }}</span>
+                                @endif
+                            </div>
+                            <div class="text-muted text-nowrap ms-2">{{ $mouvement['date'] }}</div>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        @endif
     @endif
 
     {{-- Modale détail : jours ayant généré de la dette + règlements/annulations --}}

@@ -11,6 +11,7 @@ use App\Support\Money;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
@@ -40,7 +41,12 @@ class DetteController extends Controller
 
         $kpis = $this->calculerKpis($request, $peutVoirTout);
 
-        return view('flotte.dettes.index', compact('gestionnairesEnDette', 'kpis', 'peutVoirTout'));
+        // Un gestionnaire n'a qu'un seul cas à regarder : lui-même. Autant lui
+        // afficher directement le tableau plutôt qu'une carte + un bouton
+        // "Détail" qui rouvrirait une modale sur ses propres données.
+        $detailGestionnaire = ! $peutVoirTout ? $this->chargerDetail($request->user()) : null;
+
+        return view('flotte.dettes.index', compact('gestionnairesEnDette', 'kpis', 'peutVoirTout', 'detailGestionnaire'));
     }
 
     public function kpis(Request $request): JsonResponse
@@ -60,6 +66,21 @@ class DetteController extends Controller
     {
         $this->autoriserAccesGestionnaire($gestionnaire);
 
+        return response()->json($this->chargerDetail($gestionnaire));
+    }
+
+    /**
+     * Détail de la dette d'un gestionnaire : les jours qui ont généré de la
+     * dette (bascule), avec pour chacun ce qu'il devait verser, ce qu'il a
+     * versé et ce qu'il reste — et séparément les règlements/annulations
+     * qui ont depuis réduit le solde. Réutilisé par index() (affichage direct
+     * pour un gestionnaire qui ne regarde que lui-même) et par detail() (JSON,
+     * pour la modale "Détail" d'un admin qui parcourt plusieurs gestionnaires).
+     *
+     * @return array{gestionnaire: array, solde_du: string, jours: Collection, mouvements: Collection}
+     */
+    private function chargerDetail(User $gestionnaire): array
+    {
         $jours = HistoriqueDette::where('gestionnaire_id', $gestionnaire->id)
             ->where('type', 'bascule')
             ->orderByDesc('date_reference')
@@ -84,12 +105,12 @@ class DetteController extends Controller
                 'auteur' => $h->user?->name,
             ]);
 
-        return response()->json([
+        return [
             'gestionnaire' => $gestionnaire->only(['id', 'name']),
             'solde_du' => Money::format((float) $gestionnaire->dette),
             'jours' => $jours,
             'mouvements' => $mouvements,
-        ]);
+        ];
     }
 
     public function regler(User $gestionnaire, ReglerDetteRequest $request): JsonResponse

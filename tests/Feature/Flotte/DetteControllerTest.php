@@ -33,14 +33,33 @@ class DetteControllerTest extends TestCase
             ->assertSee('Annuler');
     }
 
-    public function test_gestionnaire_peut_afficher_la_page_avec_sa_propre_dette(): void
+    public function test_gestionnaire_voit_directement_le_tableau_plutot_quune_carte(): void
     {
-        $gestionnaire = User::factory()->create(['name' => 'Awa Koné', 'dette' => 5000])->assignRole('gestionnaire');
+        $gestionnaire = User::factory()->create(['dette' => 5000])->assignRole('gestionnaire');
 
-        $this->actingAs($gestionnaire)->get(route('flotte.dettes.index'))
-            ->assertOk()
-            ->assertSee('Awa Koné')
+        HistoriqueDette::create([
+            'gestionnaire_id' => $gestionnaire->id, 'gestionnaire_nom' => $gestionnaire->name,
+            'type' => 'bascule', 'montant' => 5000, 'dette_avant' => 0, 'dette_apres' => 5000,
+            'date_reference' => now()->subDay()->toDateString(), 'attendu' => 5000, 'deja_verse' => 0,
+        ]);
+
+        $response = $this->actingAs($gestionnaire)->get(route('flotte.dettes.index'));
+
+        $response->assertOk()
+            ->assertSee('Jours ayant généré de la dette')
+            ->assertSee('Montant à verser')
             ->assertSee('Régler');
+    }
+
+    public function test_admin_voit_des_cartes_avec_bouton_detail_plutot_que_le_tableau(): void
+    {
+        $admin = User::factory()->create()->assignRole('admin');
+        User::factory()->create(['dette' => 5000])->assignRole('gestionnaire');
+
+        $this->actingAs($admin)->get(route('flotte.dettes.index'))
+            ->assertOk()
+            ->assertSeeText('Détail')
+            ->assertSeeText('Solde dû');
     }
 
     public function test_role_sans_droit_dette_est_rejete(): void
