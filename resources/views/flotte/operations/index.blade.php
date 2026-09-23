@@ -1,29 +1,6 @@
 <x-app-layout>
     <x-slot name="header">Opérations programmées</x-slot>
 
-    {{-- KPI par type d'opération --}}
-    <div class="row g-3 mb-3 row-cols-1 row-cols-md-2 row-cols-lg-3">
-        @foreach ($kpisParType as $kpi)
-            <div class="col">
-                <div class="card shadow-sm border-0 bg-white h-100">
-                    <div class="card-body">
-                        <div class="small text-muted mb-1">{{ $kpi['type']->libelle }}</div>
-                        <div class="d-flex gap-3">
-                            <div>
-                                <span class="badge bg-danger">{{ $kpi['en_retard'] }}</span>
-                                <span class="small text-muted ms-1">en retard</span>
-                            </div>
-                            <div>
-                                <span class="badge bg-warning text-dark">{{ $kpi['a_venir'] }}</span>
-                                <span class="small text-muted ms-1">à venir</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        @endforeach
-    </div>
-
     {{-- Filtres --}}
     <div class="card border-0 bg-light mb-3">
         <div class="card-body">
@@ -77,12 +54,17 @@
     {{-- Une grande carte par type d'opération, véhicules programmés affichés en icônes --}}
     <div id="groupes-operations">
         @forelse ($typesOperation as $type)
-            @php $operationsDuType = $operationsParType->get($type->id, collect()); @endphp
+            @php
+                $operationsDuType = $operationsParType->get($type->id, collect());
+                $kpi = $kpisParType->firstWhere('type.id', $type->id);
+            @endphp
             <div class="card shadow-sm border-0 bg-white mb-3 groupe-type-operation">
-                <div class="card-header bg-white border-0 pt-3 d-flex align-items-center gap-2">
+                <div class="card-header bg-white border-0 pt-3 d-flex align-items-center gap-2 flex-wrap">
                     <i class="bi bi-tools"></i>
                     <h2 class="h6 text-uppercase text-muted mb-0">{{ $type->libelle }}</h2>
                     <span class="badge bg-light text-dark border">{{ $operationsDuType->count() }}</span>
+                    <span class="badge bg-danger" title="En retard">{{ $kpi['en_retard'] }} en retard</span>
+                    <span class="badge bg-warning text-dark" title="À venir">{{ $kpi['a_venir'] }} à venir</span>
                 </div>
                 <div class="card-body pt-2">
                     @if ($operationsDuType->isEmpty())
