@@ -147,7 +147,7 @@
     @push('scripts')
         <script>
         document.addEventListener('DOMContentLoaded', function () {
-            $('.select2-filtre-gestionnaire-parc').select2({ width: '100%' });
+            $('.select2-filtre-gestionnaire-parc').select2({ width: '100%', selectionCssClass: 'select2-sm' });
         });
         </script>
     @endpush
