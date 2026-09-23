@@ -46,10 +46,15 @@
     </div>
 
     <style>
-        .chip-operation { width: 88px; }
-        .chip-operation.badge-a_venir { border-color: #ffc107 !important; }
-        .chip-operation.badge-jour_j { border-color: #fd7e14 !important; }
-        .chip-operation.badge-depasse { border-color: #dc3545 !important; }
+        .chip-operation { width: 96px; border-width: 2px; }
+        .chip-operation .chip-operation-date { font-size: .7rem; }
+        .chip-operation.badge-neutre { border-color: #198754 !important; color: #198754; }
+        .chip-operation.badge-a_venir { background-color: #ffc107; border-color: #ffc107 !important; color: #664d03; }
+        .chip-operation.badge-jour_j { background-color: #fd7e14; border-color: #fd7e14 !important; color: #fff; }
+        .chip-operation.badge-depasse { background-color: #dc3545; border-color: #dc3545 !important; color: #fff; }
+        .chip-operation.badge-a_venir .chip-operation-date,
+        .chip-operation.badge-jour_j .chip-operation-date,
+        .chip-operation.badge-depasse .chip-operation-date { color: inherit; opacity: .85; }
         .bg-jour-j { background-color: #fd7e14; color: #fff; }
     </style>
 
@@ -82,6 +87,7 @@
                                         data-echeance="{{ $operation->date_echeance->toDateString() }}">
                                     <i class="bi bi-truck-front fs-3"></i>
                                     <span class="small fw-semibold text-truncate" style="max-width: 100%;">{{ $operation->vehicule_code }}</span>
+                                    <span class="chip-operation-date text-muted">{{ $operation->date_echeance->format('d/m') }}</span>
                                 </button>
                             @endforeach
                         </div>
