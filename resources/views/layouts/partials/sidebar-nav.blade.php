@@ -83,7 +83,7 @@
         </li>
     @endcan
 
-    @canany(['flotte.vehicule.voir', 'flotte.vehicule.voir_affectes', 'flotte.vehicule.remise_circulation', 'flotte.versement.gerer', 'flotte.dette.gerer', 'flotte.dette.regler'])
+    @canany(['flotte.vehicule.voir', 'flotte.vehicule.voir_affectes', 'flotte.vehicule.remise_circulation'])
         <li class="nav-item mt-3">
             <span class="px-3 text-uppercase small fw-semibold" style="color: rgba(255,255,255,0.45); letter-spacing: .04em;">Flotte</span>
         </li>
@@ -109,6 +109,15 @@
                 </a>
             </li>
         @endcan
+    @endcanany
+
+    {{-- Argent : versements/dette (par gestionnaire ou vue admin) et le registre
+    des 4 caisses — regroupés car transverses à Flotte et Stock, indépendamment
+    de la section d'où provient chaque mouvement. --}}
+    @canany(['flotte.vehicule.voir', 'flotte.versement.gerer', 'flotte.dette.gerer', 'flotte.dette.regler', 'caisse.voir'])
+        <li class="nav-item mt-3">
+            <span class="px-3 text-uppercase small fw-semibold" style="color: rgba(255,255,255,0.45); letter-spacing: .04em;">Finance</span>
+        </li>
         @canany(['flotte.vehicule.voir', 'flotte.versement.gerer'])
             <li class="nav-item">
                 <a href="{{ route('flotte.versements.index') }}" class="nav-link d-flex align-items-center gap-2 {{ request()->routeIs('flotte.versements.*') ? 'active' : '' }}">
@@ -125,12 +134,6 @@
                 </a>
             </li>
         @endcanany
-    @endcanany
-
-    @canany(['utilisateurs.voir', 'roles.voir', 'unites.voir', 'audit.voir', 'parametres.voir', 'caisse.voir'])
-        <li class="nav-item mt-3">
-            <span class="px-3 text-uppercase small fw-semibold" style="color: rgba(255,255,255,0.45); letter-spacing: .04em;">Administration</span>
-        </li>
         @can('caisse.voir')
             <li class="nav-item">
                 <a href="{{ route('admin.caisses.index') }}" class="nav-link d-flex align-items-center gap-2 {{ request()->routeIs('admin.caisses.*') ? 'active' : '' }}">
@@ -139,6 +142,12 @@
                 </a>
             </li>
         @endcan
+    @endcanany
+
+    @canany(['utilisateurs.voir', 'roles.voir', 'unites.voir', 'audit.voir', 'parametres.voir'])
+        <li class="nav-item mt-3">
+            <span class="px-3 text-uppercase small fw-semibold" style="color: rgba(255,255,255,0.45); letter-spacing: .04em;">Administration</span>
+        </li>
         @can('utilisateurs.voir')
             <li class="nav-item">
                 <a href="{{ route('admin.users.index') }}" class="nav-link d-flex align-items-center gap-2 {{ request()->routeIs('admin.users.*') ? 'active' : '' }}">
