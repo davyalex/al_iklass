@@ -513,17 +513,22 @@
                         return;
                     }
 
+                    const badgesDette = {
+                        bascule: '<span class="badge bg-danger">Dette du jour</span>',
+                        reglement: '<span class="badge bg-success">Règlement</span>',
+                        annulation: '<span class="badge bg-secondary">Annulation</span>',
+                    };
+
                     const lignesDette = res.historique_dette.map(function (h) {
-                        const badge = h.type === 'bascule'
-                            ? '<span class="badge bg-danger">Bascule</span>'
-                            : '<span class="badge bg-success">Annulation</span>';
+                        const badge = badgesDette[h.type] || '';
+                        const libelleDate = h.type === 'bascule' ? 'Dette du ' + h.date : h.date;
                         return `<div class="d-flex justify-content-between align-items-start border-bottom py-2">
                             <div>
                                 ${badge} <strong>${h.montant} FCFA</strong>
                                 ${h.auteur ? ' <span class="text-muted">— ' + h.auteur + '</span>' : ''}
                                 ${h.motif ? '<br><span class="text-muted">' + h.motif + '</span>' : ''}
                             </div>
-                            <div class="text-muted text-nowrap ms-2">${h.date}</div>
+                            <div class="text-muted text-nowrap ms-2">${libelleDate}</div>
                         </div>`;
                     }).join('');
 

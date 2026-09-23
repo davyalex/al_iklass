@@ -268,6 +268,31 @@ class GestionnaireControllerTest extends TestCase
         $this->assertSame('bascule', $response->json('historique_dette.0.type'));
     }
 
+    public function test_compte_endpoint_affiche_la_date_de_reference_pour_une_bascule(): void
+    {
+        // Une bascule est écrite par le job nocturne (created_at ≈ maintenant),
+        // mais concerne le manque à verser d'hier (date_reference) : c'est
+        // cette dernière qui doit être affichée, sinon on ne sait plus de
+        // quel jour la dette provient.
+        $admin = User::factory()->create()->assignRole('admin');
+        $gestionnaire = User::factory()->create(['dette' => 5000])->assignRole('gestionnaire');
+
+        HistoriqueDette::create([
+            'gestionnaire_id' => $gestionnaire->id,
+            'gestionnaire_nom' => $gestionnaire->name,
+            'type' => 'bascule',
+            'montant' => 5000,
+            'dette_avant' => 0,
+            'dette_apres' => 5000,
+            'date_reference' => '2026-01-01',
+        ]);
+
+        $response = $this->actingAs($admin)->getJson(route('flotte.gestionnaires.compte', $gestionnaire));
+
+        $response->assertOk();
+        $this->assertSame('01/01/2026', $response->json('historique_dette.0.date'));
+    }
+
     public function test_admin_can_create_gestionnaire_from_this_page(): void
     {
         $admin = User::factory()->create()->assignRole('admin');

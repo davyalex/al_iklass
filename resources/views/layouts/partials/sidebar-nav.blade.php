@@ -125,14 +125,6 @@
                 </a>
             </li>
         @endcanany
-        @can('flotte.vehicule.remise_circulation')
-            <li class="nav-item">
-                <a href="{{ route('flotte.mon-historique.index') }}" class="nav-link d-flex align-items-center gap-2 {{ request()->routeIs('flotte.mon-historique.*') ? 'active' : '' }}">
-                    <i class="bi bi-clock-history"></i>
-                    <span>Mon historique</span>
-                </a>
-            </li>
-        @endcan
     @endcanany
 
     @canany(['utilisateurs.voir', 'roles.voir', 'unites.voir', 'audit.voir', 'parametres.voir'])

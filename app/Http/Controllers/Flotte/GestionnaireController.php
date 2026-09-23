@@ -82,7 +82,9 @@ class GestionnaireController extends Controller
                 'commentaire' => $versement->commentaire,
             ]),
             'historique_dette' => $historiqueDette->map(fn (HistoriqueDette $h) => [
-                'date' => $h->created_at->format('d/m/Y H:i'),
+                'date' => $h->type === 'bascule'
+                    ? $h->date_reference?->format('d/m/Y')
+                    : $h->created_at->format('d/m/Y H:i'),
                 'type' => $h->type,
                 'montant' => Money::format($h->montant),
                 'auteur' => $h->user?->name,
