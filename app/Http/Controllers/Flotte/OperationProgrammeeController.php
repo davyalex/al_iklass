@@ -24,10 +24,10 @@ class OperationProgrammeeController extends Controller
         $typesOperation = TypeOperation::where('actif', true)->orderBy('id')->get();
 
         $operationsPlanifiees = OperationProgrammee::where('statut', 'planifiee')->get();
-        $operationsParVehicule = $operationsPlanifiees->groupBy('vehicule_id');
+        $operationsParType = $operationsPlanifiees->groupBy('type_operation_id');
 
-        $kpisParType = $typesOperation->map(function (TypeOperation $type) use ($operationsPlanifiees) {
-            $operations = $operationsPlanifiees->where('type_operation_id', $type->id);
+        $kpisParType = $typesOperation->map(function (TypeOperation $type) use ($operationsParType) {
+            $operations = $operationsParType->get($type->id, collect());
 
             return [
                 'type' => $type,
@@ -36,7 +36,7 @@ class OperationProgrammeeController extends Controller
             ];
         });
 
-        return view('flotte.operations.index', compact('vehicules', 'typesOperation', 'operationsParVehicule', 'kpisParType'));
+        return view('flotte.operations.index', compact('vehicules', 'typesOperation', 'operationsParType', 'kpisParType'));
     }
 
     public function detail(Vehicule $vehicule): JsonResponse

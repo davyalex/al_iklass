@@ -68,38 +68,47 @@
         </div>
     </div>
 
-    {{-- Grille véhicules --}}
-    <div class="row g-3 row-cols-1 row-cols-md-2 row-cols-lg-3" id="grille-operations">
-        @forelse ($vehicules as $vehicule)
-            <div class="col card-vehicule-operation" data-code="{{ strtolower($vehicule->code) }}" data-vehicule-id="{{ $vehicule->id }}">
-                <div class="card shadow-sm border-0 bg-white h-100">
-                    <div class="card-body d-flex flex-column h-100">
-                        <div class="fw-semibold">{{ $vehicule->code }}</div>
-                        <div class="small text-muted mb-2">{{ trim(($vehicule->marque ?? '').' '.($vehicule->modele ?? '')) ?: '—' }}</div>
+    <style>
+        .chip-operation { width: 88px; }
+        .chip-operation.badge-rouge { border-color: #dc3545 !important; }
+        .chip-operation.badge-jaune { border-color: #ffc107 !important; }
+    </style>
 
-                        <div class="d-flex flex-wrap gap-1 mb-3">
-                            @forelse ($operationsParVehicule->get($vehicule->id, collect()) as $operation)
-                                <span class="badge badge-operation {{ match ($operation->badge()) {
-                                    'rouge' => 'bg-danger',
-                                    'jaune' => 'bg-warning text-dark',
-                                    default => 'bg-secondary',
-                                } }}" data-type-code="{{ $operation->type_operation_code }}" data-echeance="{{ $operation->date_echeance->toDateString() }}">
-                                    {{ $operation->type_operation_libelle }}
-                                </span>
-                            @empty
-                                <span class="text-muted small">Aucune opération programmée</span>
-                            @endforelse
+    {{-- Une grande carte par type d'opération, véhicules programmés affichés en icônes --}}
+    <div id="groupes-operations">
+        @forelse ($typesOperation as $type)
+            @php $operationsDuType = $operationsParType->get($type->id, collect()); @endphp
+            <div class="card shadow-sm border-0 bg-white mb-3 groupe-type-operation">
+                <div class="card-header bg-white border-0 pt-3 d-flex align-items-center gap-2">
+                    <i class="bi bi-tools"></i>
+                    <h2 class="h6 text-uppercase text-muted mb-0">{{ $type->libelle }}</h2>
+                    <span class="badge bg-light text-dark border">{{ $operationsDuType->count() }}</span>
+                </div>
+                <div class="card-body pt-2">
+                    @if ($operationsDuType->isEmpty())
+                        <p class="small text-muted mb-0 message-vide">Aucun véhicule programmé pour ce type.</p>
+                    @else
+                        <div class="d-flex flex-wrap gap-3">
+                            @foreach ($operationsDuType as $operation)
+                                <button type="button"
+                                        class="btn btn-outline-secondary chip-operation badge-{{ $operation->badge() ?? 'neutre' }} d-flex flex-column align-items-center gap-1 py-2 btn-detail-operation"
+                                        data-id="{{ $operation->vehicule_id }}" data-vehicule-code="{{ $operation->vehicule_code }}"
+                                        data-type-code="{{ $operation->type_operation_code }}"
+                                        data-echeance="{{ $operation->date_echeance->toDateString() }}">
+                                    <i class="bi bi-truck-front fs-3"></i>
+                                    <span class="small fw-semibold text-truncate" style="max-width: 100%;">{{ $operation->vehicule_code }}</span>
+                                </button>
+                            @endforeach
                         </div>
-
-                        <button type="button" class="btn btn-sm btn-outline-primary mt-auto btn-detail-operation" data-id="{{ $vehicule->id }}" data-code="{{ $vehicule->code }}">
-                            <i class="bi bi-eye me-1"></i>Détail
-                        </button>
-                    </div>
+                    @endif
                 </div>
             </div>
         @empty
-            <p class="text-muted">Aucun véhicule pour le moment.</p>
         @endforelse
+
+        @if ($typesOperation->isEmpty())
+            <p class="text-muted">Aucun type d'opération pour le moment.</p>
+        @endif
     </div>
 
     {{-- Modale détail : programmations actives + historique du véhicule --}}
@@ -199,23 +208,26 @@
                 const au = $('#filtre-operation-au').val();
                 const filtreActif = !!vehiculeId || !!typeCode || !!du || !!au;
 
-                $('.card-vehicule-operation').each(function () {
-                    const $carte = $(this);
-                    const correspondVehicule = !vehiculeId || String($carte.data('vehicule-id')) === vehiculeId;
+                $('.chip-operation').each(function () {
+                    const $chip = $(this);
+                    const correspondVehicule = !vehiculeId || String($chip.data('id')) === vehiculeId;
+                    const correspondType = !typeCode || $chip.data('type-code') === typeCode;
+                    const echeance = String($chip.data('echeance'));
+                    const correspondDate = (!du || echeance >= du) && (!au || echeance <= au);
+                    $chip.toggleClass('d-none', !(correspondVehicule && correspondType && correspondDate));
+                });
 
-                    let correspondTypeDate = !typeCode && !du && !au;
-                    if (!correspondTypeDate) {
-                        $carte.find('.badge-operation').each(function () {
-                            const okType = !typeCode || $(this).data('type-code') === typeCode;
-                            const echeance = String($(this).data('echeance'));
-                            const okDate = (!du || echeance >= du) && (!au || echeance <= au);
-                            if (okType && okDate) {
-                                correspondTypeDate = true;
-                            }
-                        });
+                $('.groupe-type-operation').each(function () {
+                    const $groupe = $(this);
+                    const total = $groupe.find('.chip-operation').length;
+
+                    if (total === 0) {
+                        $groupe.find('.message-vide').toggleClass('d-none', filtreActif);
+                        $groupe.toggleClass('d-none', filtreActif);
+                        return;
                     }
 
-                    $carte.toggleClass('d-none', !(correspondVehicule && correspondTypeDate));
+                    $groupe.toggleClass('d-none', $groupe.find('.chip-operation:not(.d-none)').length === 0);
                 });
 
                 $('#btn-reset-filtre-operation').toggleClass('d-none', !filtreActif);
@@ -285,7 +297,7 @@
             }
 
             $(document).on('click', '.btn-detail-operation', function () {
-                chargerDetail($(this).data('id'), $(this).data('code'));
+                chargerDetail($(this).data('id'), $(this).data('vehicule-code'));
             });
 
             // --- Réaliser (clôture + renouvellement automatique) ---
