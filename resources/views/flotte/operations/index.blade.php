@@ -264,18 +264,13 @@
                             <input type="hidden" name="id" id="type-operation-id">
                             <h6 class="small text-uppercase text-muted" id="form-type-operation-titre">Nouveau type</h6>
                             <div class="row g-2">
-                                <div class="col-md-4">
-                                    <label class="form-label small">Code</label>
-                                    <input type="text" name="code" id="type-operation-code" class="form-control form-control-sm" placeholder="ex: vidange" required>
-                                    <div class="invalid-feedback">Obligatoire, sans espaces (ex: vidange).</div>
-                                </div>
-                                <div class="col-md-4">
+                                <div class="col-md-6">
                                     <label class="form-label small">Libellé</label>
                                     <input type="text" name="libelle" class="form-control form-control-sm" required>
                                     <div class="invalid-feedback">Le libellé est obligatoire.</div>
                                 </div>
-                                <div class="col-md-4">
-                                    <label class="form-label small">Périodicité (jours)</label>
+                                <div class="col-md-6">
+                                    <label class="form-label small">Périodicité (jours) <span class="text-muted">(optionnel)</span></label>
                                     <input type="number" name="periodicite_jours" class="form-control form-control-sm" min="1">
                                 </div>
                             </div>
@@ -488,13 +483,16 @@
                     $formType.removeClass('was-validated');
                     $formType.addClass('d-none');
                     $('#type-operation-id').val('');
-                    $('#type-operation-code').prop('disabled', false);
                 }
 
                 $('#btn-gerer-types-operation').on('click', function () {
                     resetFormType();
                     modalTypes.show();
                 });
+
+                @if (request()->has('types'))
+                    modalTypes?.show();
+                @endif
 
                 $('#btn-nouveau-type-operation').on('click', function () {
                     resetFormType();
@@ -508,8 +506,6 @@
                     resetFormType();
                     $('#form-type-operation-titre').text("Modifier le type");
                     $('#type-operation-id').val($(this).data('id'));
-                    $('#type-operation-code').prop('disabled', true);
-                    $formType.find('[name=code]').val('(non modifiable)');
                     $formType.find('[name=libelle]').val($(this).data('libelle'));
                     $formType.find('[name=periodicite_jours]').val($(this).data('periodicite'));
                     $('#type-operation-actif').prop('checked', $(this).data('actif') == 1);
@@ -527,7 +523,7 @@
 
                     const id = $('#type-operation-id').val();
                     const url = id ? `/flotte/operations/types/${id}` : '/flotte/operations/types';
-                    const data = $formType.serializeArray().filter((f) => f.name !== 'code' || !id);
+                    const data = $formType.serializeArray();
                     if (id) {
                         data.push({ name: '_method', value: 'PUT' });
                     }

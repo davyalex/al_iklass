@@ -116,9 +116,23 @@
             <span class="px-3 text-uppercase small fw-semibold" style="color: rgba(255,255,255,0.45); letter-spacing: .04em;">Entretien</span>
         </li>
         <li class="nav-item">
-            <a href="{{ route('flotte.operations.index') }}" class="nav-link d-flex align-items-center gap-2 {{ request()->routeIs('flotte.operations.*') ? 'active' : '' }}">
+            <a href="{{ route('flotte.operations.index') }}" class="nav-link d-flex align-items-center gap-2 {{ request()->routeIs('flotte.operations.index') && ! request()->has('types') ? 'active' : '' }}">
                 <i class="bi bi-tools"></i>
                 <span>Opérations programmées</span>
+            </a>
+        </li>
+        @can('operations.type.gerer')
+            <li class="nav-item">
+                <a href="{{ route('flotte.operations.index', ['types' => 1]) }}" class="nav-link d-flex align-items-center gap-2 {{ request()->routeIs('flotte.operations.index') && request()->has('types') ? 'active' : '' }}">
+                    <i class="bi bi-tags"></i>
+                    <span>Types d'opération</span>
+                </a>
+            </li>
+        @endcan
+        <li class="nav-item">
+            <a href="{{ route('flotte.operations.historique.index') }}" class="nav-link d-flex align-items-center gap-2 {{ request()->routeIs('flotte.operations.historique.*') ? 'active' : '' }}">
+                <i class="bi bi-clock-history"></i>
+                <span>Historique opérations</span>
             </a>
         </li>
     @endcan

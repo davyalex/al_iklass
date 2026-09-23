@@ -14,7 +14,6 @@ class StoreTypeOperationRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'code' => ['required', 'string', 'max:50', 'alpha_dash', 'unique:types_operation,code'],
             'libelle' => ['required', 'string', 'max:100'],
             'periodicite_jours' => ['nullable', 'integer', 'min:1'],
             'actif' => ['boolean'],
