@@ -74,7 +74,17 @@ class EtatParcController extends Controller
                 : User::role('gestionnaire')->orderBy('name')->get())
             : collect([$request->user()]);
 
-        $situationFinanciere = $this->situationFinancierePeriode($gestionnairesConcernes, $vehicules, $du, $au);
+        // Un seul agrégat sur le périmètre déjà déterminé par les filtres
+        // (gestionnaire précis ou tous) : pas de répartition par gestionnaire
+        // ici, c'est justement le rôle du filtre "Gestionnaire" ci-dessus.
+        $parGestionnaire = $this->situationFinancierePeriode($gestionnairesConcernes, $vehicules, $du, $au);
+        $situationFinanciere = [
+            'attendu' => $parGestionnaire->sum('attendu'),
+            'deja_verse' => $parGestionnaire->sum('deja_verse'),
+            'reste_a_verser' => $parGestionnaire->sum('reste_a_verser'),
+            'solde_dette' => $parGestionnaire->sum('solde_dette'),
+            'a_jour' => $parGestionnaire->sum('reste_a_verser') <= 0,
+        ];
 
         return view('flotte.vehicules.etat-parc', compact(
             'du', 'au', 'statuts', 'vehiculesParStatut', 'kpisParStatut', 'gestionnaires', 'vehiculesInexistants', 'situationFinanciere'
@@ -82,13 +92,16 @@ class EtatParcController extends Controller
     }
 
     /**
-     * Situation financière de chaque gestionnaire sur l'intervalle [du, au]
-     * (bornes incluses), agrégée jour par jour : recette attendue selon le
-     * statut réel de chaque véhicule ce jour-là, versements du jour, reste à
-     * verser cumulé — somme des manques quotidiens, pas la différence
-     * globale (un jour excédentaire ne compense pas un jour déficitaire,
-     * cohérent avec le moteur de bascule de dette qui raisonne jour par
-     * jour). Se réduit exactement au calcul "un seul jour" quand du === au.
+     * Situation financière de chaque gestionnaire du périmètre sur
+     * l'intervalle [du, au] (bornes incluses), agrégée jour par jour :
+     * recette attendue selon le statut réel de chaque véhicule ce jour-là,
+     * versements du jour, reste à verser cumulé — somme des manques
+     * quotidiens, pas la différence globale (un jour excédentaire ne
+     * compense pas un jour déficitaire chez ce même gestionnaire, cohérent
+     * avec le moteur de bascule de dette qui raisonne jour par jour). Se
+     * réduit exactement au calcul "un seul jour" quand du === au. Le
+     * résultat par gestionnaire est ensuite sommé par l'appelant pour
+     * l'agrégat global affiché.
      *
      * @param  Collection<int, User>  $gestionnaires
      * @param  Collection<int, Vehicule>  $vehicules

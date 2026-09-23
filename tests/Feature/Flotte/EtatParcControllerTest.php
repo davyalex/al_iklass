@@ -182,15 +182,13 @@ class EtatParcControllerTest extends TestCase
         $this->actingAs($gestionnaireStock)->get(route('flotte.etat-parc.index'))->assertForbidden();
     }
 
-    public function test_page_affiche_le_tableau_de_situation_financiere(): void
+    public function test_page_affiche_le_bloc_de_situation_financiere(): void
     {
         $admin = User::factory()->create()->assignRole('admin');
-        User::factory()->create(['name' => 'Awa Koné'])->assignRole('gestionnaire');
 
         $this->actingAs($admin)->get(route('flotte.etat-parc.index'))
             ->assertOk()
-            ->assertSee('Situation financière')
-            ->assertSee('Awa Koné');
+            ->assertSee('Situation financière');
     }
 
     public function test_situation_financiere_calcule_attendu_deja_verse_et_reste_a_verser_a_la_date(): void
@@ -223,12 +221,12 @@ class EtatParcControllerTest extends TestCase
         ]));
 
         $response->assertOk();
-        $ligne = $response->viewData('situationFinanciere')->firstWhere('gestionnaire.id', $gestionnaire->id);
-        $this->assertEquals(20000, $ligne['attendu']);
-        $this->assertEquals(12000, $ligne['deja_verse']);
-        $this->assertEquals(8000, $ligne['reste_a_verser']);
-        $this->assertFalse($ligne['a_jour']);
-        $this->assertEquals(3000, $ligne['solde_dette']);
+        $situation = $response->viewData('situationFinanciere');
+        $this->assertEquals(20000, $situation['attendu']);
+        $this->assertEquals(12000, $situation['deja_verse']);
+        $this->assertEquals(8000, $situation['reste_a_verser']);
+        $this->assertFalse($situation['a_jour']);
+        $this->assertEquals(3000, $situation['solde_dette']);
     }
 
     public function test_situation_financiere_a_jour_quand_totalement_verse(): void
@@ -260,20 +258,20 @@ class EtatParcControllerTest extends TestCase
             'date_debut' => '2026-01-04', 'date_fin' => '2026-01-04',
         ]));
 
-        $ligne = $response->viewData('situationFinanciere')->firstWhere('gestionnaire.id', $gestionnaire->id);
-        $this->assertEquals(0, $ligne['reste_a_verser']);
-        $this->assertTrue($ligne['a_jour']);
+        $situation = $response->viewData('situationFinanciere');
+        $this->assertEquals(0, $situation['reste_a_verser']);
+        $this->assertTrue($situation['a_jour']);
     }
 
-    public function test_gestionnaire_ne_voit_que_sa_propre_situation_financiere(): void
+    public function test_gestionnaire_ne_compte_que_sa_propre_recette_dans_lagregat(): void
     {
         $this->travelTo(Carbon::parse('2026-01-01 08:00'));
 
         $gestionnaireA = User::factory()->create()->assignRole('gestionnaire');
         $gestionnaireB = User::factory()->create()->assignRole('gestionnaire');
         $statutCirculation = StatutVehicule::where('code', 'en_circulation')->firstOrFail();
-        Vehicule::factory()->create(['statut_id' => $statutCirculation->id, 'gestionnaire_id' => $gestionnaireA->id]);
-        Vehicule::factory()->create(['statut_id' => $statutCirculation->id, 'gestionnaire_id' => $gestionnaireB->id]);
+        Vehicule::factory()->create(['statut_id' => $statutCirculation->id, 'gestionnaire_id' => $gestionnaireA->id, 'recette_journaliere' => 9000]);
+        Vehicule::factory()->create(['statut_id' => $statutCirculation->id, 'gestionnaire_id' => $gestionnaireB->id, 'recette_journaliere' => 50000]);
 
         $this->travelTo(Carbon::parse('2026-01-05 10:00'));
         $this->suspendreFiletDeSecurite();
@@ -282,12 +280,13 @@ class EtatParcControllerTest extends TestCase
             'date_debut' => '2026-01-04', 'date_fin' => '2026-01-04',
         ]));
 
+        // Connecté en tant que gestionnaireA, l'agrégat ne doit refléter que
+        // sa propre recette (9 000), jamais celle de gestionnaireB (50 000).
         $situation = $response->viewData('situationFinanciere');
-        $this->assertCount(1, $situation);
-        $this->assertSame($gestionnaireA->id, $situation->first()['gestionnaire']->id);
+        $this->assertEquals(9000, $situation['attendu']);
     }
 
-    public function test_admin_filtre_par_gestionnaire_limite_la_situation_financiere(): void
+    public function test_admin_filtre_par_gestionnaire_limite_lagregat_a_ce_gestionnaire(): void
     {
         $this->travelTo(Carbon::parse('2026-01-01 08:00'));
 
@@ -295,8 +294,8 @@ class EtatParcControllerTest extends TestCase
         $gestionnaireA = User::factory()->create()->assignRole('gestionnaire');
         $gestionnaireB = User::factory()->create()->assignRole('gestionnaire');
         $statutCirculation = StatutVehicule::where('code', 'en_circulation')->firstOrFail();
-        Vehicule::factory()->create(['statut_id' => $statutCirculation->id, 'gestionnaire_id' => $gestionnaireA->id]);
-        Vehicule::factory()->create(['statut_id' => $statutCirculation->id, 'gestionnaire_id' => $gestionnaireB->id]);
+        Vehicule::factory()->create(['statut_id' => $statutCirculation->id, 'gestionnaire_id' => $gestionnaireA->id, 'recette_journaliere' => 9000]);
+        Vehicule::factory()->create(['statut_id' => $statutCirculation->id, 'gestionnaire_id' => $gestionnaireB->id, 'recette_journaliere' => 50000]);
 
         $this->travelTo(Carbon::parse('2026-01-05 10:00'));
         $this->suspendreFiletDeSecurite();
@@ -308,8 +307,29 @@ class EtatParcControllerTest extends TestCase
         ]));
 
         $situation = $response->viewData('situationFinanciere');
-        $this->assertCount(1, $situation);
-        $this->assertSame($gestionnaireA->id, $situation->first()['gestionnaire']->id);
+        $this->assertEquals(9000, $situation['attendu']);
+    }
+
+    public function test_admin_sans_filtre_voit_lagregat_de_tous_les_gestionnaires(): void
+    {
+        $this->travelTo(Carbon::parse('2026-01-01 08:00'));
+
+        $admin = User::factory()->create()->assignRole('admin');
+        $gestionnaireA = User::factory()->create()->assignRole('gestionnaire');
+        $gestionnaireB = User::factory()->create()->assignRole('gestionnaire');
+        $statutCirculation = StatutVehicule::where('code', 'en_circulation')->firstOrFail();
+        Vehicule::factory()->create(['statut_id' => $statutCirculation->id, 'gestionnaire_id' => $gestionnaireA->id, 'recette_journaliere' => 9000]);
+        Vehicule::factory()->create(['statut_id' => $statutCirculation->id, 'gestionnaire_id' => $gestionnaireB->id, 'recette_journaliere' => 50000]);
+
+        $this->travelTo(Carbon::parse('2026-01-05 10:00'));
+        $this->suspendreFiletDeSecurite();
+
+        $response = $this->actingAs($admin)->get(route('flotte.etat-parc.index', [
+            'date_debut' => '2026-01-04', 'date_fin' => '2026-01-04',
+        ]));
+
+        $situation = $response->viewData('situationFinanciere');
+        $this->assertEquals(59000, $situation['attendu']);
     }
 
     public function test_situation_financiere_sagrege_jour_par_jour_sur_un_intervalle(): void
@@ -353,12 +373,12 @@ class EtatParcControllerTest extends TestCase
         ]));
 
         $response->assertOk();
-        $ligne = $response->viewData('situationFinanciere')->firstWhere('gestionnaire.id', $gestionnaire->id);
-        $this->assertEquals(30000, $ligne['attendu']);
-        $this->assertEquals(25000, $ligne['deja_verse']);
+        $situation = $response->viewData('situationFinanciere');
+        $this->assertEquals(30000, $situation['attendu']);
+        $this->assertEquals(25000, $situation['deja_verse']);
         // Manque de 10 000 le 2 janvier, non compensé par l'excédent du 3.
-        $this->assertEquals(10000, $ligne['reste_a_verser']);
-        $this->assertFalse($ligne['a_jour']);
+        $this->assertEquals(10000, $situation['reste_a_verser']);
+        $this->assertFalse($situation['a_jour']);
     }
 
     public function test_situation_financiere_intervalle_dun_seul_jour_egale_le_calcul_journalier(): void
@@ -382,9 +402,9 @@ class EtatParcControllerTest extends TestCase
             'date_debut' => '2026-01-04', 'date_fin' => '2026-01-04',
         ]));
 
-        $ligne = $response->viewData('situationFinanciere')->firstWhere('gestionnaire.id', $gestionnaire->id);
-        $this->assertEquals(12000, $ligne['attendu']);
-        $this->assertEquals(0, $ligne['deja_verse']);
-        $this->assertEquals(12000, $ligne['reste_a_verser']);
+        $situation = $response->viewData('situationFinanciere');
+        $this->assertEquals(12000, $situation['attendu']);
+        $this->assertEquals(0, $situation['deja_verse']);
+        $this->assertEquals(12000, $situation['reste_a_verser']);
     }
 }

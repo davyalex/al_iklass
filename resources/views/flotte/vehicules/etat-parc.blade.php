@@ -62,58 +62,54 @@
         @endforeach
     </div>
 
-    {{-- Situation financière par gestionnaire, sur la même période --}}
-    @if ($situationFinanciere->isNotEmpty())
-        <h2 class="h6 text-uppercase text-muted mb-2">
-            Situation financière
-            {{ $du->isSameDay($au) ? 'au '.$au->format('d/m/Y') : 'du '.$du->format('d/m/Y').' au '.$au->format('d/m/Y') }}
-        </h2>
-
-        @foreach ($situationFinanciere as $ligne)
-            <div class="card shadow-sm border-0 bg-white mb-3 {{ $ligne['reste_a_verser'] > 0 || $ligne['solde_dette'] > 0 ? 'border-start border-4 border-danger' : '' }}">
-                <div class="card-body">
-                    <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
-                        <i class="bi bi-person-badge text-muted"></i>
-                        <h3 class="h6 mb-0">{{ $ligne['gestionnaire']->name }}</h3>
-                        @if ($ligne['a_jour'])
-                            <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>À jour</span>
-                        @else
-                            <span class="badge bg-warning text-dark"><i class="bi bi-exclamation-triangle me-1"></i>Versement en attente</span>
-                        @endif
-                        @if ($ligne['solde_dette'] > 0)
-                            <span class="badge bg-danger"><i class="bi bi-exclamation-octagon me-1"></i>Dette</span>
-                        @endif
+    {{-- Situation financière agrégée sur le périmètre filtré (gestionnaire précis ou tous) --}}
+    <div class="card shadow-sm border-0 bg-white mb-3 {{ $situationFinanciere['reste_a_verser'] > 0 || $situationFinanciere['solde_dette'] > 0 ? 'border-start border-4 border-danger' : '' }}">
+        <div class="card-body">
+            <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
+                <h2 class="h6 text-uppercase text-muted mb-0">
+                    Situation financière
+                    {{ $du->isSameDay($au) ? 'au '.$au->format('d/m/Y') : 'du '.$du->format('d/m/Y').' au '.$au->format('d/m/Y') }}
+                    @if (request()->filled('gestionnaire_id') && $gestionnaires->isNotEmpty())
+                        — {{ $gestionnaires->firstWhere('id', request()->integer('gestionnaire_id'))?->name }}
+                    @endif
+                </h2>
+                @if ($situationFinanciere['a_jour'])
+                    <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>À jour</span>
+                @else
+                    <span class="badge bg-warning text-dark"><i class="bi bi-exclamation-triangle me-1"></i>Versement en attente</span>
+                @endif
+                @if ($situationFinanciere['solde_dette'] > 0)
+                    <span class="badge bg-danger"><i class="bi bi-exclamation-octagon me-1"></i>Dette</span>
+                @endif
+            </div>
+            <div class="row g-2">
+                <div class="col-6 col-md-3">
+                    <div class="border rounded p-2 text-center">
+                        <div class="small text-muted">Attendu</div>
+                        <div class="fw-semibold small">{{ \App\Support\Money::format($situationFinanciere['attendu']) }}</div>
                     </div>
-                    <div class="row g-2">
-                        <div class="col-6 col-md-3">
-                            <div class="border rounded p-2 text-center">
-                                <div class="small text-muted">Attendu</div>
-                                <div class="fw-semibold small">{{ \App\Support\Money::format($ligne['attendu']) }}</div>
-                            </div>
-                        </div>
-                        <div class="col-6 col-md-3">
-                            <div class="border rounded p-2 text-center bg-success-subtle">
-                                <div class="small text-muted">Déjà versé</div>
-                                <div class="fw-semibold small">{{ \App\Support\Money::format($ligne['deja_verse']) }}</div>
-                            </div>
-                        </div>
-                        <div class="col-6 col-md-3">
-                            <div class="border rounded p-2 text-center {{ $ligne['reste_a_verser'] > 0 ? 'bg-danger-subtle' : 'bg-success-subtle' }}">
-                                <div class="small text-muted">Reste à verser</div>
-                                <div class="fw-semibold small">{{ \App\Support\Money::format($ligne['reste_a_verser']) }}</div>
-                            </div>
-                        </div>
-                        <div class="col-6 col-md-3">
-                            <div class="border rounded p-2 text-center {{ $ligne['solde_dette'] > 0 ? 'bg-danger-subtle' : '' }}" title="Solde actuel, non reconstitué pour cette période">
-                                <div class="small text-muted">Solde dette (actuel)</div>
-                                <div class="fw-semibold small">{{ \App\Support\Money::format($ligne['solde_dette']) }}</div>
-                            </div>
-                        </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="border rounded p-2 text-center bg-success-subtle">
+                        <div class="small text-muted">Déjà versé</div>
+                        <div class="fw-semibold small">{{ \App\Support\Money::format($situationFinanciere['deja_verse']) }}</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="border rounded p-2 text-center {{ $situationFinanciere['reste_a_verser'] > 0 ? 'bg-danger-subtle' : 'bg-success-subtle' }}">
+                        <div class="small text-muted">Reste à verser</div>
+                        <div class="fw-semibold small">{{ \App\Support\Money::format($situationFinanciere['reste_a_verser']) }}</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="border rounded p-2 text-center {{ $situationFinanciere['solde_dette'] > 0 ? 'bg-danger-subtle' : '' }}" title="Solde actuel, non reconstitué pour cette période">
+                        <div class="small text-muted">Solde dette (actuel)</div>
+                        <div class="fw-semibold small">{{ \App\Support\Money::format($situationFinanciere['solde_dette']) }}</div>
                     </div>
                 </div>
             </div>
-        @endforeach
-    @endif
+        </div>
+    </div>
 
     {{-- Une carte par statut, véhicules affichés en icônes --}}
     <div id="groupes-etat-parc">
