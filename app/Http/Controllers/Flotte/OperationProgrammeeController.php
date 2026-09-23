@@ -31,8 +31,9 @@ class OperationProgrammeeController extends Controller
 
             return [
                 'type' => $type,
-                'en_retard' => $operations->filter(fn (OperationProgrammee $o) => $o->badge() === 'rouge')->count(),
-                'a_venir' => $operations->filter(fn (OperationProgrammee $o) => $o->badge() === 'jaune')->count(),
+                'a_venir' => $operations->filter(fn (OperationProgrammee $o) => $o->badge() === 'a_venir')->count(),
+                'jour_j' => $operations->filter(fn (OperationProgrammee $o) => $o->badge() === 'jour_j')->count(),
+                'depasse' => $operations->filter(fn (OperationProgrammee $o) => $o->badge() === 'depasse')->count(),
             ];
         });
 

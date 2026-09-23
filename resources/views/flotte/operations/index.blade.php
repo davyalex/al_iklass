@@ -47,8 +47,10 @@
 
     <style>
         .chip-operation { width: 88px; }
-        .chip-operation.badge-rouge { border-color: #dc3545 !important; }
-        .chip-operation.badge-jaune { border-color: #ffc107 !important; }
+        .chip-operation.badge-a_venir { border-color: #ffc107 !important; }
+        .chip-operation.badge-jour_j { border-color: #fd7e14 !important; }
+        .chip-operation.badge-depasse { border-color: #dc3545 !important; }
+        .bg-jour-j { background-color: #fd7e14; color: #fff; }
     </style>
 
     {{-- Une grande carte par type d'opération, véhicules programmés affichés en icônes --}}
@@ -63,8 +65,9 @@
                     <i class="bi bi-tools"></i>
                     <h2 class="h6 text-uppercase text-muted mb-0">{{ $type->libelle }}</h2>
                     <span class="badge bg-light text-dark border">{{ $operationsDuType->count() }}</span>
-                    <span class="badge bg-danger" title="En retard">{{ $kpi['en_retard'] }} en retard</span>
                     <span class="badge bg-warning text-dark" title="À venir">{{ $kpi['a_venir'] }} à venir</span>
+                    <span class="badge bg-jour-j" title="Échéance aujourd'hui">{{ $kpi['jour_j'] }} jour J</span>
+                    <span class="badge bg-danger" title="Dépassé">{{ $kpi['depasse'] }} en retard</span>
                 </div>
                 <div class="card-body pt-2">
                     @if ($operationsDuType->isEmpty())
@@ -230,8 +233,9 @@
             const modalDetail = modalDetailEl ? new bootstrap.Modal(modalDetailEl) : null;
 
             function badgeCouleur(badge) {
-                if (badge === 'rouge') return 'bg-danger';
-                if (badge === 'jaune') return 'bg-warning text-dark';
+                if (badge === 'depasse') return 'bg-danger';
+                if (badge === 'jour_j') return 'bg-jour-j';
+                if (badge === 'a_venir') return 'bg-warning text-dark';
                 return 'bg-secondary';
             }
 

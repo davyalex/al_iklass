@@ -57,8 +57,10 @@ class OperationProgrammee extends Model
     }
 
     /**
-     * Badge d'alerte calculé à la volée (jamais stocké) : 'rouge' si l'échéance
-     * est dépassée, 'jaune' si on est entré dans la fenêtre de rappel, sinon null.
+     * Badge d'alerte calculé à la volée (jamais stocké), suivant les 3 états
+     * de CONTEXTE.md §8 (à venir / arrivé / dépassé) : 'depasse' si l'échéance
+     * est passée, 'jour_j' si elle tombe aujourd'hui, 'a_venir' si on est entré
+     * dans la fenêtre de rappel, sinon null.
      */
     public function badge(): ?string
     {
@@ -68,12 +70,16 @@ class OperationProgrammee extends Model
 
         $aujourdhui = now()->startOfDay();
 
-        if ($aujourdhui->gte($this->date_echeance)) {
-            return 'rouge';
+        if ($aujourdhui->gt($this->date_echeance)) {
+            return 'depasse';
+        }
+
+        if ($aujourdhui->isSameDay($this->date_echeance)) {
+            return 'jour_j';
         }
 
         if ($aujourdhui->gte($this->date_echeance->copy()->subDays($this->rappel_jours))) {
-            return 'jaune';
+            return 'a_venir';
         }
 
         return null;

@@ -230,7 +230,7 @@ class OperationProgrammeeControllerTest extends TestCase
         $this->assertCount(1, $response->json('historique'));
     }
 
-    public function test_badge_rouge_si_echeance_depassee_jaune_dans_la_fenetre_de_rappel(): void
+    public function test_badge_distingue_depasse_jour_j_et_a_venir(): void
     {
         $this->travelTo(Carbon::parse('2026-03-01'));
 
@@ -239,6 +239,14 @@ class OperationProgrammeeControllerTest extends TestCase
             'type_operation_id' => TypeOperation::where('code', 'vidange')->firstOrFail()->id,
             'type_operation_code' => 'vidange', 'type_operation_libelle' => 'Vidange',
             'date_echeance' => '2026-02-20', 'rappel_jours' => 15, 'periodicite_jours' => 90,
+            'statut' => 'planifiee', 'user_id' => User::factory()->create()->id,
+        ]);
+
+        $jourJ = OperationProgrammee::create([
+            'vehicule_id' => Vehicule::factory()->create()->id, 'vehicule_code' => 'AL-004',
+            'type_operation_id' => TypeOperation::where('code', 'vidange')->firstOrFail()->id,
+            'type_operation_code' => 'vidange', 'type_operation_libelle' => 'Vidange',
+            'date_echeance' => '2026-03-01', 'rappel_jours' => 15, 'periodicite_jours' => 90,
             'statut' => 'planifiee', 'user_id' => User::factory()->create()->id,
         ]);
 
@@ -258,8 +266,9 @@ class OperationProgrammeeControllerTest extends TestCase
             'statut' => 'planifiee', 'user_id' => User::factory()->create()->id,
         ]);
 
-        $this->assertSame('rouge', $enRetard->badge());
-        $this->assertSame('jaune', $aVenir->badge());
+        $this->assertSame('depasse', $enRetard->badge());
+        $this->assertSame('jour_j', $jourJ->badge());
+        $this->assertSame('a_venir', $aVenir->badge());
         $this->assertNull($paisible->badge());
     }
 }
