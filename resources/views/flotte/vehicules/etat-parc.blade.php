@@ -56,46 +56,52 @@
 
     {{-- Situation financière par gestionnaire, à la même date --}}
     @if ($situationFinanciere->isNotEmpty())
-        <div class="card shadow-sm border-0 bg-white mb-3">
-            <div class="card-header bg-white border-0 pt-3">
-                <h2 class="h6 text-uppercase text-muted mb-0">Situation financière au {{ $date->format('d/m/Y') }}</h2>
+        <h2 class="h6 text-uppercase text-muted mb-2">Situation financière au {{ $date->format('d/m/Y') }}</h2>
+
+        @foreach ($situationFinanciere as $ligne)
+            <div class="card shadow-sm border-0 bg-white mb-3 {{ $ligne['reste_a_verser'] > 0 || $ligne['solde_dette'] > 0 ? 'border-start border-4 border-danger' : '' }}">
+                <div class="card-body">
+                    <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
+                        <i class="bi bi-person-badge text-muted"></i>
+                        <h3 class="h6 mb-0">{{ $ligne['gestionnaire']->name }}</h3>
+                        @if ($ligne['a_jour'])
+                            <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>À jour</span>
+                        @else
+                            <span class="badge bg-warning text-dark"><i class="bi bi-exclamation-triangle me-1"></i>Versement en attente</span>
+                        @endif
+                        @if ($ligne['solde_dette'] > 0)
+                            <span class="badge bg-danger"><i class="bi bi-exclamation-octagon me-1"></i>Dette</span>
+                        @endif
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-6 col-md-3">
+                            <div class="border rounded p-2 text-center">
+                                <div class="small text-muted">Attendu</div>
+                                <div class="fw-semibold small">{{ \App\Support\Money::format($ligne['attendu']) }}</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="border rounded p-2 text-center bg-success-subtle">
+                                <div class="small text-muted">Déjà versé</div>
+                                <div class="fw-semibold small">{{ \App\Support\Money::format($ligne['deja_verse']) }}</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="border rounded p-2 text-center {{ $ligne['reste_a_verser'] > 0 ? 'bg-danger-subtle' : 'bg-success-subtle' }}">
+                                <div class="small text-muted">Reste à verser</div>
+                                <div class="fw-semibold small">{{ \App\Support\Money::format($ligne['reste_a_verser']) }}</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="border rounded p-2 text-center {{ $ligne['solde_dette'] > 0 ? 'bg-danger-subtle' : '' }}" title="Solde actuel, non reconstitué pour cette date">
+                                <div class="small text-muted">Solde dette (actuel)</div>
+                                <div class="fw-semibold small">{{ \App\Support\Money::format($ligne['solde_dette']) }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead>
-                        <tr>
-                            <th>Gestionnaire</th>
-                            <th class="text-end">Attendu</th>
-                            <th class="text-end">Déjà versé</th>
-                            <th class="text-end">Reste à verser</th>
-                            <th>Statut</th>
-                            <th class="text-end">Solde dette (actuel)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach ($situationFinanciere as $ligne)
-                            <tr>
-                                <td>{{ $ligne['gestionnaire']->name }}</td>
-                                <td class="text-end">{{ \App\Support\Money::format($ligne['attendu']) }}</td>
-                                <td class="text-end">{{ \App\Support\Money::format($ligne['deja_verse']) }}</td>
-                                <td class="text-end {{ $ligne['reste_a_verser'] > 0 ? 'text-danger fw-semibold' : '' }}">{{ \App\Support\Money::format($ligne['reste_a_verser']) }}</td>
-                                <td>
-                                    @if ($ligne['a_jour'])
-                                        <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>À jour</span>
-                                    @else
-                                        <span class="badge bg-warning text-dark"><i class="bi bi-exclamation-triangle me-1"></i>Versement en attente</span>
-                                    @endif
-                                    @if ($ligne['solde_dette'] > 0)
-                                        <span class="badge bg-danger"><i class="bi bi-exclamation-octagon me-1"></i>Dette</span>
-                                    @endif
-                                </td>
-                                <td class="text-end {{ $ligne['solde_dette'] > 0 ? 'text-danger fw-semibold' : '' }}">{{ \App\Support\Money::format($ligne['solde_dette']) }}</td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-        </div>
+        @endforeach
     @endif
 
     {{-- Une carte par statut, véhicules affichés en icônes --}}
