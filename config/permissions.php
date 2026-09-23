@@ -61,6 +61,16 @@ return [
             'caisse.voir',
         ],
 
+        // Échéances d'entretien/administratives par véhicule (vidange, assurance,
+        // visite technique...). Transverse à Flotte : géré par gestionnaire_stock
+        // (planification, aspect administratif) et chef_mecanicien (réalisation).
+        'operations' => [
+            'operations.type.gerer',
+            'operations.voir',
+            'operations.gerer',
+            'operations.realiser',
+        ],
+
     ],
 
     /*
@@ -79,16 +89,18 @@ return [
 
         'superadmin' => [],
 
-        'admin' => ['stock', 'utilisateurs', 'administration', 'caisse', 'flotte' => ['except' => ['flotte.vehicule.voir_affectes']]],
+        'admin' => ['stock', 'utilisateurs', 'administration', 'caisse', 'operations', 'flotte' => ['except' => ['flotte.vehicule.voir_affectes']]],
 
         'gestionnaire_stock' => [
             'stock' => ['except' => ['stock.demande.creer']],
             'administration' => ['only' => ['unites.voir', 'unites.gerer']],
+            'operations' => ['only' => ['operations.voir', 'operations.gerer']],
         ],
 
         'chef_mecanicien' => [
             'stock' => ['only' => ['stock.demande.creer']],
             'flotte' => ['only' => ['flotte.vehicule.remise_circulation']],
+            'operations' => ['only' => ['operations.voir', 'operations.realiser']],
         ],
 
         // Le rôle "gestionnaire" (parc) voit uniquement les véhicules qui lui sont

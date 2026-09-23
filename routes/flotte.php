@@ -4,6 +4,7 @@ use App\Http\Controllers\Flotte\DetteController;
 use App\Http\Controllers\Flotte\EtatParcController;
 use App\Http\Controllers\Flotte\GestionnaireController;
 use App\Http\Controllers\Flotte\HistoriqueMecanicienController;
+use App\Http\Controllers\Flotte\OperationProgrammeeController;
 use App\Http\Controllers\Flotte\VehiculeController;
 use App\Http\Controllers\Flotte\VehiculeRapportController;
 use App\Http\Controllers\Flotte\VersementController;
@@ -67,6 +68,21 @@ Route::middleware(['auth', 'reinitialiser.statut.journalier'])->prefix('flotte')
         Route::get('dettes/kpis', [DetteController::class, 'kpis'])->name('dettes.kpis');
         Route::get('gestionnaires/{gestionnaire}/dette/detail', [DetteController::class, 'detail'])->name('gestionnaires.dette.detail');
         Route::post('gestionnaires/{gestionnaire}/dette/regler', [DetteController::class, 'regler'])->name('gestionnaires.dette.regler');
+    });
+
+    // Opérations programmées : voir (admin/gestionnaire_stock/chef_mecanicien),
+    // planifier (admin/gestionnaire_stock), réaliser/clôturer (admin/chef_mecanicien).
+    Route::middleware('permission:operations.voir')->group(function () {
+        Route::get('operations', [OperationProgrammeeController::class, 'index'])->name('operations.index');
+        Route::get('operations/vehicules/{vehicule}/detail', [OperationProgrammeeController::class, 'detail'])->name('operations.detail');
+    });
+
+    Route::middleware('permission:operations.gerer')->group(function () {
+        Route::post('operations', [OperationProgrammeeController::class, 'store'])->name('operations.store');
+    });
+
+    Route::middleware('permission:operations.realiser')->group(function () {
+        Route::post('operations/{operation}/realiser', [OperationProgrammeeController::class, 'realiser'])->name('operations.realiser');
     });
 
     // Historique personnel d'un chef mécanicien (ses changements de statut,

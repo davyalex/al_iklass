@@ -111,6 +111,18 @@
         @endcan
     @endcanany
 
+    @can('operations.voir')
+        <li class="nav-item mt-3">
+            <span class="px-3 text-uppercase small fw-semibold" style="color: rgba(255,255,255,0.45); letter-spacing: .04em;">Entretien</span>
+        </li>
+        <li class="nav-item">
+            <a href="{{ route('flotte.operations.index') }}" class="nav-link d-flex align-items-center gap-2 {{ request()->routeIs('flotte.operations.*') ? 'active' : '' }}">
+                <i class="bi bi-tools"></i>
+                <span>Opérations programmées</span>
+            </a>
+        </li>
+    @endcan
+
     {{-- Argent : versements/dette (par gestionnaire ou vue admin) et le registre
     des 4 caisses — regroupés car transverses à Flotte et Stock, indépendamment
     de la section d'où provient chaque mouvement. --}}

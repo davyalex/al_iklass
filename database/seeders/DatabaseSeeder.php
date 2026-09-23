@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             AdminUserSeeder::class,
             DemoUserSeeder::class,
             StatutVehiculeSeeder::class,
+            TypeOperationSeeder::class,
             VehiculeSeeder::class,
             StockReferenceSeeder::class,
             ArticleSeeder::class,
