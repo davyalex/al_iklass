@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Flotte\DetteController;
 use App\Http\Controllers\Flotte\EtatParcController;
 use App\Http\Controllers\Flotte\GestionnaireController;
 use App\Http\Controllers\Flotte\HistoriqueMecanicienController;
@@ -56,6 +57,18 @@ Route::middleware(['auth', 'reinitialiser.statut.journalier'])->prefix('flotte')
 
     Route::middleware('permission:flotte.dette.gerer')->group(function () {
         Route::post('gestionnaires/{gestionnaire}/dette/annuler', [GestionnaireController::class, 'annulerDette'])->name('gestionnaires.dette.annuler');
+    });
+
+    // Page d'audit de la dette : un admin (flotte.dette.gerer) voit tous les
+    // gestionnaires, un gestionnaire (flotte.dette.regler seul) ne voit et
+    // ne règle que sa propre dette (contrôlé dans DetteController/ReglerDetteRequest).
+    Route::middleware('permission:flotte.dette.gerer|flotte.dette.regler')->group(function () {
+        Route::get('dettes', [DetteController::class, 'index'])->name('dettes.index');
+        Route::get('dettes/kpis', [DetteController::class, 'kpis'])->name('dettes.kpis');
+        Route::get('dettes/data', [DetteController::class, 'data'])->name('dettes.data');
+        Route::get('dettes/export/excel', [DetteController::class, 'exportExcel'])->name('dettes.export.excel');
+        Route::get('dettes/export/pdf', [DetteController::class, 'exportPdf'])->name('dettes.export.pdf');
+        Route::post('gestionnaires/{gestionnaire}/dette/regler', [DetteController::class, 'regler'])->name('gestionnaires.dette.regler');
     });
 
     // Historique personnel d'un chef mécanicien (ses changements de statut,

@@ -2,7 +2,9 @@
 
 namespace App\Services\Flotte;
 
+use App\Models\Caisse;
 use App\Models\HistoriqueDette;
+use App\Models\MouvementCaisse;
 use App\Models\Parametre;
 use App\Models\User;
 use App\Models\Vehicule;
@@ -119,6 +121,61 @@ class DetteJournalierService
                 'motif' => $motif,
                 'user_id' => $admin->id,
             ]);
+        });
+    }
+
+    /**
+     * Règlement (partiel ou total) de sa dette par le gestionnaire lui-même
+     * (ou saisi par un admin en son nom, ex. paiement en espèces reçu en
+     * personne). Contrairement à l'annulation, c'est un mouvement d'argent
+     * réel : écrit un MouvementCaisse (entrée) sur la caisse "versements",
+     * lié à cette ligne d'historique via origine_type/origine_id — pas un
+     * Versement classique, pour ne pas fausser le calcul du reste à verser
+     * du jour (qui ne regarde que les Versement datés d'aujourd'hui).
+     *
+     * @throws ValidationException
+     */
+    public function regler(User $gestionnaire, float $montant, ?string $motif, User $auteur): HistoriqueDette
+    {
+        $detteAvant = (float) $gestionnaire->dette;
+
+        if ($montant <= 0) {
+            throw ValidationException::withMessages(['montant' => 'Le montant doit être supérieur à 0.']);
+        }
+
+        if ($montant > $detteAvant) {
+            throw ValidationException::withMessages(['montant' => 'Le montant ne peut pas dépasser la dette actuelle.']);
+        }
+
+        return DB::transaction(function () use ($gestionnaire, $montant, $motif, $auteur, $detteAvant) {
+            $gestionnaire->dette = $detteAvant - $montant;
+            $gestionnaire->save();
+
+            $historique = HistoriqueDette::create([
+                'gestionnaire_id' => $gestionnaire->id,
+                'gestionnaire_nom' => $gestionnaire->name,
+                'type' => 'reglement',
+                'montant' => $montant,
+                'dette_avant' => $detteAvant,
+                'dette_apres' => $gestionnaire->dette,
+                'motif' => $motif,
+                'user_id' => $auteur->id,
+            ]);
+
+            $caisse = Caisse::where('type', 'versements')->firstOrFail();
+
+            MouvementCaisse::create([
+                'caisse_id' => $caisse->id,
+                'sens' => 'entree',
+                'montant' => $montant,
+                'motif' => $motif ?: "Règlement de dette — {$gestionnaire->name}",
+                'origine_type' => HistoriqueDette::class,
+                'origine_id' => $historique->id,
+                'user_id' => $auteur->id,
+                'date_mouvement' => now(),
+            ]);
+
+            return $historique;
         });
     }
 }

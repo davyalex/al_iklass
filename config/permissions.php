@@ -52,6 +52,7 @@ return [
             'flotte.vehicule.remise_circulation',
             'flotte.versement.gerer',
             'flotte.dette.gerer',
+            'flotte.dette.regler',
         ],
 
     ],
@@ -89,7 +90,7 @@ return [
         // cf. App\Support\FenetreStatutJournalier) et enregistrer/consulter
         // uniquement ses propres versements.
         'gestionnaire' => [
-            'flotte' => ['only' => ['flotte.vehicule.voir_affectes', 'flotte.vehicule.statut.gerer', 'flotte.versement.gerer']],
+            'flotte' => ['only' => ['flotte.vehicule.voir_affectes', 'flotte.vehicule.statut.gerer', 'flotte.versement.gerer', 'flotte.dette.regler']],
         ],
 
     ],

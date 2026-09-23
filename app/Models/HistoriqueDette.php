@@ -12,9 +12,11 @@ class HistoriqueDette extends Model
 
     /**
      * bascule : reste à verser de la veille ajouté automatiquement à la dette ;
-     * annulation : remise (partielle ou totale) enregistrée par un admin.
+     * annulation : remise (partielle ou totale) enregistrée par un admin, sans
+     * mouvement d'argent réel ; reglement : paiement réel du gestionnaire
+     * (ou saisi par un admin en son nom), qui écrit un mouvement_caisse.
      */
-    public const TYPES = ['bascule', 'annulation'];
+    public const TYPES = ['bascule', 'annulation', 'reglement'];
 
     protected $fillable = [
         'gestionnaire_id', 'gestionnaire_nom', 'type', 'montant',

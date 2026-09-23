@@ -83,7 +83,7 @@
         </li>
     @endcan
 
-    @canany(['flotte.vehicule.voir', 'flotte.vehicule.voir_affectes', 'flotte.vehicule.remise_circulation', 'flotte.versement.gerer'])
+    @canany(['flotte.vehicule.voir', 'flotte.vehicule.voir_affectes', 'flotte.vehicule.remise_circulation', 'flotte.versement.gerer', 'flotte.dette.gerer', 'flotte.dette.regler'])
         <li class="nav-item mt-3">
             <span class="px-3 text-uppercase small fw-semibold" style="color: rgba(255,255,255,0.45); letter-spacing: .04em;">Flotte</span>
         </li>
@@ -114,6 +114,14 @@
                 <a href="{{ route('flotte.versements.index') }}" class="nav-link d-flex align-items-center gap-2 {{ request()->routeIs('flotte.versements.*') ? 'active' : '' }}">
                     <i class="bi bi-cash-coin"></i>
                     <span>Versements</span>
+                </a>
+            </li>
+        @endcanany
+        @canany(['flotte.dette.gerer', 'flotte.dette.regler'])
+            <li class="nav-item">
+                <a href="{{ route('flotte.dettes.index') }}" class="nav-link d-flex align-items-center gap-2 {{ request()->routeIs('flotte.dettes.*') ? 'active' : '' }}">
+                    <i class="bi bi-exclamation-octagon"></i>
+                    <span>Dette</span>
                 </a>
             </li>
         @endcanany
