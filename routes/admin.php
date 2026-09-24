@@ -47,6 +47,7 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::middleware('permission:audit.voir')->group(function () {
         Route::get('audit', [AuditLogController::class, 'index'])->name('audit.index');
         Route::get('audit/data', [AuditLogController::class, 'data'])->name('audit.data');
+        Route::get('audit/kpis', [AuditLogController::class, 'kpis'])->name('audit.kpis');
         Route::get('audit/export/excel', [AuditLogController::class, 'exportExcel'])->name('audit.export.excel');
         Route::get('audit/export/pdf', [AuditLogController::class, 'exportPdf'])->name('audit.export.pdf');
     });
@@ -65,5 +66,6 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::middleware('permission:parametres.gerer')->group(function () {
         Route::put('parametres/{parametre}', [ParametreController::class, 'update'])->name('parametres.update');
         Route::post('parametres/logo', [ParametreController::class, 'uploaderLogo'])->name('parametres.logo');
+        Route::delete('parametres/logo', [ParametreController::class, 'retirerLogo'])->name('parametres.logo.retirer');
     });
 });

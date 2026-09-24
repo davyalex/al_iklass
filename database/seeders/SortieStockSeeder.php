@@ -40,12 +40,13 @@ class SortieStockSeeder extends Seeder
                 continue;
             }
 
-            $service->sortieInterne([
-                'article_id' => $article->id,
-                'quantite' => $sortie['quantite'],
+            $service->creerInterne([
                 'vehicule_id' => $sortie['vehicule']->id,
                 'motif' => self::MARQUEUR.' Entretien courant',
                 'user_id' => $utilisateur->id,
+                'lignes' => [
+                    ['article_id' => $article->id, 'quantite' => $sortie['quantite']],
+                ],
             ]);
         }
 
@@ -59,14 +60,14 @@ class SortieStockSeeder extends Seeder
                 continue;
             }
 
-            $service->sortieExterne([
-                'article_id' => $article->id,
-                'quantite' => $vente['quantite'],
-                'prix_vente' => $vente['prix_vente'],
+            $service->creerExterne([
                 'vehicule_externe' => 'Client de passage',
                 'acheteur' => $vente['acheteur'],
                 'motif' => self::MARQUEUR.' Vente comptoir',
                 'user_id' => $utilisateur->id,
+                'lignes' => [
+                    ['article_id' => $article->id, 'quantite' => $vente['quantite'], 'prix_vente' => $vente['prix_vente']],
+                ],
             ]);
         }
     }

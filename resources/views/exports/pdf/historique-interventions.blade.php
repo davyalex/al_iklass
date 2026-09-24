@@ -12,6 +12,7 @@
     </style>
 </head>
 <body>
+    @include('exports.pdf.partials.entete-societe')
     <h1>Historique des interventions</h1>
     <div class="meta">Édité le {{ now()->format('d/m/Y H:i') }} — {{ $interventions->count() }} ligne(s)</div>
 

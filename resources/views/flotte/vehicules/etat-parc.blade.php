@@ -6,7 +6,7 @@
 <x-app-layout>
     <x-slot name="header">État du parc</x-slot>
 
-    <div class="card border-0 bg-light mb-3">
+    <div class="card al-filtres mb-3">
         <div class="card-body">
             <form method="GET" action="{{ route('flotte.etat-parc.index') }}" class="row g-2 align-items-end">
                 <div class="col-6 col-md-2">
@@ -28,10 +28,13 @@
                         </select>
                     </div>
                 @endif
-                <div class="col-12 col-md-3">
+                <div class="col-12 col-md-3 al-filtres-actions">
                     <button type="submit" class="btn btn-sm btn-primary">
                         <i class="bi bi-search me-1"></i>Afficher
                     </button>
+                    @if (request()->anyFilled(['date_debut', 'date_fin', 'gestionnaire_id']))
+                        <x-filtre-reset :href="route('flotte.etat-parc.index')" />
+                    @endif
                 </div>
             </form>
         </div>

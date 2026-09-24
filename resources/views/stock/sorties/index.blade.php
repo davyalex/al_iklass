@@ -1,11 +1,24 @@
 <x-app-layout>
     <x-slot name="header">Sorties de stock</x-slot>
 
+    <div class="al-page-actions">
+        @can('sortieInterne', \App\Models\SortieStock::class)
+            <button type="button" class="btn btn-outline-primary" id="btn-sortie-interne">
+                <i class="bi bi-truck me-1"></i>Sortie interne
+            </button>
+        @endcan
+        @can('sortieVente', \App\Models\SortieStock::class)
+            <button type="button" class="btn btn-primary" id="btn-sortie-externe">
+                <i class="bi bi-cash-coin me-1"></i>Vente externe
+            </button>
+        @endcan
+    </div>
+
     <div class="d-flex align-items-center gap-2 mb-2">
         <span class="badge bg-primary">Interne</span>
         <span class="small text-muted" id="kpi-periode-label-interne">Période : mois en cours</span>
     </div>
-    <div class="row g-3 mb-3 row-cols-1 row-cols-sm-3">
+    <div class="row g-2 g-sm-3 mb-3 row-cols-2 row-cols-sm-3">
         <div class="col">
             <div class="card shadow-sm border-0 bg-white h-100">
                 <div class="card-body">
@@ -36,7 +49,7 @@
         <span class="badge bg-info text-dark">Vente externe</span>
         <span class="small text-muted" id="kpi-periode-label-externe">Période : mois en cours</span>
     </div>
-    <div class="row g-3 mb-3 row-cols-1 row-cols-sm-3">
+    <div class="row g-2 g-sm-3 mb-3 row-cols-2 row-cols-sm-3">
         <div class="col">
             <div class="card shadow-sm border-0 bg-white h-100">
                 <div class="card-body">
@@ -63,20 +76,7 @@
         </div>
     </div>
 
-    <div class="d-flex justify-content-end gap-2 mb-3">
-        @can('sortieInterne', \App\Models\SortieStock::class)
-            <button type="button" class="btn btn-outline-primary" id="btn-sortie-interne">
-                <i class="bi bi-truck me-1"></i>Sortie interne
-            </button>
-        @endcan
-        @can('sortieVente', \App\Models\SortieStock::class)
-            <button type="button" class="btn btn-primary" id="btn-sortie-externe">
-                <i class="bi bi-cash-coin me-1"></i>Vente externe
-            </button>
-        @endcan
-    </div>
-
-    <div class="card shadow-sm border-0 bg-white mb-3">
+    <div class="card al-filtres mb-3">
         <div class="card-body">
             <form id="filtres-sorties" class="row g-2 align-items-end">
                 <div class="col-6 col-md-2">
@@ -104,14 +104,12 @@
                         <option value="externe">Vente externe</option>
                     </select>
                 </div>
-                <div class="col-12 col-md-3 d-flex flex-wrap gap-2">
+                <div class="col-12 col-md-3 al-filtres-actions">
                     <button type="button" class="btn btn-sm btn-primary" id="btn-filtrer-sorties">
                         <i class="bi bi-funnel me-1"></i>Filtrer
                     </button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary d-none" id="btn-reset-sorties">
-                        Réinitialiser
-                    </button>
-                    <div class="ms-md-auto">
+                    <x-filtre-reset id="btn-reset-sorties" />
+                    <div class="ms-auto">
                         <x-export-dropdown id-suffix="sorties" />
                     </div>
                 </div>
@@ -217,7 +215,7 @@
 
     {{-- Gabarit d'une ligne de sortie --}}
     <template id="gabarit-ligne-sortie">
-        <div class="row align-items-end ligne-sortie mb-2">
+        <div class="row align-items-end ligne-sortie al-ligne-saisie mb-2">
             <div class="col-12 col-md-6">
                 <label class="form-label small">Article</label>
                 <select name="lignes[__index__][article_id]" class="form-select select2-article-sortie" required>

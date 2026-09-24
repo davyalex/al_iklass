@@ -38,6 +38,20 @@ class ParametreSeeder extends Seeder
                 'groupe' => 'statut_journalier',
                 'ordre' => 2,
             ],
+            [
+                // Marqueur interne (pas affiché dans l'écran Paramètres) :
+                // date de la dernière réinitialisation des statuts
+                // journaliers, posée par StatutJournalierService. Initialisé
+                // à aujourd'hui : on ne veut pas qu'un premier accès juste
+                // après le seed écrase la répartition volontairement variée
+                // des statuts de démo (VehiculeSeeder) avant même le
+                // prochain vrai changement de jour.
+                'cle' => 'flotte.statut_journalier.derniere_execution',
+                'valeur' => now()->format('Y-m-d'),
+                'libelle' => 'Dernière réinitialisation des statuts journaliers',
+                'groupe' => 'interne',
+                'ordre' => 0,
+            ],
         ] as $parametre) {
             Parametre::firstOrCreate(['cle' => $parametre['cle']], $parametre);
         }

@@ -21,6 +21,7 @@
     </style>
 </head>
 <body>
+    @include('exports.pdf.partials.entete-societe')
     <div class="entete">
         <div>
             <h1>Relevé de compte fournisseur</h1>
@@ -128,7 +129,7 @@
     </table>
 
     <div class="pied">
-        AL-IKLASS — Relevé de compte fournisseur
+        {{ app(\App\Services\Admin\IdentiteApplicationService::class)->nom() }} — Relevé de compte fournisseur
     </div>
 </body>
 </html>

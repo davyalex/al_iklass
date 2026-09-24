@@ -12,6 +12,7 @@
     </style>
 </head>
 <body>
+    @include('exports.pdf.partials.entete-societe')
     <h1>Journal d'audit</h1>
     <div class="meta">Édité le {{ now()->format('d/m/Y H:i') }} — {{ $activites->count() }} ligne(s)</div>
 
@@ -20,6 +21,8 @@
             <tr>
                 <th>Date</th>
                 <th>Utilisateur</th>
+                <th>Type</th>
+                <th>Élément</th>
                 <th>Action</th>
             </tr>
         </thead>
@@ -28,6 +31,8 @@
                 <tr>
                     <td>{{ $activite->created_at->format('d/m/Y H:i') }}</td>
                     <td>{{ $activite->causer?->name ?? 'Système' }}</td>
+                    <td>{{ \App\Services\Admin\AuditService::EVENEMENTS[$activite->event]['libelle'] ?? 'Action' }}</td>
+                    <td>{{ \App\Services\Admin\AuditService::libelleModele($activite->subject_type) }}</td>
                     <td>{{ $activite->description }}</td>
                 </tr>
             @endforeach

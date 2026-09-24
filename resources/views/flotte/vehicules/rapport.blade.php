@@ -30,7 +30,7 @@
         </div>
     </div>
 
-    <div class="row g-3 mb-3 row-cols-3">
+    <div class="row g-2 g-sm-3 mb-3 row-cols-2 row-cols-sm-3">
         <div class="col">
             <div class="card shadow-sm border-0 bg-white h-100">
                 <div class="card-body">
@@ -76,7 +76,7 @@
         </div>
     @endif
 
-    <div class="card shadow-sm border-0 bg-white mb-3">
+    <div class="card al-filtres mb-3">
         <div class="card-body">
             <form id="filtres-rapport" class="row g-2 align-items-end">
                 <div class="col-6 col-md-3">
@@ -87,13 +87,11 @@
                     <label class="form-label small mb-1">Au</label>
                     <input type="date" name="date_fin" class="form-control form-control-sm">
                 </div>
-                <div class="col-12 col-md-3 d-flex flex-wrap gap-2">
+                <div class="col-12 col-md-3 al-filtres-actions">
                     <button type="button" class="btn btn-sm btn-primary" id="btn-filtrer-rapport">
                         <i class="bi bi-funnel me-1"></i>Filtrer
                     </button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary d-none" id="btn-reset-rapport">
-                        Réinitialiser
-                    </button>
+                    <x-filtre-reset id="btn-reset-rapport" />
                 </div>
             </form>
         </div>

@@ -21,7 +21,12 @@ class RoleController extends Controller
     {
         Gate::authorize('viewAny', Role::class);
 
-        $roles = Role::withCount('users')->with('permissions')->orderBy('name')->get();
+        // Un admin (non superadmin) ne doit ni voir ni gérer le rôle
+        // superadmin (cf. RolePolicy) : on l'exclut donc déjà de la liste.
+        $roles = Role::withCount('users')->with('permissions')
+            ->when(! auth()->user()->hasRole('superadmin'), fn ($q) => $q->where('name', '!=', 'superadmin'))
+            ->orderBy('name')
+            ->get();
         $permissions = Permission::orderBy('name')->get()->groupBy(fn (Permission $p) => explode('.', $p->name)[0]);
 
         return view('admin.roles.index', [
@@ -72,6 +77,6 @@ class RoleController extends Controller
             return response()->json(['message' => collect($e->errors())->flatten()->first()], 422);
         }
 
-        return response()->json(['message' => "Rôle supprimé."]);
+        return response()->json(['message' => 'Rôle supprimé.']);
     }
 }

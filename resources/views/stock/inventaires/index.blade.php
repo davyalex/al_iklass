@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="header">Inventaires</x-slot>
 
-    <div class="d-flex justify-content-end mb-3">
+    <div class="al-page-actions">
         @can('create', \App\Models\Inventaire::class)
             <button type="button" class="btn btn-primary" id="btn-nouvel-inventaire">
                 <i class="bi bi-plus-lg me-1"></i>Nouvel inventaire
@@ -9,7 +9,7 @@
         @endcan
     </div>
 
-    <div class="card shadow-sm border-0 bg-white mb-3">
+    <div class="card al-filtres mb-3">
         <div class="card-body">
             <form id="filtres-inventaires" class="row g-2 align-items-end">
                 <div class="col-6 col-md-2">
@@ -37,14 +37,12 @@
                         <option value="valide">Validé</option>
                     </select>
                 </div>
-                <div class="col-12 col-md-3 d-flex flex-wrap gap-2">
+                <div class="col-12 col-md-3 al-filtres-actions">
                     <button type="button" class="btn btn-sm btn-primary" id="btn-filtrer-inventaires">
                         <i class="bi bi-funnel me-1"></i>Filtrer
                     </button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary d-none" id="btn-reset-inventaires">
-                        Réinitialiser
-                    </button>
-                    <div class="ms-md-auto">
+                    <x-filtre-reset id="btn-reset-inventaires" />
+                    <div class="ms-auto">
                         <x-export-dropdown id-suffix="inventaires" />
                     </div>
                 </div>

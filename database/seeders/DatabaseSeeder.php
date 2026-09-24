@@ -22,6 +22,7 @@ class DatabaseSeeder extends Seeder
             StatutVehiculeSeeder::class,
             TypeOperationSeeder::class,
             TypePanneSeeder::class,
+            TypePreteurSeeder::class,
             VehiculeSeeder::class,
             StockReferenceSeeder::class,
             ArticleSeeder::class,
@@ -29,6 +30,7 @@ class DatabaseSeeder extends Seeder
             AchatSeeder::class,
             SortieStockSeeder::class,
             InventaireSeeder::class,
+            PreteurSeeder::class,
         ]);
     }
 }

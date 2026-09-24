@@ -12,6 +12,7 @@
     </style>
 </head>
 <body>
+    @include('exports.pdf.partials.entete-societe')
     <h1>Changements de statut — {{ $vehicule->code }}</h1>
     <div class="meta">Édité le {{ now()->format('d/m/Y H:i') }} — {{ $changements->count() }} ligne(s)</div>
 

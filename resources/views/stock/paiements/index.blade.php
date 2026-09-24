@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="header">Paiements fournisseurs</x-slot>
 
-    <div class="d-flex justify-content-end mb-3">
+    <div class="al-page-actions">
         @can('create', \App\Models\PaiementFournisseur::class)
             <button type="button" class="btn btn-primary" id="btn-nouveau-paiement" @disabled($achatsEnCredit->isEmpty())>
                 <i class="bi bi-plus-lg me-1"></i>Nouveau paiement
@@ -13,7 +13,7 @@
         <p class="text-muted small">Aucun achat avec un solde restant à payer pour le moment.</p>
     @endif
 
-    <div class="card shadow-sm border-0 bg-white mb-3">
+    <div class="card al-filtres mb-3">
         <div class="card-body">
             <form id="filtres-paiements" class="row g-2 align-items-end">
                 <div class="col-6 col-md-2">
@@ -42,14 +42,12 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-12 col-md-3 d-flex flex-wrap gap-2">
+                <div class="col-12 col-md-3 al-filtres-actions">
                     <button type="button" class="btn btn-sm btn-primary" id="btn-filtrer-paiements">
                         <i class="bi bi-funnel me-1"></i>Filtrer
                     </button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary d-none" id="btn-reset-paiements">
-                        Réinitialiser
-                    </button>
-                    <div class="ms-md-auto">
+                    <x-filtre-reset id="btn-reset-paiements" />
+                    <div class="ms-auto">
                         <x-export-dropdown id-suffix="paiements" />
                     </div>
                 </div>

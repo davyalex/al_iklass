@@ -1,13 +1,13 @@
 <x-app-layout>
     <x-slot name="header">Historique des opérations</x-slot>
 
-    <div class="d-flex justify-content-end mb-3">
+    <div class="al-page-actions">
         <a href="{{ route('flotte.operations.index') }}" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left me-1"></i>Retour aux opérations
         </a>
     </div>
 
-    <div class="card border-0 bg-light mb-3">
+    <div class="card al-filtres mb-3">
         <div class="card-body">
             <form id="filtres-historique-operations" class="row g-2 align-items-end">
                 <div class="col-md-3">
@@ -36,10 +36,8 @@
                     <label class="form-label small mb-1">Au</label>
                     <input type="date" name="date_fin" class="form-control form-control-sm">
                 </div>
-                <div class="col-12 col-md d-flex justify-content-md-end gap-2">
-                    <button type="button" class="btn btn-sm btn-outline-secondary d-none" id="btn-reset-historique-operations" title="Réinitialiser les filtres">
-                        <i class="bi bi-arrow-counterclockwise"></i>
-                    </button>
+                <div class="col-12 col-md al-filtres-actions justify-content-md-end">
+                    <x-filtre-reset id="btn-reset-historique-operations" />
                     <x-export-dropdown id-suffix="historique-operations" />
                 </div>
             </form>

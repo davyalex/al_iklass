@@ -6,9 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UpdateParametreRequest;
 use App\Http\Requests\Admin\UploadLogoRequest;
 use App\Models\Parametre;
+use App\Services\Admin\IdentiteApplicationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class ParametreController extends Controller
@@ -34,21 +34,45 @@ class ParametreController extends Controller
         ]);
     }
 
-    public function uploaderLogo(UploadLogoRequest $request): JsonResponse
+    public function uploaderLogo(UploadLogoRequest $request, IdentiteApplicationService $identiteApplication): JsonResponse
     {
-        $parametre = Parametre::where('cle', 'application.logo')->firstOrFail();
-        Gate::authorize('update', $parametre);
+        Gate::authorize('update', Parametre::where('cle', 'application.logo')->firstOrFail());
 
-        if ($parametre->valeur) {
-            Storage::disk('public')->delete($parametre->valeur);
-        }
-
-        $chemin = $request->file('logo')->store('logos', 'public');
-        $parametre->update(['valeur' => $chemin]);
+        $identiteApplication->remplacerLogo($request->file('logo'));
 
         return response()->json([
-            'message' => 'Logo mis à jour.',
-            'url' => Storage::disk('public')->url($chemin),
+            'message' => 'Logo mis à jour. Favicon et icônes régénérés.',
+            'url' => $identiteApplication->logoUrl(),
+            'icones' => $this->urlsIcones($identiteApplication),
         ]);
+    }
+
+    public function retirerLogo(IdentiteApplicationService $identiteApplication): JsonResponse
+    {
+        Gate::authorize('update', Parametre::where('cle', 'application.logo')->firstOrFail());
+
+        $identiteApplication->retirerLogo();
+
+        return response()->json([
+            'message' => 'Logo retiré. Les icônes par défaut sont rétablies.',
+            'url' => null,
+            'icones' => $this->urlsIcones($identiteApplication),
+        ]);
+    }
+
+    /**
+     * URLs des icônes à jour, pour rafraîchir la page sans rechargement.
+     *
+     * @return array{favicon: string, apple: string, sidebar: string}
+     */
+    private function urlsIcones(IdentiteApplicationService $identiteApplication): array
+    {
+        return [
+            'favicon' => $identiteApplication->icone('favicon-32.png'),
+            'apple' => $identiteApplication->icone('apple-touch-icon.png'),
+            'sidebar' => $identiteApplication->aUnLogo()
+                ? $identiteApplication->icone('icone-192.png')
+                : asset('icones/favicon.svg'),
+        ];
     }
 }

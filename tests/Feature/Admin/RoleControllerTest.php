@@ -28,6 +28,36 @@ class RoleControllerTest extends TestCase
             ->assertViewIs('admin.roles.index');
     }
 
+    public function test_admin_ne_voit_pas_le_role_superadmin_dans_la_liste(): void
+    {
+        $admin = User::factory()->create()->assignRole('admin');
+
+        $response = $this->actingAs($admin)->get(route('admin.roles.index'));
+
+        $response->assertOk();
+        $noms = $response->viewData('roles')->pluck('name');
+        $this->assertNotContains('superadmin', $noms);
+    }
+
+    public function test_superadmin_voit_le_role_superadmin_dans_la_liste(): void
+    {
+        $superadmin = User::factory()->create()->assignRole('superadmin');
+
+        $response = $this->actingAs($superadmin)->get(route('admin.roles.index'));
+
+        $response->assertOk();
+        $noms = $response->viewData('roles')->pluck('name');
+        $this->assertContains('superadmin', $noms);
+    }
+
+    public function test_admin_ne_peut_pas_consulter_le_detail_du_role_superadmin(): void
+    {
+        $admin = User::factory()->create()->assignRole('admin');
+        $superadmin = Role::where('name', 'superadmin')->firstOrFail();
+
+        $this->actingAs($admin)->getJson(route('admin.roles.show', $superadmin))->assertForbidden();
+    }
+
     public function test_gestionnaire_cannot_view_roles_index(): void
     {
         $user = User::factory()->create()->assignRole('gestionnaire');

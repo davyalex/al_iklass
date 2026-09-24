@@ -8,6 +8,7 @@ use App\Models\Caisse;
 use App\Models\Fournisseur;
 use App\Models\ModePaiement;
 use App\Models\MouvementCaisse;
+use App\Models\PaiementFournisseur;
 use App\Models\User;
 use App\Services\Stock\PaiementFournisseurService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -119,7 +120,7 @@ class PaiementFournisseurServiceTest extends TestCase
             'user_id' => $user->id,
         ]);
 
-        $mouvement = MouvementCaisse::where('origine_type', \App\Models\PaiementFournisseur::class)
+        $mouvement = MouvementCaisse::where('origine_type', PaiementFournisseur::class)
             ->where('origine_id', $paiement->id)
             ->first();
 
@@ -127,5 +128,25 @@ class PaiementFournisseurServiceTest extends TestCase
         $this->assertSame('sortie', $mouvement->sens);
         $this->assertEquals(2000, $mouvement->montant);
         $this->assertSame('depenses_fournisseurs', $mouvement->caisse->type);
+    }
+
+    public function test_payment_writes_an_entry_in_the_audit_log(): void
+    {
+        $achat = $this->achatDe(2000);
+        $mode = ModePaiement::firstOrCreate(['code' => 'especes'], ['code' => 'especes', 'libelle' => 'Espèces']);
+        $user = User::factory()->create();
+
+        $this->service->enregistrer([
+            'achat_id' => $achat->id,
+            'montant' => 2000,
+            'mode_paiement_id' => $mode->id,
+            'user_id' => $user->id,
+        ]);
+
+        $this->assertDatabaseHas('activity_log', [
+            'subject_type' => Achat::class,
+            'subject_id' => $achat->id,
+            'description' => "Paiement fournisseur de 2000 FCFA enregistré pour l'achat #{$achat->id} ({$achat->fournisseur_nom}).",
+        ]);
     }
 }

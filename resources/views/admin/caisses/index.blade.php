@@ -15,7 +15,7 @@
         @endforeach
     </div>
 
-    <div class="card shadow-sm border-0 bg-white mb-3">
+    <div class="card al-filtres mb-3">
         <div class="card-body">
             <form id="filtres-caisses" class="row g-2 align-items-end">
                 <div class="col-6 col-md-2">
@@ -43,10 +43,8 @@
                         <option value="sortie">Sortie</option>
                     </select>
                 </div>
-                <div class="col-12 col-md-3 d-flex justify-content-md-end gap-2">
-                    <button type="button" class="btn btn-sm btn-outline-secondary d-none" id="btn-reset-caisses" title="Réinitialiser les filtres">
-                        <i class="bi bi-arrow-counterclockwise"></i>
-                    </button>
+                <div class="col-12 col-md-3 al-filtres-actions justify-content-md-end">
+                    <x-filtre-reset id="btn-reset-caisses" />
                     <x-export-dropdown id-suffix="caisses" />
                 </div>
             </form>

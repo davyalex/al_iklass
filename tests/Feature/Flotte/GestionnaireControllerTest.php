@@ -195,6 +195,24 @@ class GestionnaireControllerTest extends TestCase
         ]);
     }
 
+    public function test_annulation_de_dette_ecrit_une_entree_dans_le_journal_audit(): void
+    {
+        $admin = User::factory()->create()->assignRole('admin');
+        $gestionnaire = User::factory()->create(['dette' => 5000, 'name' => 'Jean Kouassi'])->assignRole('gestionnaire');
+
+        $this->actingAs($admin)->postJson(route('flotte.gestionnaires.dette.annuler', $gestionnaire), [
+            'montant' => 2000,
+            'motif' => 'Erreur de saisie constatée',
+        ])->assertOk();
+
+        $this->assertDatabaseHas('activity_log', [
+            'subject_type' => User::class,
+            'subject_id' => $gestionnaire->id,
+            'causer_id' => $admin->id,
+            'description' => 'Dette de « Jean Kouassi » annulée pour 2000 FCFA — motif : Erreur de saisie constatée',
+        ]);
+    }
+
     public function test_annulation_superieure_a_la_dette_actuelle_est_rejetee(): void
     {
         $admin = User::factory()->create()->assignRole('admin');

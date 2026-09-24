@@ -12,7 +12,15 @@
 <x-app-layout>
     <x-slot name="header">{{ request('role') === 'gestionnaire' ? 'Gestionnaires' : 'Utilisateurs' }}</x-slot>
 
-    <div class="card shadow-sm border-0 bg-white mb-3">
+    @can('create', \App\Models\User::class)
+        <div class="al-page-actions">
+            <button type="button" class="btn btn-primary" id="btn-nouvel-utilisateur">
+                <i class="bi bi-plus-lg me-1"></i>{{ request('role') === 'gestionnaire' ? 'Nouveau gestionnaire' : 'Nouvel utilisateur' }}
+            </button>
+        </div>
+    @endcan
+
+    <div class="card al-filtres mb-3">
         <div class="card-body">
             <div class="row g-2 align-items-end">
                 <div class="col-12 col-md-4">
@@ -39,12 +47,8 @@
                     </select>
                 </div>
 
-                <div class="col-12 col-md-2 text-md-end">
-                    @can('create', \App\Models\User::class)
-                        <button type="button" class="btn btn-primary btn-sm w-100" id="btn-nouvel-utilisateur">
-                            <i class="bi bi-plus-lg me-1"></i>{{ request('role') === 'gestionnaire' ? 'Nouveau gestionnaire' : 'Nouvel utilisateur' }}
-                        </button>
-                    @endcan
+                <div class="col-12 col-md-2 al-filtres-actions">
+                    <x-filtre-reset id="btn-reset-utilisateurs" :visible="request()->anyFilled(['role', 'statut'])" />
                 </div>
             </div>
         </div>
@@ -170,8 +174,23 @@
 
             $('.select2-role').select2({ dropdownParent: $('#modal-utilisateur'), width: '100%' });
 
+            const filtresServeurActifs = @json(request()->anyFilled(['role', 'statut']));
+
+            $('#btn-reset-utilisateurs').on('click', function () {
+                if (filtresServeurActifs) {
+                    const url = new URL(window.location.href);
+                    url.searchParams.delete('role');
+                    url.searchParams.delete('statut');
+                    window.location.href = url.toString();
+
+                    return;
+                }
+                $('#recherche-utilisateur').val('').trigger('input');
+            });
+
             $('#recherche-utilisateur').on('input', function () {
                 const q = $(this).val().toLowerCase();
+                $('#btn-reset-utilisateurs').toggleClass('d-none', !filtresServeurActifs && q === '');
                 $('.carte-utilisateur').each(function () {
                     const match = $(this).data('nom').toString().includes(q) || $(this).data('username').toString().includes(q);
                     $(this).toggle(match);

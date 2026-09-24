@@ -2,6 +2,7 @@
 
 namespace App\Exports\Admin;
 
+use App\Services\Admin\AuditService;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
@@ -23,7 +24,7 @@ class AuditLogExport implements FromCollection, ShouldAutoSize, WithHeadings, Wi
 
     public function headings(): array
     {
-        return ['Date', 'Utilisateur', 'Action'];
+        return ['Date', 'Utilisateur', 'Type', 'Élément', 'Action'];
     }
 
     /**
@@ -34,6 +35,8 @@ class AuditLogExport implements FromCollection, ShouldAutoSize, WithHeadings, Wi
         return [
             $activite->created_at->format('d/m/Y H:i'),
             $activite->causer?->name ?? 'Système',
+            AuditService::EVENEMENTS[$activite->event]['libelle'] ?? 'Action',
+            AuditService::libelleModele($activite->subject_type),
             $activite->description,
         ];
     }

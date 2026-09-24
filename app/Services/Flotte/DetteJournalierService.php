@@ -49,7 +49,10 @@ class DetteJournalierService
             $hier = now()->subDay();
             $compteur = 0;
 
-            foreach (User::role('gestionnaire')->get() as $gestionnaire) {
+            // lockForUpdate() : verrouille chaque gestionnaire pour la durée de la
+            // transaction, évite un lost update si un règlement/une annulation
+            // concurrent(e) touche la même ligne "dette" pendant la bascule.
+            foreach (User::role('gestionnaire')->lockForUpdate()->get() as $gestionnaire) {
                 $attendu = (float) Vehicule::where('gestionnaire_id', $gestionnaire->id)
                     ->whereHas('statut', fn ($q) => $q->where('code', 'en_circulation'))
                     ->sum('recette_journaliere');
@@ -99,21 +102,23 @@ class DetteJournalierService
      */
     public function annuler(User $gestionnaire, float $montant, string $motif, User $admin): HistoriqueDette
     {
-        $detteAvant = (float) $gestionnaire->dette;
-
         if ($montant <= 0) {
             throw ValidationException::withMessages(['montant' => 'Le montant doit être supérieur à 0.']);
         }
 
-        if ($montant > $detteAvant) {
-            throw ValidationException::withMessages(['montant' => 'Le montant ne peut pas dépasser la dette actuelle.']);
-        }
+        return DB::transaction(function () use ($gestionnaire, $montant, $motif, $admin) {
+            /** @var User $gestionnaire */
+            $gestionnaire = User::lockForUpdate()->findOrFail($gestionnaire->id);
+            $detteAvant = (float) $gestionnaire->dette;
 
-        return DB::transaction(function () use ($gestionnaire, $montant, $motif, $admin, $detteAvant) {
+            if ($montant > $detteAvant) {
+                throw ValidationException::withMessages(['montant' => 'Le montant ne peut pas dépasser la dette actuelle.']);
+            }
+
             $gestionnaire->dette = $detteAvant - $montant;
             $gestionnaire->save();
 
-            return HistoriqueDette::create([
+            $historique = HistoriqueDette::create([
                 'gestionnaire_id' => $gestionnaire->id,
                 'gestionnaire_nom' => $gestionnaire->name,
                 'type' => 'annulation',
@@ -123,6 +128,14 @@ class DetteJournalierService
                 'motif' => $motif,
                 'user_id' => $admin->id,
             ]);
+
+            activity()
+                ->performedOn($gestionnaire)
+                ->causedBy($admin)
+                ->withProperties(['montant' => $montant, 'motif' => $motif, 'dette_avant' => $detteAvant, 'dette_apres' => $gestionnaire->dette])
+                ->log("Dette de « {$gestionnaire->name} » annulée pour {$montant} FCFA — motif : {$motif}");
+
+            return $historique;
         });
     }
 
@@ -139,17 +152,19 @@ class DetteJournalierService
      */
     public function regler(User $gestionnaire, float $montant, ?string $motif, User $auteur): HistoriqueDette
     {
-        $detteAvant = (float) $gestionnaire->dette;
-
         if ($montant <= 0) {
             throw ValidationException::withMessages(['montant' => 'Le montant doit être supérieur à 0.']);
         }
 
-        if ($montant > $detteAvant) {
-            throw ValidationException::withMessages(['montant' => 'Le montant ne peut pas dépasser la dette actuelle.']);
-        }
+        return DB::transaction(function () use ($gestionnaire, $montant, $motif, $auteur) {
+            /** @var User $gestionnaire */
+            $gestionnaire = User::lockForUpdate()->findOrFail($gestionnaire->id);
+            $detteAvant = (float) $gestionnaire->dette;
 
-        return DB::transaction(function () use ($gestionnaire, $montant, $motif, $auteur, $detteAvant) {
+            if ($montant > $detteAvant) {
+                throw ValidationException::withMessages(['montant' => 'Le montant ne peut pas dépasser la dette actuelle.']);
+            }
+
             $gestionnaire->dette = $detteAvant - $montant;
             $gestionnaire->save();
 
@@ -176,6 +191,12 @@ class DetteJournalierService
                 'user_id' => $auteur->id,
                 'date_mouvement' => now(),
             ]);
+
+            activity()
+                ->performedOn($gestionnaire)
+                ->causedBy($auteur)
+                ->withProperties(['montant' => $montant, 'dette_avant' => $detteAvant, 'dette_apres' => $gestionnaire->dette])
+                ->log("Dette de « {$gestionnaire->name} » réglée pour {$montant} FCFA.");
 
             return $historique;
         });

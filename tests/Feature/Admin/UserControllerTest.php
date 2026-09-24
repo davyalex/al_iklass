@@ -45,6 +45,104 @@ class UserControllerTest extends TestCase
         $this->assertFalse($usersParRole->has('chef_mecanicien'));
     }
 
+    public function test_admin_ne_voit_pas_le_compte_superadmin_dans_la_liste(): void
+    {
+        $admin = User::factory()->create()->assignRole('admin');
+        User::factory()->create(['name' => 'Compte Superadmin'])->assignRole('superadmin');
+
+        $response = $this->actingAs($admin)->get(route('admin.users.index'));
+
+        $response->assertOk();
+        $response->assertDontSee('Compte Superadmin');
+        $usersParRole = $response->viewData('usersParRole');
+        $this->assertFalse($usersParRole->has('superadmin'));
+    }
+
+    public function test_superadmin_voit_le_compte_superadmin_dans_la_liste(): void
+    {
+        $superadmin = User::factory()->create(['name' => 'Compte Superadmin'])->assignRole('superadmin');
+
+        $response = $this->actingAs($superadmin)->get(route('admin.users.index'));
+
+        $response->assertOk();
+        $response->assertSee('Compte Superadmin');
+    }
+
+    public function test_admin_ne_peut_pas_consulter_le_compte_superadmin(): void
+    {
+        $admin = User::factory()->create()->assignRole('admin');
+        $superadmin = User::factory()->create()->assignRole('superadmin');
+
+        $this->actingAs($admin)->getJson(route('admin.users.show', $superadmin))->assertForbidden();
+    }
+
+    public function test_admin_ne_peut_pas_modifier_le_compte_superadmin(): void
+    {
+        $admin = User::factory()->create()->assignRole('admin');
+        $superadmin = User::factory()->create(['username' => 'superadmin-test'])->assignRole('superadmin');
+
+        $this->actingAs($admin)->putJson(route('admin.users.update', $superadmin), [
+            'name' => 'Nouveau nom',
+            'username' => $superadmin->username,
+            'telephone' => $superadmin->telephone,
+            'role' => 'gestionnaire',
+        ])->assertForbidden();
+    }
+
+    public function test_admin_ne_peut_pas_reinitialiser_le_mot_de_passe_du_superadmin(): void
+    {
+        $admin = User::factory()->create()->assignRole('admin');
+        $superadmin = User::factory()->create()->assignRole('superadmin');
+
+        $this->actingAs($admin)->postJson(route('admin.users.reset-password', $superadmin))->assertForbidden();
+    }
+
+    public function test_admin_ne_peut_pas_desactiver_le_compte_superadmin(): void
+    {
+        $admin = User::factory()->create()->assignRole('admin');
+        $superadmin = User::factory()->create()->assignRole('superadmin');
+
+        $this->actingAs($admin)->patchJson(route('admin.users.deactivate', $superadmin))->assertForbidden();
+    }
+
+    public function test_admin_ne_peut_pas_supprimer_le_compte_superadmin(): void
+    {
+        $admin = User::factory()->create()->assignRole('admin');
+        $superadmin = User::factory()->create()->assignRole('superadmin');
+
+        $this->actingAs($admin)->deleteJson(route('admin.users.destroy', $superadmin))->assertForbidden();
+        $this->assertDatabaseHas('users', ['id' => $superadmin->id, 'deleted_at' => null]);
+    }
+
+    public function test_admin_ne_peut_pas_creer_un_compte_avec_le_role_superadmin(): void
+    {
+        $admin = User::factory()->create()->assignRole('admin');
+
+        $this->actingAs($admin)->postJson(route('admin.users.store'), [
+            'name' => 'Tentative',
+            'username' => 'tentative',
+            'telephone' => '0102030405',
+            'role' => 'superadmin',
+        ])->assertJsonValidationErrors('role');
+
+        $this->assertDatabaseMissing('users', ['username' => 'tentative']);
+    }
+
+    public function test_admin_ne_peut_pas_promouvoir_un_utilisateur_au_role_superadmin(): void
+    {
+        $admin = User::factory()->create()->assignRole('admin');
+        $gestionnaire = User::factory()->create(['username' => 'gestionnaire-test'])->assignRole('gestionnaire');
+
+        $this->actingAs($admin)->putJson(route('admin.users.update', $gestionnaire), [
+            'name' => $gestionnaire->name,
+            'username' => $gestionnaire->username,
+            'telephone' => $gestionnaire->telephone,
+            'role' => 'superadmin',
+        ])->assertJsonValidationErrors('role');
+
+        $this->assertFalse($gestionnaire->fresh()->hasRole('superadmin'));
+    }
+
     public function test_gestionnaire_cannot_view_users_index(): void
     {
         $user = User::factory()->create()->assignRole('gestionnaire');

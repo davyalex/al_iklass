@@ -20,8 +20,13 @@ class UserController extends Controller
     {
         Gate::authorize('viewAny', User::class);
 
+        // Un admin (non superadmin) ne doit ni voir ni gérer le compte
+        // superadmin (cf. UserPolicy) : on l'exclut donc déjà de la liste.
+        $peutVoirSuperadmin = request()->user()->hasRole('superadmin');
+
         $users = User::query()
             ->with('roles')
+            ->when(! $peutVoirSuperadmin, fn ($q) => $q->whereDoesntHave('roles', fn ($r) => $r->where('name', 'superadmin')))
             ->when(request('role'), fn ($q) => $q->whereHas('roles', fn ($r) => $r->where('name', request('role'))))
             ->when(request('statut') === 'actif', fn ($q) => $q->where('is_active', true))
             ->when(request('statut') === 'inactif', fn ($q) => $q->where('is_active', false))
@@ -32,7 +37,10 @@ class UserController extends Controller
             ->groupBy(fn (User $u) => $u->roles->first()?->name ?? 'sans_role')
             ->sortKeys();
 
-        $roles = Role::orderBy('name')->get();
+        $roles = Role::query()
+            ->when(! $peutVoirSuperadmin, fn ($q) => $q->where('name', '!=', 'superadmin'))
+            ->orderBy('name')
+            ->get();
 
         return view('admin.users.index', compact('usersParRole', 'roles'));
     }

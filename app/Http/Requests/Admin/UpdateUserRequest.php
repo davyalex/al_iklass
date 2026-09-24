@@ -21,7 +21,9 @@ class UpdateUserRequest extends FormRequest
             'username' => ['required', 'string', 'max:50', 'alpha_dash', Rule::unique('users', 'username')->ignore($userId)],
             'email' => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')->ignore($userId)],
             'telephone' => ['required', 'digits:10', Rule::unique('users', 'telephone')->ignore($userId)],
-            'role' => ['required', 'string', 'exists:roles,name'],
+            // Seul un superadmin peut promouvoir quelqu'un au rôle superadmin —
+            // un admin ne doit ni le voir ni pouvoir l'attribuer.
+            'role' => ['required', 'string', 'exists:roles,name', Rule::notIn($this->user()->hasRole('superadmin') ? [] : ['superadmin'])],
         ];
     }
 }

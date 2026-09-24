@@ -1,8 +1,21 @@
 <x-app-layout>
     <x-slot name="header">Interventions</x-slot>
 
+    <div class="al-page-actions">
+        @can('interventions.type.gerer')
+            <button type="button" class="btn btn-outline-secondary" id="btn-gerer-types-panne">
+                <i class="bi bi-tags me-1"></i>Types de panne
+            </button>
+        @endcan
+        @can('interventions.declarer')
+            <button type="button" class="btn btn-primary" id="btn-declarer-panne">
+                <i class="bi bi-exclamation-triangle me-1"></i>Déclarer une panne
+            </button>
+        @endcan
+    </div>
+
     {{-- Filtres --}}
-    <div class="card border-0 bg-light mb-3">
+    <div class="card al-filtres mb-3">
         <div class="card-body">
             <div class="row g-2 align-items-end">
                 <div class="col-md-3">
@@ -31,20 +44,8 @@
                     <label class="form-label small mb-1">au</label>
                     <input type="date" id="filtre-intervention-au" class="form-control form-control-sm">
                 </div>
-                <div class="col-12 col-md d-flex flex-wrap align-items-center gap-2">
-                    <button type="button" class="btn btn-sm btn-outline-secondary d-none" id="btn-reset-filtre-intervention" title="Réinitialiser les filtres">
-                        <i class="bi bi-arrow-counterclockwise"></i>
-                    </button>
-                    @can('interventions.type.gerer')
-                        <button type="button" class="btn btn-outline-secondary ms-md-auto" id="btn-gerer-types-panne">
-                            <i class="bi bi-tags me-1"></i>Types de panne
-                        </button>
-                    @endcan
-                    @can('interventions.declarer')
-                        <button type="button" class="btn btn-primary ms-md-auto" id="btn-declarer-panne">
-                            <i class="bi bi-exclamation-triangle me-1"></i>Déclarer une panne
-                        </button>
-                    @endcan
+                <div class="col-12 col-md al-filtres-actions">
+                    <x-filtre-reset id="btn-reset-filtre-intervention" />
                 </div>
             </div>
         </div>

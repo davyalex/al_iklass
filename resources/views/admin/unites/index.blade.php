@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="header">Unités</x-slot>
 
-    <div class="d-flex justify-content-end mb-3">
+    <div class="al-page-actions">
         @can('create', \App\Models\Unite::class)
             <button type="button" class="btn btn-primary" id="btn-nouvelle-unite">
                 <i class="bi bi-plus-lg me-1"></i>Nouvelle unité

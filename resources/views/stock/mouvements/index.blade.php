@@ -40,7 +40,7 @@
         <span><i class="bi bi-funnel me-2"></i>Historique filtré sur : <strong id="banniere-article-texte"></strong></span>
     </div>
 
-    <div class="card shadow-sm border-0 bg-white mb-3">
+    <div class="card al-filtres mb-3">
         <div class="card-body">
             <form id="filtres-mouvements" class="row g-2 align-items-end">
                 <div class="col-6 col-md-2">
@@ -68,10 +68,8 @@
                         <option value="sortie">Sortie</option>
                     </select>
                 </div>
-                <div class="col-12 col-md-3 d-flex justify-content-md-end gap-2">
-                    <button type="button" class="btn btn-sm btn-outline-secondary d-none" id="btn-reset-mouvements" title="Réinitialiser les filtres">
-                        <i class="bi bi-arrow-counterclockwise"></i>
-                    </button>
+                <div class="col-12 col-md-3 al-filtres-actions justify-content-md-end">
+                    <x-filtre-reset id="btn-reset-mouvements" />
                     <x-export-dropdown id-suffix="mouvements" />
                 </div>
             </form>

@@ -140,7 +140,7 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 # CLAUDE.md — AL-IKLASS
 
 Contexte projet pour Claude Code. À lire à chaque session.
-Les spécifications détaillées sont dans `docs/`.
+Le cahier des charges fonctionnel complet est dans `CONTEXTE.md` (racine du repo).
 
 ---
 
@@ -179,8 +179,10 @@ php artisan queue:work --stop-when-empty
 npm run dev            # ou npm run build
 
 # Production (cPanel)
-git pull && composer install --no-dev -o && php artisan migrate --force && php artisan optimize
+git pull && ./deploy.sh
 ```
+
+Le détail des étapes (maintenance, build front, migrations, caches) est dans `deploy.sh` à la racine — à exécuter après chaque `git pull` en prod.
 
 ---
 
@@ -199,7 +201,7 @@ git pull && composer install --no-dev -o && php artisan migrate --force && php a
 
 ## 5. Règles d'or (invariants — à ne jamais violer)
 
-Détail métier dans `docs/CONTEXTE.md`.
+Détail métier dans `CONTEXTE.md` (cahier des charges du projet, à la racine).
 
 1. **Snapshots** — chaque ligne d'historique (mouvement de stock, versement, paiement, remboursement, annulation de dette) stocke une **copie figée** des valeurs clés (code, nom, montants) **en plus** des clés étrangères. L'historique doit survivre à une modification, une réaffectation ou un archivage.
 2. **Jamais de suppression physique** d'un enregistrement porteur d'historique → **soft delete / archivage**.
@@ -215,7 +217,7 @@ Détail métier dans `docs/CONTEXTE.md`.
 
 ## 7. Caisses
 
-Trois caisses via `caisses` (type) + `mouvements_caisse` : **versements**, **ventes_externes**, **emprunt**.
+Quatre caisses via `caisses` (type) + `mouvements_caisse` : **versements**, **ventes_externes**, **emprunt**, **depenses_fournisseurs**.
 
 ---
 
@@ -223,17 +225,17 @@ Trois caisses via `caisses` (type) + `mouvements_caisse` : **versements**, **ven
 
 Ordre de développement :
 
-1. Véhicules & gestionnaires
-2. **Stock, achats & ventes ← EN COURS**
-3. Statut journalier
-4. Recette, versement & caisses
-5. Opérations programmées
-6. Mouvements flotte & interventions
-7. Prêts & financements
-8. Tableau de bord administrateur
-9. Intégration réelle de l'API Wave
+1. Véhicules & gestionnaires — fait
+2. Stock, achats & ventes — fait
+3. Statut journalier — fait
+4. Recette, versement & caisses — fait
+5. Opérations programmées — fait
+6. Mouvements flotte & interventions — fait
+7. Prêts & financements — fait
+8. **Tableau de bord administrateur ← fait** (KPI + graphiques, `DashboardController`)
+9. **Intégration réelle de l'API Wave ← À FAIRE** — Wave n'est aujourd'hui qu'un mode de paiement déclaratif, sans appel API réel.
 
-> **Focus actuel : Module Stock** — spécification complète dans `docs/CAHIER-DES-CHARGES-STOCK.md`.
+> Détail fonctionnel complet (parcours par acteur, périmètre de chaque module) dans `CONTEXTE.md`.
 
 ---
 

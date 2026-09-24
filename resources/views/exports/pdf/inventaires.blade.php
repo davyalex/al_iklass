@@ -12,6 +12,7 @@
     </style>
 </head>
 <body>
+    @include('exports.pdf.partials.entete-societe')
     <h1>Inventaires</h1>
     <div class="meta">Édité le {{ now()->format('d/m/Y H:i') }} — {{ $inventaires->count() }} ligne(s)</div>
 

@@ -2,8 +2,7 @@
 
 namespace App\Console\Commands\Flotte;
 
-use App\Models\StatutVehicule;
-use App\Models\Vehicule;
+use App\Services\Flotte\StatutJournalierService;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -12,25 +11,11 @@ use Illuminate\Console\Command;
 #[Description('Remet chaque matin tous les véhicules non archivés en statut "en circulation" (CONTEXTE.md §5)')]
 class ReinitialiserStatutsJournaliers extends Command
 {
-    public function handle(): int
+    public function handle(StatutJournalierService $service): int
     {
-        $statutEnCirculation = StatutVehicule::where('code', 'en_circulation')->first();
+        $nombre = $service->reinitialiserSiNecessaire();
 
-        if (! $statutEnCirculation) {
-            $this->error('Statut "en_circulation" introuvable — vérifiez le seeder StatutVehiculeSeeder.');
-
-            return self::FAILURE;
-        }
-
-        $vehicules = Vehicule::where('statut_id', '!=', $statutEnCirculation->id)
-            ->orWhereNull('statut_id')
-            ->get();
-
-        foreach ($vehicules as $vehicule) {
-            $vehicule->update(['statut_id' => $statutEnCirculation->id]);
-        }
-
-        $this->info("{$vehicules->count()} véhicule(s) remis en circulation.");
+        $this->info("{$nombre} véhicule(s) remis en circulation.");
 
         return self::SUCCESS;
     }

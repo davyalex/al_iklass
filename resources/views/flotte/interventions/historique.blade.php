@@ -1,14 +1,14 @@
 <x-app-layout>
     <x-slot name="header">Historique des interventions</x-slot>
 
-    <div class="d-flex justify-content-end mb-3">
+    <div class="al-page-actions">
         <a href="{{ route('flotte.interventions.index') }}" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left me-1"></i>Retour aux interventions
         </a>
     </div>
 
     {{-- KPI --}}
-    <div class="row g-3 mb-3 row-cols-1 row-cols-sm-3">
+    <div class="row g-2 g-sm-3 mb-3 row-cols-2 row-cols-sm-3">
         <div class="col">
             <div class="card shadow-sm border-0 bg-white h-100">
                 <div class="card-body">
@@ -35,7 +35,7 @@
         </div>
     </div>
 
-    <div class="card border-0 bg-light mb-3">
+    <div class="card al-filtres mb-3">
         <div class="card-body">
             <form id="filtres-historique-interventions" class="row g-2 align-items-end">
                 <div class="col-md-3">
@@ -64,10 +64,8 @@
                     <label class="form-label small mb-1">Au</label>
                     <input type="date" name="date_fin" class="form-control form-control-sm">
                 </div>
-                <div class="col-12 col-md d-flex justify-content-md-end gap-2">
-                    <button type="button" class="btn btn-sm btn-outline-secondary d-none" id="btn-reset-historique-interventions" title="Réinitialiser les filtres">
-                        <i class="bi bi-arrow-counterclockwise"></i>
-                    </button>
+                <div class="col-12 col-md al-filtres-actions justify-content-md-end">
+                    <x-filtre-reset id="btn-reset-historique-interventions" />
                     <x-export-dropdown id-suffix="historique-interventions" />
                 </div>
             </form>

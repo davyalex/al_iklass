@@ -8,6 +8,19 @@
 
     @include('flotte.partials.statut-styles')
 
+    <div class="al-page-actions">
+        @canany(['flotte.vehicule.gerer', 'flotte.versement.gerer'])
+            <button type="button" class="btn btn-outline-primary" id="btn-nouveau-versement-vehicules">
+                <i class="bi bi-cash-coin me-1"></i>Nouveau versement
+            </button>
+        @endcanany
+        @can('create', \App\Models\Vehicule::class)
+            <button type="button" class="btn btn-primary" id="btn-nouveau-vehicule">
+                <i class="bi bi-plus-lg me-1"></i>Nouveau véhicule
+            </button>
+        @endcan
+    </div>
+
     @if ($fenetreStatut)
         <div class="alert alert-warning d-flex align-items-center py-2 px-3 mb-3" id="banniere-fenetre-statut">
             <i class="bi bi-clock-history me-2"></i><span id="fenetre-statut-texte">—</span>
@@ -37,7 +50,7 @@
     </div>
 
     {{-- Filtre --}}
-    <div class="card border-0 bg-light mb-3">
+    <div class="card al-filtres mb-3">
         <div class="card-body">
             <div class="row g-2 align-items-end">
                 <div class="col-6 col-md-2">
@@ -64,23 +77,11 @@
                         </select>
                     </div>
                 @endif
-                <div class="col-12 col-md d-flex flex-wrap align-items-center gap-2">
+                <div class="col-12 col-md al-filtres-actions">
                     <button type="button" class="btn btn-sm btn-outline-primary" id="btn-filtrer-vehicule">
                         <i class="bi bi-funnel me-1"></i>Filtrer
                     </button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary d-none" id="btn-reset-filtre-vehicule" title="Réinitialiser les filtres">
-                        <i class="bi bi-arrow-counterclockwise"></i>
-                    </button>
-                    @canany(['flotte.vehicule.gerer', 'flotte.versement.gerer'])
-                        <button type="button" class="btn btn-outline-primary{{ Auth::user()->can('create', \App\Models\Vehicule::class) ? '' : ' ms-md-auto' }}" id="btn-nouveau-versement-vehicules">
-                            <i class="bi bi-cash-coin me-1"></i>Nouveau versement
-                        </button>
-                    @endcanany
-                    @can('create', \App\Models\Vehicule::class)
-                        <button type="button" class="btn btn-primary ms-md-auto" id="btn-nouveau-vehicule">
-                            <i class="bi bi-plus-lg me-1"></i>Nouveau véhicule
-                        </button>
-                    @endcan
+                    <x-filtre-reset id="btn-reset-filtre-vehicule" />
                 </div>
             </div>
         </div>

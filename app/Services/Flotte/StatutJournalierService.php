@@ -44,8 +44,22 @@ class StatutJournalierService
             ->orWhereNull('statut_id')
             ->get();
 
-        foreach ($vehicules as $vehicule) {
-            $vehicule->update(['statut_id' => $statutEnCirculation->id]);
+        // Opération système : une seule ligne de synthèse dans le journal
+        // d'audit plutôt qu'une modification par véhicule, qui serait en plus
+        // attribuée à l'utilisateur dont la navigation a déclenché le filet
+        // de sécurité (ReinitialiserStatutJournalierSiNecessaire).
+        activity()->withoutLogs(function () use ($vehicules, $statutEnCirculation) {
+            foreach ($vehicules as $vehicule) {
+                $vehicule->update(['statut_id' => $statutEnCirculation->id]);
+            }
+        });
+
+        if ($vehicules->isNotEmpty()) {
+            activity()
+                ->causedByAnonymous()
+                ->event('updated')
+                ->withProperties(['vehicules' => $vehicules->pluck('code')->all()])
+                ->log("Réinitialisation journalière : {$vehicules->count()} véhicule(s) remis en circulation.");
         }
 
         $this->marquerExecute($aujourdhui);

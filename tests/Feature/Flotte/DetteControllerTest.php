@@ -158,6 +158,22 @@ class DetteControllerTest extends TestCase
         ]);
     }
 
+    public function test_reglement_ecrit_une_entree_dans_le_journal_audit(): void
+    {
+        $gestionnaire = User::factory()->create(['dette' => 5000, 'name' => 'Awa Coulibaly'])->assignRole('gestionnaire');
+
+        $this->actingAs($gestionnaire)->postJson(route('flotte.gestionnaires.dette.regler', $gestionnaire), [
+            'montant' => 2000,
+        ])->assertOk();
+
+        $this->assertDatabaseHas('activity_log', [
+            'subject_type' => User::class,
+            'subject_id' => $gestionnaire->id,
+            'causer_id' => $gestionnaire->id,
+            'description' => 'Dette de « Awa Coulibaly » réglée pour 2000 FCFA.',
+        ]);
+    }
+
     public function test_gestionnaire_ne_peut_pas_regler_la_dette_dun_autre(): void
     {
         $gestionnaireA = User::factory()->create()->assignRole('gestionnaire');

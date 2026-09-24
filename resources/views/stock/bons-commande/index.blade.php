@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="header">Bons de commande</x-slot>
 
-    <div class="d-flex justify-content-end mb-3">
+    <div class="al-page-actions">
         @can('create', \App\Models\BonCommande::class)
             <button type="button" class="btn btn-primary" id="btn-nouveau-bon-commande">
                 <i class="bi bi-plus-lg me-1"></i>Nouveau bon de commande
@@ -91,7 +91,7 @@
 
     {{-- Gabarit d'une ligne de bon de commande (formulaire de création) --}}
     <template id="gabarit-ligne-bc">
-        <div class="row align-items-end ligne-bc mb-2">
+        <div class="row align-items-end ligne-bc al-ligne-saisie mb-2">
             <div class="col-12 col-md-5">
                 <label class="form-label small">Article</label>
                 <select name="lignes[__index__][article_id]" class="form-select select2-article-bc" required>

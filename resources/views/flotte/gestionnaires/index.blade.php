@@ -8,6 +8,14 @@
 
     @include('flotte.partials.statut-styles')
 
+    @can('utilisateurs.gerer')
+        <div class="al-page-actions">
+            <button type="button" class="btn btn-primary" id="btn-nouveau-gestionnaire">
+                <i class="bi bi-plus-lg me-1"></i>Nouveau gestionnaire
+            </button>
+        </div>
+    @endcan
+
     {{-- KPIs (identiques à la page Véhicules) --}}
     <div class="row g-3 mb-3">
         @foreach ($statuts as $statut)
@@ -31,7 +39,7 @@
     </div>
 
     {{-- Filtre --}}
-    <div class="card border-0 bg-light mb-3">
+    <div class="card al-filtres mb-3">
         <div class="card-body">
             <div class="row g-2 align-items-end">
                 <div class="col-6 col-md-3">
@@ -61,18 +69,11 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-12 col-md d-flex flex-wrap align-items-center gap-2">
+                <div class="col-12 col-md al-filtres-actions">
                     <button type="button" class="btn btn-sm btn-outline-primary" id="btn-filtrer-gestionnaire">
                         <i class="bi bi-funnel me-1"></i>Filtrer
                     </button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary d-none" id="btn-reset-filtre-gestionnaire" title="Réinitialiser les filtres">
-                        <i class="bi bi-arrow-counterclockwise"></i>
-                    </button>
-                    @can('utilisateurs.gerer')
-                        <button type="button" class="btn btn-primary ms-md-auto" id="btn-nouveau-gestionnaire">
-                            <i class="bi bi-plus-lg me-1"></i>Nouveau gestionnaire
-                        </button>
-                    @endcan
+                    <x-filtre-reset id="btn-reset-filtre-gestionnaire" />
                 </div>
             </div>
         </div>

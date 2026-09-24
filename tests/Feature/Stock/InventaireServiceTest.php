@@ -4,6 +4,7 @@ namespace Tests\Feature\Stock;
 
 use App\Models\Article;
 use App\Models\CategorieArticle;
+use App\Models\Inventaire;
 use App\Models\MouvementStock;
 use App\Models\User;
 use App\Services\Stock\InventaireService;
@@ -121,6 +122,27 @@ class InventaireServiceTest extends TestCase
         $this->assertSame('entree', $mouvement->type);
         $this->assertSame('ajustement', $mouvement->nature);
         $this->assertSame(5, $mouvement->quantite);
+    }
+
+    public function test_valider_ecrit_une_entree_dans_le_journal_audit(): void
+    {
+        $user = User::factory()->create();
+        $article = Article::factory()->create(['quantite_stock' => 10, 'prix_achat' => 200]);
+
+        $inventaire = $this->inventaireService->creer([
+            'date_inventaire' => now(),
+            'user_id' => $user->id,
+        ]);
+        $ligne = $inventaire->lignes->first();
+        $this->inventaireService->enregistrerComptage($ligne, 15, null);
+
+        $inventaireValide = $this->inventaireService->valider($inventaire->fresh(), $user->id);
+
+        $this->assertDatabaseHas('activity_log', [
+            'subject_type' => Inventaire::class,
+            'subject_id' => $inventaireValide->id,
+            'description' => "Inventaire {$inventaireValide->reference} validé (1 écart(s) appliqué(s) au stock).",
+        ]);
     }
 
     public function test_valider_applies_negative_ecart_as_sortie_and_updates_stock(): void

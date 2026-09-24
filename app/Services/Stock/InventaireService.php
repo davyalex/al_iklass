@@ -97,12 +97,16 @@ class InventaireService
                 ]);
             }
 
+            $nombreEcarts = 0;
+
             foreach ($lignes as $ligne) {
                 $ecart = $ligne->quantite_comptee - $ligne->quantite_theorique;
 
                 if ($ecart === 0) {
                     continue;
                 }
+
+                $nombreEcarts++;
 
                 /** @var Article $article */
                 $article = Article::lockForUpdate()->findOrFail($ligne->article_id);
@@ -129,6 +133,11 @@ class InventaireService
                 'valide_par_id' => $valideParId,
                 'valide_le' => now(),
             ]);
+
+            activity()
+                ->performedOn($inventaire)
+                ->withProperties(['lignes_comptees' => $lignes->count(), 'ecarts_appliques' => $nombreEcarts])
+                ->log("Inventaire {$inventaire->reference} validé ({$nombreEcarts} écart(s) appliqué(s) au stock).");
 
             return $inventaire->fresh('lignes');
         });

@@ -18,6 +18,7 @@
     </style>
 </head>
 <body>
+    @include('exports.pdf.partials.entete-societe')
     <div class="entete">
         <div>
             <h1>Bon de commande</h1>
@@ -88,7 +89,7 @@
     @endif
 
     <div class="pied">
-        Édité le {{ now()->format('d/m/Y H:i') }} — AL-IKLASS
+        Édité le {{ now()->format('d/m/Y H:i') }} — {{ app(\App\Services\Admin\IdentiteApplicationService::class)->nom() }}
     </div>
 </body>
 </html>

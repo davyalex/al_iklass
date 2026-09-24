@@ -13,6 +13,7 @@
     </style>
 </head>
 <body>
+    @include('exports.pdf.partials.entete-societe')
     <h1>Bons de commande</h1>
     <div class="meta">Édité le {{ now()->format('d/m/Y H:i') }} — {{ $bonsCommande->count() }} ligne(s)</div>
 

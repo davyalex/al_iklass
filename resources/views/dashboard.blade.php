@@ -7,7 +7,7 @@
                 Bonjour, {{ Auth::user()->name }}
             </h1>
             <p class="text-muted mb-0">
-                Bienvenue sur AL-IKLASS. Les modules (stock, véhicules, recettes, caisses…) apparaîtront ici au fur et à mesure de leur mise en service.
+                Bienvenue sur {{ app(\App\Services\Admin\IdentiteApplicationService::class)->nom() }}. Les modules (stock, véhicules, recettes, caisses…) apparaîtront ici au fur et à mesure de leur mise en service.
             </p>
         </div>
     </div>

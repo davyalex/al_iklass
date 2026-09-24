@@ -13,6 +13,7 @@
     </style>
 </head>
 <body>
+    @include('exports.pdf.partials.entete-societe')
     <h1>Versements gestionnaires</h1>
     <div class="meta">Édité le {{ now()->format('d/m/Y H:i') }} — {{ $versements->count() }} ligne(s)</div>
 

@@ -61,7 +61,7 @@
         </div>
     </div>
 
-    <div class="row g-3 mb-3 row-cols-3">
+    <div class="row g-2 g-sm-3 mb-3 row-cols-1 row-cols-sm-3">
         <div class="col">
             <div class="card border-0 bg-white h-100">
                 <div class="card-body py-2 d-flex align-items-center justify-content-between">
@@ -91,7 +91,7 @@
         <i class="bi bi-info-circle me-1"></i>« Achats », « Stock utilisé », « Vendu externe » et les compteurs entrées/sorties suivent le filtre de période ci-dessous (mois en cours par défaut). Les autres indicateurs reflètent l'état du stock à l'instant présent.
     </p>
 
-    <div class="card shadow-sm border-0 bg-white mb-3">
+    <div class="card al-filtres mb-3">
         <div class="card-body">
             <form id="filtres-etat-stock" class="row g-2 align-items-end">
                 <div class="col-12 col-md-5 col-lg-4">
@@ -125,10 +125,8 @@
                         <label class="form-check-label small" for="filtre-en-alerte-etat">Alerte</label>
                     </div>
                 </div>
-                <div class="col-12 col-lg-2 d-flex justify-content-lg-end gap-2">
-                    <button type="button" class="btn btn-sm btn-outline-secondary d-none" id="btn-reset-etat-stock" title="Réinitialiser les filtres">
-                        <i class="bi bi-arrow-counterclockwise"></i>
-                    </button>
+                <div class="col-12 col-lg-2 al-filtres-actions justify-content-end">
+                    <x-filtre-reset id="btn-reset-etat-stock" />
                     <x-export-dropdown id-suffix="etat-stock" />
                 </div>
             </form>

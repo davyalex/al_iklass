@@ -1,36 +1,46 @@
 <x-app-layout>
     <x-slot name="header">Articles</x-slot>
 
-    <div class="d-flex flex-wrap gap-2 align-items-center justify-content-end mb-3">
-        @can('create', \App\Models\Article::class)
+    @can('create', \App\Models\Article::class)
+        <div class="al-page-actions">
             <button type="button" class="btn btn-outline-secondary" id="btn-gerer-categories">
                 <i class="bi bi-tags me-1"></i>Catégories
             </button>
             <button type="button" class="btn btn-primary" id="btn-nouvel-article">
                 <i class="bi bi-plus-lg me-1"></i>Nouvel article
             </button>
-        @endcan
-    </div>
-
-    <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
-        <div class="d-flex flex-nowrap gap-2">
-            <input type="text" id="recherche-article" class="form-control flex-grow-1" style="min-width: 0; max-width: 300px;" placeholder="Rechercher un article...">
-
-            <select id="filtre-categorie" class="form-select" style="max-width: 200px; flex-shrink: 0;">
-                <option value="">Toutes les catégories</option>
-                @foreach ($categories as $categorie)
-                    <option value="{{ $categorie->id }}" @selected(request('categorie_id') == $categorie->id)>{{ $categorie->libelle }}</option>
-                @endforeach
-            </select>
         </div>
+    @endcan
 
-        <div class="form-check form-switch mb-0 text-nowrap">
-            <input class="form-check-input" type="checkbox" role="switch" id="filtre-en-alerte" @checked(request()->boolean('en_alerte'))>
-            <label class="form-check-label" for="filtre-en-alerte">En alerte</label>
-        </div>
-
-        <div class="ms-auto">
-            <x-export-dropdown id-suffix="articles" />
+    <div class="card al-filtres mb-3">
+        <div class="card-body">
+            <div class="row g-2 align-items-end">
+                <div class="col-12 col-md-4">
+                    <label class="form-label small mb-1" for="recherche-article">Rechercher</label>
+                    <input type="text" id="recherche-article" class="form-control form-control-sm" placeholder="Nom ou référence...">
+                </div>
+                <div class="col-7 col-md-3">
+                    <label class="form-label small mb-1" for="filtre-categorie">Catégorie</label>
+                    <select id="filtre-categorie" class="form-select form-select-sm">
+                        <option value="">Toutes les catégories</option>
+                        @foreach ($categories as $categorie)
+                            <option value="{{ $categorie->id }}" @selected(request('categorie_id') == $categorie->id)>{{ $categorie->libelle }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-5 col-md-2">
+                    <div class="form-check form-switch text-nowrap">
+                        <input class="form-check-input" type="checkbox" role="switch" id="filtre-en-alerte" @checked(request()->boolean('en_alerte'))>
+                        <label class="form-check-label small" for="filtre-en-alerte">En alerte</label>
+                    </div>
+                </div>
+                <div class="col-12 col-md-3 al-filtres-actions">
+                    <x-filtre-reset id="btn-reset-articles" :visible="request()->anyFilled(['categorie_id', 'en_alerte'])" />
+                    <div class="ms-auto">
+                        <x-export-dropdown id-suffix="articles" />
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -209,8 +219,23 @@
         document.addEventListener('DOMContentLoaded', function () {
             $('.select2-categorie, .select2-unite').select2({ dropdownParent: $('#modal-article'), width: '100%' });
 
+            const filtresServeurActifs = @json(request()->anyFilled(['categorie_id', 'en_alerte']));
+
+            $('#btn-reset-articles').on('click', function () {
+                if (filtresServeurActifs) {
+                    const url = new URL(window.location.href);
+                    url.searchParams.delete('categorie_id');
+                    url.searchParams.delete('en_alerte');
+                    window.location.href = url.toString();
+
+                    return;
+                }
+                $('#recherche-article').val('').trigger('input');
+            });
+
             $('#recherche-article').on('input', function () {
                 const q = $(this).val().toLowerCase();
+                $('#btn-reset-articles').toggleClass('d-none', !filtresServeurActifs && q === '');
                 $('.carte-article').each(function () {
                     const match = $(this).data('nom').includes(q) || $(this).data('reference').includes(q);
                     $(this).toggle(match);

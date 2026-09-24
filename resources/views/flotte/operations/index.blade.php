@@ -1,8 +1,24 @@
 <x-app-layout>
     <x-slot name="header">Opérations programmées</x-slot>
 
+    <div class="al-page-actions">
+        <a href="{{ route('flotte.operations.historique.index') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-clock-history me-1"></i>Historique
+        </a>
+        @can('operations.type.gerer')
+            <button type="button" class="btn btn-outline-secondary" id="btn-gerer-types-operation">
+                <i class="bi bi-tags me-1"></i>Types
+            </button>
+        @endcan
+        @can('operations.gerer')
+            <button type="button" class="btn btn-primary" id="btn-planifier-operation">
+                <i class="bi bi-plus-lg me-1"></i>Planifier
+            </button>
+        @endcan
+    </div>
+
     {{-- Filtres --}}
-    <div class="card border-0 bg-light mb-3">
+    <div class="card al-filtres mb-3">
         <div class="card-body">
             <div class="row g-2 align-items-end">
                 <div class="col-md-3">
@@ -31,23 +47,8 @@
                     <label class="form-label small mb-1">au</label>
                     <input type="date" id="filtre-operation-au" class="form-control form-control-sm">
                 </div>
-                <div class="col-12 col-md d-flex flex-wrap align-items-center gap-2">
-                    <button type="button" class="btn btn-sm btn-outline-secondary d-none" id="btn-reset-filtre-operation" title="Réinitialiser les filtres">
-                        <i class="bi bi-arrow-counterclockwise"></i>
-                    </button>
-                    <a href="{{ route('flotte.operations.historique.index') }}" class="btn btn-outline-secondary ms-md-auto">
-                        <i class="bi bi-clock-history me-1"></i>Historique
-                    </a>
-                    @can('operations.type.gerer')
-                        <button type="button" class="btn btn-outline-secondary" id="btn-gerer-types-operation">
-                            <i class="bi bi-tags me-1"></i>Types
-                        </button>
-                    @endcan
-                    @can('operations.gerer')
-                        <button type="button" class="btn btn-primary" id="btn-planifier-operation">
-                            <i class="bi bi-plus-lg me-1"></i>Planifier
-                        </button>
-                    @endcan
+                <div class="col-12 col-md al-filtres-actions">
+                    <x-filtre-reset id="btn-reset-filtre-operation" />
                 </div>
             </div>
         </div>

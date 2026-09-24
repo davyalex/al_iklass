@@ -1,17 +1,36 @@
 // Palette AL-IKLASS — surcharge des variables Bootstrap avant import
 $primary: #0257bd;
 $secondary: #073763;
-$body-bg: #eee;
+$body-bg: #f2f4f7;
 $body-color: #1c2b39;
 $font-family-sans-serif: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 $border-radius: 0.5rem;
 $border-radius-sm: 0.375rem;
 $border-radius-lg: 0.75rem;
 $enable-shadows: false;
+$box-shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 3px rgba(16, 24, 40, 0.04);
+$btn-font-weight: 500;
 
-// Bootstrap fait heriter le fond des cartes de $body-bg par defaut : on force le blanc
-// pour que les cartes (login, dashboard, articles...) restent blanches sur le fond bleu clair.
+// Bootstrap 5.3 fait heriter le fond de nombreux composants de $body-bg (gris) :
+// on force le blanc pour tout ce qui "flotte" au-dessus de la page ou s'affiche
+// dans une carte (cartes, modales, menus, tableaux, onglets, pagination...).
 $card-bg: #fff;
+$card-border-color: rgba(7, 55, 99, 0.08);
+$modal-content-bg: #fff;
+$modal-content-border-width: 0;
+$modal-content-border-radius: $border-radius-lg;
+$modal-header-border-color: rgba(7, 55, 99, 0.08);
+$modal-footer-border-color: rgba(7, 55, 99, 0.08);
+$dropdown-bg: #fff;
+$dropdown-border-color: rgba(7, 55, 99, 0.1);
+$list-group-bg: #fff;
+$popover-bg: #fff;
+$toast-background-color: #fff;
+$accordion-bg: #fff;
+$offcanvas-bg-color: #fff;
+$nav-tabs-link-active-bg: #fff;
+$pagination-bg: #fff;
+$table-bg: transparent;
 
 // Champs de formulaire : fond blanc (heritait aussi de $body-bg) + bordure bleue
 // (au lieu du gris par defaut de Bootstrap)
@@ -29,34 +48,575 @@ $input-focus-box-shadow: 0 0 0 0.2rem rgba(2, 87, 189, 0.15);
 
 :root {
     --al-navy: #073763;
+    --al-navy-dark: #052a4c;
     --al-blue: #0257bd;
-    --al-bg-light: #eee;
+    --al-accent: #5aa2ff;
+    --al-bg-light: #{$body-bg};
+    --al-border: rgba(7, 55, 99, 0.08);
+    --al-muted: #6b7a8c;
+
+    // Hauteur unique de tous les champs/boutons d'une barre de filtre
+    --al-ctrl-h: 2.25rem;
+
+    --al-sidebar-w: 260px;
+    --al-sidebar-w-collapsed: 72px;
+    --al-topbar-h: 60px;
 }
 
 body {
     background-color: var(--al-bg-light);
 }
 
+// ---------------------------------------------------------------------------
 // Sidebar ERP (style Odoo) — voir resources/views/layouts/app.blade.php
+// ---------------------------------------------------------------------------
 .al-sidebar {
     background-color: var(--al-navy);
-    min-height: 100vh;
+    background-image: linear-gradient(180deg, var(--al-navy) 0%, var(--al-navy-dark) 100%);
+    color: #fff;
+}
+
+.al-sidebar-desktop {
+    position: sticky;
+    top: 0;
+    z-index: 1035;
+    width: var(--al-sidebar-w);
+    height: 100vh;
+    flex-shrink: 0;
+    transition: width 0.2s ease;
+}
+
+.al-sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    height: var(--al-topbar-h);
+    padding: 0 1rem;
+    flex-shrink: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+    white-space: nowrap;
+    color: #fff;
+    text-decoration: none;
+
+    &:hover {
+        color: #fff;
+    }
+}
+
+.al-sidebar-logo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    overflow: hidden;
+    border-radius: 10px;
+
+    img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+    }
+
+    // Logo téléversé : pastille blanche (icône carrée générée, logo centré)
+    &.al-sidebar-logo-image {
+        background-color: #fff;
+        box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Logo de l'application (page de connexion) — voir components/application-logo
+// ---------------------------------------------------------------------------
+.al-app-logo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    text-align: center;
+}
+
+.al-app-logo-image {
+    max-width: min(240px, 70vw);
+    max-height: 120px;
+    object-fit: contain;
+}
+
+.al-app-logo-defaut {
+    width: 64px;
+    height: 64px;
+    border-radius: 16px;
+    box-shadow: 0 8px 20px rgba(7, 55, 99, 0.25);
+}
+
+.al-app-logo-nom {
+    font-size: 1.35rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: var(--al-navy);
+}
+
+.al-app-logo-compact {
+    .al-app-logo-image,
+    .al-app-logo-defaut {
+        width: 32px;
+        height: 32px;
+        max-height: 32px;
+        border-radius: 8px;
+    }
+}
+
+// Pages invitées (connexion, mot de passe oublié)
+.al-guest {
+    background:
+        radial-gradient(1200px 600px at 10% -10%, rgba(2, 87, 189, 0.12), transparent 60%),
+        radial-gradient(900px 500px at 110% 110%, rgba(7, 55, 99, 0.12), transparent 60%),
+        var(--al-bg-light);
+}
+
+.al-guest-card {
+    width: 100%;
+    max-width: 420px;
+    border-radius: 1rem;
+    box-shadow: 0 12px 32px rgba(16, 24, 40, 0.1) !important;
+}
+
+.al-sidebar-brand-name {
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+// Zone defilante : seule la liste de liens defile (le logo reste fixe).
+// Barre de defilement fine, invisible tant que la souris n'est pas sur le menu,
+// et fondus haut/bas (classes posees par resources/js/app.js) pour signaler
+// qu'il reste des liens caches.
+.al-sidebar-scroll {
+    --al-fade-top: 0px;
+    --al-fade-bottom: 0px;
+
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 0.75rem 0.5rem 1.5rem;
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 var(--al-fade-top), #000 calc(100% - var(--al-fade-bottom)), transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0, #000 var(--al-fade-top), #000 calc(100% - var(--al-fade-bottom)), transparent 100%);
+
+    &.al-fade-top {
+        --al-fade-top: 24px;
+    }
+
+    &.al-fade-bottom {
+        --al-fade-bottom: 32px;
+    }
+
+    &:hover,
+    &:focus-within {
+        scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+    }
+
+    &::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    &::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background-color: transparent;
+        border-radius: 3px;
+    }
+
+    &:hover::-webkit-scrollbar-thumb {
+        background-color: rgba(255, 255, 255, 0.25);
+    }
+
+    &::-webkit-scrollbar-thumb:hover {
+        background-color: rgba(255, 255, 255, 0.4);
+    }
+}
+
+.al-sidebar .nav {
+    gap: 2px;
 }
 
 .al-sidebar .nav-link {
-    color: rgba(255, 255, 255, 0.75);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    overflow: hidden;
+    color: rgba(255, 255, 255, 0.72);
     border-radius: var(--bs-border-radius);
+    transition: background-color 0.15s ease, color 0.15s ease;
+
+    .bi {
+        flex-shrink: 0;
+        width: 1.25rem;
+        font-size: 1.05rem;
+        text-align: center;
+    }
+
+    &:hover,
+    &:focus-visible {
+        color: #fff;
+        background-color: rgba(255, 255, 255, 0.08);
+    }
+
+    &.active {
+        color: #fff;
+        font-weight: 600;
+        background-color: rgba(255, 255, 255, 0.14);
+        box-shadow: inset 3px 0 0 var(--al-accent);
+    }
 }
 
-.al-sidebar .nav-link.active,
-.al-sidebar .nav-link:hover {
-    color: #fff;
-    background-color: rgba(255, 255, 255, 0.12);
+.al-nav-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-.al-topbar {
+.al-nav-section {
+    margin-top: 1rem;
+    padding: 0 0.75rem 0.25rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: rgba(255, 255, 255, 0.42);
+}
+
+// Bouton rond sur le bord droit de la sidebar (desktop) pour la reduire.
+.al-sidebar-toggle {
+    position: absolute;
+    top: calc(var(--al-topbar-h) / 2 - 12px);
+    right: -12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    font-size: 0.75rem;
+    color: var(--al-navy);
     background-color: #fff;
-    border-bottom: 1px solid rgba(7, 55, 99, 0.1);
+    border: 1px solid rgba(7, 55, 99, 0.15);
+    border-radius: 50%;
+    box-shadow: 0 2px 6px rgba(16, 24, 40, 0.15);
+    transition: transform 0.2s ease, background-color 0.15s ease;
+
+    &:hover {
+        color: #fff;
+        background-color: var(--al-blue);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--al-accent);
+        outline-offset: 2px;
+    }
+}
+
+// Etat reduit : icones seules, sections remplacees par un simple separateur.
+// La classe est posee sur <html> avant le rendu (script inline du layout)
+// pour eviter tout "saut" au chargement.
+html.al-sidebar-collapsed {
+    .al-sidebar-desktop {
+        width: var(--al-sidebar-w-collapsed);
+
+        .al-sidebar-brand {
+            justify-content: center;
+            padding: 0;
+        }
+
+        .al-sidebar-brand-name,
+        .al-nav-label {
+            display: none;
+        }
+
+        .nav-link {
+            justify-content: center;
+            padding-inline: 0;
+        }
+
+        .al-nav-section {
+            height: 1px;
+            margin: 0.75rem 0.75rem 0.5rem;
+            padding: 0;
+            overflow: hidden;
+            font-size: 0;
+            background-color: rgba(255, 255, 255, 0.12);
+        }
+    }
+
+    .al-sidebar-toggle {
+        transform: rotate(180deg);
+    }
+}
+
+// Menu mobile (offcanvas)
+.offcanvas.al-sidebar {
+    --bs-offcanvas-width: 280px;
+
+    .offcanvas-body {
+        overflow: hidden;
+    }
+}
+
+.al-sidebar-tooltip {
+    --bs-tooltip-bg: var(--al-navy-dark);
+    --bs-tooltip-font-size: 0.8rem;
+}
+
+// ---------------------------------------------------------------------------
+// Topbar
+// ---------------------------------------------------------------------------
+.al-topbar {
+    min-height: var(--al-topbar-h);
+    background-color: rgba(255, 255, 255, 0.92);
+    backdrop-filter: saturate(180%) blur(8px);
+    border-bottom: 1px solid var(--al-border);
+}
+
+.al-topbar-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--al-navy);
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.al-topbar-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-width: 40px;
+    height: 40px;
+    padding: 0 0.5rem;
+    color: var(--al-navy);
+    background: transparent;
+    border: 0;
+    border-radius: var(--bs-border-radius);
+
+    &:hover,
+    &:focus-visible,
+    &[aria-expanded="true"] {
+        background-color: rgba(7, 55, 99, 0.06);
+    }
+}
+
+.al-avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #fff;
+    background-color: var(--al-blue);
+    border-radius: 50%;
+}
+
+// ---------------------------------------------------------------------------
+// Barre d'actions de page (boutons "Nouveau ...", "Types", "Historique"...).
+// Toujours separee de la carte de filtre.
+// ---------------------------------------------------------------------------
+.al-page-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+
+    // Aucun bouton autorisé pour l'utilisateur : pas d'espace vide en haut de page
+    &:not(:has(> *)) {
+        display: none;
+    }
+
+    @include media-breakpoint-down(sm) {
+        > .btn,
+        > a.btn {
+            flex: 1 1 auto;
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Carte de filtre : tous les champs, selects (natifs et select2) et boutons ont
+// exactement la meme hauteur, quelle que soit leur taille declaree.
+// ---------------------------------------------------------------------------
+.al-filtres {
+    background-color: #fff;
+    border: 1px solid var(--al-border);
+    box-shadow: $box-shadow-sm;
+
+    > .card-body {
+        padding: 0.875rem 1rem;
+    }
+
+    .form-label {
+        margin-bottom: 0.25rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--al-muted);
+    }
+
+    input.form-control,
+    .form-select,
+    .btn,
+    .select2-container .select2-selection--single {
+        height: var(--al-ctrl-h);
+        font-size: $font-size-sm;
+    }
+
+    input.form-control,
+    .form-select {
+        padding-top: 0;
+        padding-bottom: 0;
+        border-radius: $border-radius-sm;
+    }
+
+    input[type="date"] {
+        min-width: 0;
+
+        &::-webkit-date-and-time-value {
+            text-align: left;
+        }
+    }
+
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding-top: 0;
+        padding-bottom: 0;
+        white-space: nowrap;
+    }
+
+    .select2-container .select2-selection--single {
+        padding: 0 0.5rem;
+        border-radius: $border-radius-sm;
+    }
+
+    .form-switch {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-height: var(--al-ctrl-h);
+        margin-bottom: 0;
+        padding-left: 0;
+
+        .form-check-input {
+            float: none;
+            margin: 0;
+        }
+    }
+}
+
+// Colonne des boutons d'une carte de filtre : [Filtrer] [reinitialiser] ... [Exporter]
+.al-filtres-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+// Tablette portrait : la colonne des boutons est trop étroite pour
+// [Filtrer] [réinitialiser] [Exporter] sur une ligne, on lui donne toute la largeur.
+@include media-breakpoint-only(md) {
+    .al-filtres .al-filtres-actions {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+}
+
+// Bouton carre icone seule (ex : reinitialiser les filtres)
+.al-btn-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--al-ctrl-h);
+    height: var(--al-ctrl-h);
+    padding: 0;
+    flex-shrink: 0;
+}
+
+.al-btn-reset {
+    color: var(--bs-danger);
+    border-color: rgba(var(--bs-danger-rgb), 0.35);
+
+    &:hover,
+    &:focus-visible {
+        color: #fff;
+        background-color: var(--bs-danger);
+        border-color: var(--bs-danger);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Polissage global
+// ---------------------------------------------------------------------------
+.card {
+    border-radius: $border-radius-lg;
+}
+
+.card-header:first-child {
+    border-radius: $border-radius-lg $border-radius-lg 0 0;
+}
+
+.modal-header {
+    padding: 1rem 1.25rem;
+
+    .modal-title {
+        font-weight: 600;
+        color: var(--al-navy);
+    }
+}
+
+.modal-body {
+    padding: 1.25rem;
+}
+
+.modal-footer {
+    padding: 0.75rem 1.25rem;
+    background-color: #f8fafc;
+    border-bottom-left-radius: $border-radius-lg;
+    border-bottom-right-radius: $border-radius-lg;
+}
+
+.modal-backdrop {
+    --bs-backdrop-bg: #0b1a2b;
+}
+
+.table > thead th {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: var(--al-muted);
+    background-color: #f8fafc;
+}
+
+.dropdown-menu {
+    box-shadow: 0 8px 24px rgba(16, 24, 40, 0.12);
 }
 
 // Select2 : le theme par defaut du plugin ne suit pas Bootstrap 5, ce qui
@@ -91,6 +651,12 @@ body {
     box-shadow: $input-focus-box-shadow;
 }
 
+.select2-dropdown {
+    border-color: rgba(7, 55, 99, 0.15);
+    border-radius: $border-radius-sm;
+    box-shadow: 0 8px 24px rgba(16, 24, 40, 0.12);
+}
+
 // Variante "sm" : pour les barres de filtre (form-control-sm / form-select-sm / btn-sm
 // voisins), afin que tous les champs d'une même ligne aient la même hauteur.
 // Appliquée via l'option select2 `selectionCssClass` (et non `containerCssClass`,
@@ -117,4 +683,367 @@ input[type="number"]::-webkit-inner-spin-button {
 input[type="number"] {
     -moz-appearance: textfield;
     appearance: textfield;
+}
+
+// ===========================================================================
+// Responsive smartphone / tablette
+// La majorité des utilisateurs travaillent sur smartphone ou tablette.
+// ===========================================================================
+
+// Carte de filtre repliable (bouton injecté par resources/js/app.js) :
+// visible uniquement sur smartphone, les champs restent toujours affichés au-delà.
+.al-filtres-toggle {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    font-weight: 600;
+    color: var(--al-navy);
+    background: transparent;
+    border: 0;
+    border-radius: $border-radius-lg;
+}
+
+.al-filtres-indicateur {
+    margin-left: 0.5rem;
+    padding: 0.1rem 0.5rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #fff;
+    background-color: var(--al-blue);
+    border-radius: 50rem;
+}
+
+.al-filtres-chevron {
+    transition: transform 0.2s ease;
+}
+
+@include media-breakpoint-down(md) {
+    .al-filtres-repliable {
+        > .al-filtres-toggle {
+            display: flex;
+        }
+
+        > .card-body {
+            padding-top: 0;
+        }
+
+        &:not(.is-ouverte) > .card-body {
+            display: none;
+        }
+
+        &.is-ouverte .al-filtres-chevron {
+            transform: rotate(180deg);
+        }
+    }
+
+    // iOS zoome sur tout champ dont la police est < 16px : on l'évite sur mobile.
+    .form-control,
+    .form-select,
+    .al-filtres input.form-control,
+    .al-filtres .form-select,
+    .select2-container .select2-selection--single,
+    .select2-search__field,
+    .dt-search input {
+        font-size: 1rem !important;
+    }
+
+    :root {
+        --al-ctrl-h: 2.5rem;
+    }
+
+    // Tableaux de liste empilés en cartes (libellés posés par app.js)
+    table.al-table-cartes {
+        // DataTables fixe des largeurs en ligne (autoWidth) : on les neutralise
+        display: block;
+        width: 100% !important;
+
+        > thead {
+            display: none;
+        }
+
+        > tbody,
+        > tbody > tr,
+        > tbody > tr > td {
+            display: block;
+            width: 100% !important;
+        }
+
+        > tbody > tr {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--al-border);
+        }
+
+        > tbody > tr > td {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 1rem;
+            min-height: 0;
+            padding: 0.2rem 0;
+            text-align: right !important;
+            white-space: normal;
+            word-break: break-word;
+            border: 0;
+            box-shadow: none !important;
+
+            &::before {
+                content: attr(data-label);
+                flex-shrink: 0;
+                max-width: 45%;
+                padding-top: 0.1rem;
+                font-size: 0.72rem;
+                font-weight: 600;
+                letter-spacing: 0.03em;
+                text-align: left;
+                text-transform: uppercase;
+                color: var(--al-muted);
+            }
+
+            &[data-label=""]::before {
+                display: none;
+            }
+
+            // Première colonne = titre de la carte
+            &:first-child {
+                font-weight: 600;
+                color: var(--al-navy);
+            }
+
+            // Colonne d'actions : boutons alignés à droite, séparés du contenu
+            &:last-child:has(.btn) {
+                justify-content: flex-end;
+                flex-wrap: wrap;
+                gap: 0.5rem;
+                margin-top: 0.5rem;
+                padding-top: 0.5rem;
+                border-top: 1px dashed var(--al-border);
+
+                &::before {
+                    display: none;
+                }
+            }
+
+            // Ligne « aucune donnée » / « chargement » (cellule fusionnée)
+            &[colspan] {
+                justify-content: center;
+                padding: 1rem 0;
+                text-align: center !important;
+                font-weight: 400;
+                color: var(--al-muted);
+
+                &::before {
+                    display: none;
+                }
+            }
+        }
+
+        > tfoot {
+            display: block;
+
+            > tr {
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: space-between;
+                padding: 0.5rem 1rem;
+            }
+        }
+    }
+
+    // Contrôles DataTables (recherche, nombre de lignes, infos, pagination) :
+    // empilés, pleine largeur et espacés des bords de la carte.
+    div.dt-container {
+        > .row {
+            margin: 0;
+            padding: 0.5rem 0.75rem;
+            row-gap: 0.5rem;
+        }
+
+        > .row > [class*="col"] {
+            padding: 0;
+        }
+
+        .dt-search {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+
+            input {
+                flex: 1 1 auto;
+                width: auto !important;
+                margin-left: 0 !important;
+            }
+        }
+
+        .dt-info {
+            text-align: center;
+            font-size: 0.8rem;
+        }
+
+        .dt-paging .pagination {
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+    }
+
+    // Sur smartphone : ni sélecteur « Afficher N entrées » ni boutons Première/Dernière
+    div.dt-container .dt-length,
+    div.dt-container .dt-paging .page-item:has(> [data-dt-idx="first"]),
+    div.dt-container .dt-paging .page-item:has(> [data-dt-idx="last"]) {
+        display: none !important;
+    }
+
+    // Onglets : défilement horizontal plutôt que retour à la ligne
+    .nav-tabs {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        overflow-y: hidden;
+        scrollbar-width: none;
+
+        &::-webkit-scrollbar {
+            display: none;
+        }
+
+        .nav-link {
+            white-space: nowrap;
+        }
+    }
+
+    // Lignes de saisie (achat, bon de commande, sortie) : une carte par ligne,
+    // bouton supprimer en haut à droite, quantité et prix côte à côte.
+    .al-ligne-saisie {
+        position: relative;
+        margin: 0 0 0.75rem;
+        padding: 0.5rem 0.25rem 0.75rem;
+        row-gap: 0.5rem;
+        background-color: #f8fafc;
+        border: 1px solid var(--al-border);
+        border-radius: $border-radius;
+
+        > [class*="col-12"]:not(:last-child) {
+            padding-right: 3rem;
+        }
+
+        > [class~="col-5"] {
+            flex: 0 0 auto;
+            width: 50%;
+        }
+
+        > [class~="col-1"]:last-child {
+            position: absolute;
+            top: 0.4rem;
+            right: 0.5rem;
+            width: auto;
+            padding: 0;
+
+            .btn {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 2.25rem;
+                height: 2.25rem;
+                padding: 0;
+            }
+        }
+    }
+
+}
+
+// Smartphone : modales plein écran, en-tête et pied fixes, contenu défilant,
+// boutons du pied pleine largeur (faciles à toucher).
+@include media-breakpoint-down(sm) {
+    .modal-dialog:not(.modal-sm) {
+        width: 100vw;
+        max-width: none;
+        height: 100%;
+        margin: 0;
+
+        > .modal-content {
+            height: 100%;
+            border: 0;
+            border-radius: 0;
+
+            // Les formulaires englobent en-tête, corps et pied : ils doivent
+            // transmettre la mise en page en colonne pour que le corps défile.
+            > form {
+                display: flex;
+                flex-direction: column;
+                height: 100%;
+                min-height: 0;
+            }
+        }
+
+        .modal-header {
+            padding-top: calc(1rem + env(safe-area-inset-top));
+        }
+
+        .modal-body {
+            flex: 1 1 auto;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .modal-footer {
+            flex-wrap: nowrap;
+            padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+            border-radius: 0;
+
+            > .btn {
+                flex: 1 1 0;
+                margin: 0.25rem;
+            }
+        }
+    }
+
+    main {
+        padding-bottom: calc(1rem + env(safe-area-inset-bottom)) !important;
+    }
+
+    .card-body {
+        padding: 0.875rem;
+    }
+
+    .swal2-popup {
+        width: calc(100% - 1.5rem) !important;
+        padding: 1rem !important;
+    }
+}
+
+// Écrans tactiles : cibles d'au moins ~36px pour les petits boutons et la pagination
+@media (pointer: coarse) {
+    .btn-sm {
+        min-height: 2.25rem;
+        min-width: 2.25rem;
+    }
+
+    .page-link {
+        min-width: 2.5rem;
+        min-height: 2.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .form-check-input {
+        width: 1.25em;
+        height: 1.25em;
+    }
+
+    .form-switch .form-check-input {
+        width: 2.25em;
+    }
+
+    .dropdown-item {
+        padding-top: 0.6rem;
+        padding-bottom: 0.6rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .al-sidebar-desktop,
+    .al-sidebar-toggle,
+    .al-sidebar .nav-link {
+        transition: none;
+    }
 }

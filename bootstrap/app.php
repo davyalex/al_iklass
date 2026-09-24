@@ -1,6 +1,8 @@
 <?php
 
+use App\Console\Commands\Admin\PurgerJournalAudit;
 use App\Console\Commands\Flotte\ReinitialiserStatutsJournaliers;
+use App\Http\Middleware\ReinitialiserStatutJournalierSiNecessaire;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -21,12 +23,18 @@ return Application::configure(basePath: dirname(__DIR__))
         // en circulation" (CONTEXTE.md §5). Avant l'ouverture de la fenêtre
         // d'ajustement des gestionnaires (08h par défaut, cf. Paramètres).
         $schedule->command(ReinitialiserStatutsJournaliers::class)->dailyAt('00:05');
+
+        // Le journal d'audit enregistre chaque écriture : on le vide chaque
+        // mois en gardant les 30 derniers jours, pour qu'il reste lisible et
+        // ne sature pas la base (hébergement mutualisé).
+        $schedule->command(PurgerJournalAudit::class, ['--jours' => 30])->monthlyOn(1, '01:00');
     })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'role' => RoleMiddleware::class,
             'permission' => PermissionMiddleware::class,
             'role_or_permission' => RoleOrPermissionMiddleware::class,
+            'reinitialiser.statut.journalier' => ReinitialiserStatutJournalierSiNecessaire::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -94,6 +94,21 @@ class ParametreControllerTest extends TestCase
         $response->assertJsonValidationErrors('logo');
     }
 
+    public function test_logo_rejects_svg_to_prevent_stored_xss(): void
+    {
+        Storage::fake('public');
+
+        $admin = User::factory()->create()->assignRole('admin');
+        $fichier = UploadedFile::fake()->create('logo.svg', 10, 'image/svg+xml');
+
+        $response = $this->actingAs($admin)->postJson(route('admin.parametres.logo'), [
+            'logo' => $fichier,
+        ]);
+
+        $response->assertUnprocessable();
+        $response->assertJsonValidationErrors('logo');
+    }
+
     public function test_gestionnaire_cannot_upload_a_logo(): void
     {
         $gestionnaire = User::factory()->create()->assignRole('gestionnaire');

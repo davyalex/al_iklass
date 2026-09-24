@@ -13,7 +13,7 @@
 <x-app-layout>
     <x-slot name="header">Rôles & permissions</x-slot>
 
-    <div class="d-flex justify-content-end mb-3">
+    <div class="al-page-actions">
         @can('create', \Spatie\Permission\Models\Role::class)
             <button type="button" class="btn btn-primary" id="btn-nouveau-role">
                 <i class="bi bi-plus-lg me-1"></i>Nouveau rôle

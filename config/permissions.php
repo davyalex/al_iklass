@@ -32,6 +32,10 @@ return [
         'utilisateurs' => [
             'utilisateurs.voir',
             'utilisateurs.gerer',
+            // Modifier ses propres informations de compte depuis "Mon profil".
+            // Les autres rôles consultent leur profil en lecture seule et
+            // passent par un administrateur pour toute modification.
+            'profil.modifier',
         ],
 
         'administration' => [
@@ -80,6 +84,17 @@ return [
             'interventions.declarer',
         ],
 
+        // Prêts & financements : emprunts contractés par l'entreprise (banque
+        // ou personne) et leurs remboursements. Calque du module Fournisseur
+        // (préteur = fournisseur, financement = achat, remboursement = paiement).
+        'financements' => [
+            'financements.type.gerer',
+            'financements.voir',
+            'financements.preteur.gerer',
+            'financements.gerer',
+            'financements.rembourser',
+        ],
+
     ],
 
     /*
@@ -98,12 +113,13 @@ return [
 
         'superadmin' => [],
 
-        'admin' => ['stock', 'utilisateurs', 'administration', 'caisse', 'operations', 'interventions', 'flotte' => ['except' => ['flotte.vehicule.voir_affectes']]],
+        'admin' => ['stock', 'utilisateurs', 'administration', 'caisse', 'operations', 'interventions', 'financements', 'flotte' => ['except' => ['flotte.vehicule.voir_affectes']]],
 
         'gestionnaire_stock' => [
             'stock' => ['except' => ['stock.demande.creer']],
             'administration' => ['only' => ['unites.voir', 'unites.gerer']],
             'operations' => ['only' => ['operations.voir', 'operations.gerer']],
+            'financements' => ['except' => ['financements.type.gerer']],
         ],
 
         // Le chef mécanicien n'a accès qu'aux interventions : il déclare une

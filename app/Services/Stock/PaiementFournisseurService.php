@@ -69,6 +69,11 @@ class PaiementFournisseurService
                 'date_mouvement' => now(),
             ]);
 
+            activity()
+                ->performedOn($achat)
+                ->withProperties(['montant' => $montant, 'montant_restant' => $achat->montant_restant])
+                ->log("Paiement fournisseur de {$montant} FCFA enregistré pour l'achat #{$achat->id} ({$achat->fournisseur_nom}).");
+
             return $paiement;
         });
     }

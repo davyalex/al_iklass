@@ -14,7 +14,7 @@ class RolePolicy
 
     public function view(User $user, Role $role): bool
     {
-        return $user->can('roles.voir');
+        return $user->can('roles.voir') && $role->name !== 'superadmin';
     }
 
     public function create(User $user): bool
@@ -24,11 +24,11 @@ class RolePolicy
 
     public function update(User $user, Role $role): bool
     {
-        return $user->can('roles.gerer');
+        return $user->can('roles.gerer') && $role->name !== 'superadmin';
     }
 
     public function delete(User $user, Role $role): bool
     {
-        return $user->can('roles.gerer');
+        return $user->can('roles.gerer') && $role->name !== 'superadmin';
     }
 }

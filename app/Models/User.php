@@ -37,6 +37,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'is_active' => 'boolean',
             'locked_at' => 'datetime',
+            'derniere_connexion_at' => 'datetime',
             'dette' => 'decimal:2',
         ];
     }
@@ -52,6 +53,10 @@ class User extends Authenticatable
 
         if ($this->failed_login_attempts >= self::MAX_FAILED_LOGIN_ATTEMPTS) {
             $this->forceFill(['locked_at' => now()])->save();
+
+            activity()
+                ->performedOn($this)
+                ->log("Compte « {$this->name} » verrouillé après {$this->failed_login_attempts} tentatives de connexion échouées.");
         }
     }
 

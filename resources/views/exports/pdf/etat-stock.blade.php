@@ -14,6 +14,7 @@
     </style>
 </head>
 <body>
+    @include('exports.pdf.partials.entete-societe')
     <h1>État de stock</h1>
     <div class="meta">Édité le {{ now()->format('d/m/Y H:i') }} — {{ $articles->count() }} article(s)</div>
 
