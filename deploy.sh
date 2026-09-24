@@ -22,17 +22,19 @@ composer install --no-dev --optimize-autoloader --no-interaction
 # public/build/ n'est PAS versionné (voir .gitignore) : il doit être
 # régénéré à chaque déploiement qui touche resources/js ou resources/css.
 #
-# Si Node.js n'est PAS disponible sur cet hébergement cPanel (fréquent en
-# mutualisé) : commentez ce bloc et buildez en local avec `npm run build`,
-# puis envoyez le contenu de public/build/ par SFTP avant de relancer ce
-# script.
+# Si npm est absent OU incompatible avec la glibc de l'hébergement (fréquent
+# en mutualisé), le bloc ci-dessous l'échoue proprement sans interrompre le
+# reste du déploiement : buildez alors en local avec `npm run build` et
+# envoyez le contenu de public/build/ par SFTP.
 # ------------------------------------------------------------------
-if command -v npm >/dev/null 2>&1; then
-    echo "==> Build des assets front (npm)"
-    npm ci --no-audit --no-fund
-    npm run build
+echo "==> Build des assets front (npm)"
+if command -v npm >/dev/null 2>&1 && npm ci --no-audit --no-fund && npm run build; then
+    echo "    Build front OK"
 else
-    echo "==> npm indisponible : assets non reconstruits — voir commentaire ci-dessus"
+    echo "    ATTENTION : build npm indisponible ou en échec sur ce serveur (Node.js"
+    echo "    absent ou incompatible avec la glibc de l'hébergement — fréquent en"
+    echo "    mutualisé). Assets NON reconstruits ici : buildez en local avec"
+    echo "    'npm run build' et envoyez le contenu de public/build/ par SFTP."
 fi
 
 echo "==> Nettoyage des caches (avant migration, pour éviter une config obsolète)"
