@@ -11,6 +11,7 @@ use App\Models\ModePaiement;
 use App\Models\StatutVehicule;
 use App\Models\User;
 use App\Models\Vehicule;
+use App\Services\Flotte\InterventionService;
 use App\Support\FenetreStatutJournalier;
 use App\Support\VehiculeKpis;
 use Illuminate\Http\JsonResponse;
@@ -20,6 +21,8 @@ use Illuminate\View\View;
 
 class VehiculeController extends Controller
 {
+    public function __construct(private readonly InterventionService $interventionService) {}
+
     public function index(Request $request): View
     {
         Gate::authorize('viewAny', Vehicule::class);
@@ -153,9 +156,14 @@ class VehiculeController extends Controller
     public function remiseEnCirculation(RemiseEnCirculationRequest $request, Vehicule $vehicule): JsonResponse
     {
         $statutEnCirculationId = StatutVehicule::where('code', 'en_circulation')->value('id');
+        $rapport = $request->validated('rapport');
 
-        $vehicule->commentaireHistorique = $request->validated('rapport');
+        $vehicule->commentaireHistorique = $rapport;
         $vehicule->update(['statut_id' => $statutEnCirculationId]);
+
+        // Clôture silencieuse de l'intervention en cours (le cas échéant) avec
+        // ce même rapport — aucune action supplémentaire pour l'utilisateur.
+        $this->interventionService->cloturer($vehicule, $rapport, $request->user());
 
         return response()->json([
             'message' => "Véhicule « {$vehicule->code} » remis en circulation.",

@@ -21,6 +21,7 @@ class DatabaseSeeder extends Seeder
             DemoUserSeeder::class,
             StatutVehiculeSeeder::class,
             TypeOperationSeeder::class,
+            TypePanneSeeder::class,
             VehiculeSeeder::class,
             StockReferenceSeeder::class,
             ArticleSeeder::class,

@@ -4,8 +4,10 @@ use App\Http\Controllers\Flotte\DetteController;
 use App\Http\Controllers\Flotte\EtatParcController;
 use App\Http\Controllers\Flotte\GestionnaireController;
 use App\Http\Controllers\Flotte\HistoriqueMecanicienController;
+use App\Http\Controllers\Flotte\InterventionController;
 use App\Http\Controllers\Flotte\OperationProgrammeeController;
 use App\Http\Controllers\Flotte\TypeOperationController;
+use App\Http\Controllers\Flotte\TypePanneController;
 use App\Http\Controllers\Flotte\VehiculeController;
 use App\Http\Controllers\Flotte\VehiculeRapportController;
 use App\Http\Controllers\Flotte\VersementController;
@@ -95,6 +97,28 @@ Route::middleware(['auth', 'reinitialiser.statut.journalier'])->prefix('flotte')
     Route::middleware('permission:operations.type.gerer')->group(function () {
         Route::post('operations/types', [TypeOperationController::class, 'store'])->name('operations.types.store');
         Route::put('operations/types/{type}', [TypeOperationController::class, 'update'])->name('operations.types.update');
+    });
+
+    // Interventions (pannes/réparations) : voir (admin/chef_mecanicien),
+    // déclarer/clôturer (chef_mecanicien) — la clôture passe par
+    // vehicules.remise-circulation existant, pas par une route dédiée ici.
+    Route::middleware('permission:interventions.voir')->group(function () {
+        Route::get('interventions', [InterventionController::class, 'index'])->name('interventions.index');
+        Route::get('interventions/vehicules/{vehicule}/detail', [InterventionController::class, 'detail'])->name('interventions.detail');
+        Route::get('interventions/historique', [InterventionController::class, 'historique'])->name('interventions.historique.index');
+        Route::get('interventions/historique/data', [InterventionController::class, 'historiqueData'])->name('interventions.historique.data');
+        Route::get('interventions/historique/export/excel', [InterventionController::class, 'historiqueExportExcel'])->name('interventions.historique.export.excel');
+        Route::get('interventions/historique/export/pdf', [InterventionController::class, 'historiqueExportPdf'])->name('interventions.historique.export.pdf');
+    });
+
+    Route::middleware('permission:interventions.declarer')->group(function () {
+        Route::post('interventions', [InterventionController::class, 'store'])->name('interventions.store');
+    });
+
+    // Référentiel des types de panne.
+    Route::middleware('permission:interventions.type.gerer')->group(function () {
+        Route::post('interventions/types', [TypePanneController::class, 'store'])->name('interventions.types.store');
+        Route::put('interventions/types/{type}', [TypePanneController::class, 'update'])->name('interventions.types.update');
     });
 
     // Historique personnel d'un chef mécanicien (ses changements de statut,

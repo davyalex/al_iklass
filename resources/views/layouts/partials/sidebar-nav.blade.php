@@ -129,6 +129,21 @@
         </li>
     @endcan
 
+    @can('interventions.voir')
+        <li class="nav-item">
+            <a href="{{ route('flotte.interventions.index') }}" class="nav-link d-flex align-items-center gap-2 {{ request()->routeIs('flotte.interventions.index') ? 'active' : '' }}">
+                <i class="bi bi-exclamation-triangle"></i>
+                <span>Interventions</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a href="{{ route('flotte.interventions.historique.index') }}" class="nav-link d-flex align-items-center gap-2 {{ request()->routeIs('flotte.interventions.historique.*') ? 'active' : '' }}">
+                <i class="bi bi-clock-history"></i>
+                <span>Historique interventions</span>
+            </a>
+        </li>
+    @endcan
+
     {{-- Argent : versements/dette (par gestionnaire ou vue admin) et le registre
     des 4 caisses — regroupés car transverses à Flotte et Stock, indépendamment
     de la section d'où provient chaque mouvement. --}}

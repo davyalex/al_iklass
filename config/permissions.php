@@ -71,6 +71,15 @@ return [
             'operations.realiser',
         ],
 
+        // Interventions (pannes/réparations) déclarées et clôturées par le
+        // chef mécanicien. La demande de pièces reste hors application pour
+        // l'instant (gérée directement avec le gestionnaire de stock).
+        'interventions' => [
+            'interventions.type.gerer',
+            'interventions.voir',
+            'interventions.declarer',
+        ],
+
     ],
 
     /*
@@ -89,7 +98,7 @@ return [
 
         'superadmin' => [],
 
-        'admin' => ['stock', 'utilisateurs', 'administration', 'caisse', 'operations', 'flotte' => ['except' => ['flotte.vehicule.voir_affectes']]],
+        'admin' => ['stock', 'utilisateurs', 'administration', 'caisse', 'operations', 'interventions', 'flotte' => ['except' => ['flotte.vehicule.voir_affectes']]],
 
         'gestionnaire_stock' => [
             'stock' => ['except' => ['stock.demande.creer']],
@@ -101,6 +110,7 @@ return [
             'stock' => ['only' => ['stock.demande.creer']],
             'flotte' => ['only' => ['flotte.vehicule.remise_circulation']],
             'operations' => ['only' => ['operations.voir', 'operations.realiser']],
+            'interventions' => ['only' => ['interventions.voir', 'interventions.declarer']],
         ],
 
         // Le rôle "gestionnaire" (parc) voit uniquement les véhicules qui lui sont
