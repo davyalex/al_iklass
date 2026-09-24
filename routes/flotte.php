@@ -19,6 +19,16 @@ Route::middleware(['auth', 'reinitialiser.statut.journalier'])->prefix('flotte')
         Route::get('vehicules/{vehicule}/rapport', [VehiculeRapportController::class, 'index'])->name('vehicules.rapport');
         Route::get('vehicules/{vehicule}/rapport/statuts', [VehiculeRapportController::class, 'statuts'])->name('vehicules.rapport.statuts');
         Route::get('vehicules/{vehicule}/rapport/sorties', [VehiculeRapportController::class, 'sorties'])->name('vehicules.rapport.sorties');
+        Route::get('vehicules/{vehicule}/rapport/interventions', [VehiculeRapportController::class, 'interventions'])->name('vehicules.rapport.interventions');
+        Route::get('vehicules/{vehicule}/rapport/operations', [VehiculeRapportController::class, 'operations'])->name('vehicules.rapport.operations');
+        Route::get('vehicules/{vehicule}/rapport/export/statuts/excel', [VehiculeRapportController::class, 'exportStatutsExcel'])->name('vehicules.rapport.export.statuts.excel');
+        Route::get('vehicules/{vehicule}/rapport/export/statuts/pdf', [VehiculeRapportController::class, 'exportStatutsPdf'])->name('vehicules.rapport.export.statuts.pdf');
+        Route::get('vehicules/{vehicule}/rapport/export/sorties/excel', [VehiculeRapportController::class, 'exportSortiesExcel'])->name('vehicules.rapport.export.sorties.excel');
+        Route::get('vehicules/{vehicule}/rapport/export/sorties/pdf', [VehiculeRapportController::class, 'exportSortiesPdf'])->name('vehicules.rapport.export.sorties.pdf');
+        Route::get('vehicules/{vehicule}/rapport/export/interventions/excel', [VehiculeRapportController::class, 'exportInterventionsExcel'])->name('vehicules.rapport.export.interventions.excel');
+        Route::get('vehicules/{vehicule}/rapport/export/interventions/pdf', [VehiculeRapportController::class, 'exportInterventionsPdf'])->name('vehicules.rapport.export.interventions.pdf');
+        Route::get('vehicules/{vehicule}/rapport/export/operations/excel', [VehiculeRapportController::class, 'exportOperationsExcel'])->name('vehicules.rapport.export.operations.excel');
+        Route::get('vehicules/{vehicule}/rapport/export/operations/pdf', [VehiculeRapportController::class, 'exportOperationsPdf'])->name('vehicules.rapport.export.operations.pdf');
         Route::get('vehicules/{vehicule}', [VehiculeController::class, 'show'])->name('vehicules.show');
 
         Route::get('etat-parc', [EtatParcController::class, 'index'])->name('etat-parc.index');

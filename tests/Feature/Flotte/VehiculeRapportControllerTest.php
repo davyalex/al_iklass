@@ -4,13 +4,17 @@ namespace Tests\Feature\Flotte;
 
 use App\Models\Article;
 use App\Models\Caisse;
+use App\Models\Intervention;
+use App\Models\OperationProgrammee;
 use App\Models\StatutVehicule;
+use App\Models\TypeOperation;
 use App\Models\User;
 use App\Models\Vehicule;
 use App\Services\Stock\SortieStockService;
 use Database\Seeders\ParametreSeeder;
 use Database\Seeders\RolePermissionSeeder;
 use Database\Seeders\StatutVehiculeSeeder;
+use Database\Seeders\TypeOperationSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -25,6 +29,7 @@ class VehiculeRapportControllerTest extends TestCase
         $this->seed(RolePermissionSeeder::class);
         $this->seed(StatutVehiculeSeeder::class);
         $this->seed(ParametreSeeder::class);
+        $this->seed(TypeOperationSeeder::class);
 
         Caisse::firstOrCreate(['type' => 'ventes_externes'], ['type' => 'ventes_externes', 'libelle' => 'Ventes externes']);
     }
@@ -135,5 +140,91 @@ class VehiculeRapportControllerTest extends TestCase
         $rapportsIntervention = $response->viewData('rapportsIntervention');
         $this->assertCount(1, $rapportsIntervention);
         $this->assertSame('Réparation moteur effectuée.', $rapportsIntervention->first()->commentaire);
+    }
+
+    public function test_le_rapport_expose_uniquement_les_interventions_terminees_de_ce_vehicule(): void
+    {
+        $admin = User::factory()->create()->assignRole('admin');
+        $vehicule = Vehicule::factory()->create();
+        $autreVehicule = Vehicule::factory()->create();
+
+        Intervention::create([
+            'vehicule_id' => $vehicule->id, 'vehicule_code' => $vehicule->code,
+            'description' => 'Panne réparée', 'statut' => 'terminee',
+            'date_debut' => now()->subDays(5), 'date_fin' => now(),
+            'rapport' => 'Réparée', 'declaree_par_id' => $admin->id, 'cloturee_par_id' => $admin->id,
+        ]);
+
+        Intervention::create([
+            'vehicule_id' => $vehicule->id, 'vehicule_code' => $vehicule->code,
+            'description' => 'Panne en cours', 'statut' => 'en_cours',
+            'date_debut' => now(), 'declaree_par_id' => $admin->id,
+        ]);
+
+        Intervention::create([
+            'vehicule_id' => $autreVehicule->id, 'vehicule_code' => $autreVehicule->code,
+            'description' => 'Panne réparée sur un autre véhicule', 'statut' => 'terminee',
+            'date_debut' => now()->subDays(5), 'date_fin' => now(),
+            'rapport' => 'Réparée', 'declaree_par_id' => $admin->id, 'cloturee_par_id' => $admin->id,
+        ]);
+
+        $response = $this->actingAs($admin)->getJson(route('flotte.vehicules.rapport.interventions', $vehicule));
+
+        $response->assertOk();
+        $this->assertSame(1, $response->json('recordsFiltered'));
+    }
+
+    public function test_le_rapport_expose_uniquement_les_operations_realisees_de_ce_vehicule(): void
+    {
+        $admin = User::factory()->create()->assignRole('admin');
+        $vehicule = Vehicule::factory()->create();
+        $autreVehicule = Vehicule::factory()->create();
+        $type = TypeOperation::where('code', 'vidange')->firstOrFail();
+
+        OperationProgrammee::create([
+            'vehicule_id' => $vehicule->id, 'vehicule_code' => $vehicule->code,
+            'type_operation_id' => $type->id, 'type_operation_code' => $type->code, 'type_operation_libelle' => $type->libelle,
+            'date_echeance' => now(), 'rappel_jours' => 15, 'periodicite_jours' => $type->periodicite_jours,
+            'statut' => 'realisee', 'date_realisation' => now(), 'realise_par_id' => $admin->id, 'user_id' => $admin->id,
+        ]);
+
+        OperationProgrammee::create([
+            'vehicule_id' => $vehicule->id, 'vehicule_code' => $vehicule->code,
+            'type_operation_id' => $type->id, 'type_operation_code' => $type->code, 'type_operation_libelle' => $type->libelle,
+            'date_echeance' => now()->addDays(90), 'rappel_jours' => 15, 'periodicite_jours' => $type->periodicite_jours,
+            'statut' => 'planifiee', 'user_id' => $admin->id,
+        ]);
+
+        OperationProgrammee::create([
+            'vehicule_id' => $autreVehicule->id, 'vehicule_code' => $autreVehicule->code,
+            'type_operation_id' => $type->id, 'type_operation_code' => $type->code, 'type_operation_libelle' => $type->libelle,
+            'date_echeance' => now(), 'rappel_jours' => 15, 'periodicite_jours' => $type->periodicite_jours,
+            'statut' => 'realisee', 'date_realisation' => now(), 'realise_par_id' => $admin->id, 'user_id' => $admin->id,
+        ]);
+
+        $response = $this->actingAs($admin)->getJson(route('flotte.vehicules.rapport.operations', $vehicule));
+
+        $response->assertOk();
+        $this->assertSame(1, $response->json('recordsFiltered'));
+    }
+
+    public function test_admin_peut_exporter_toutes_les_sections_du_rapport_en_excel_et_pdf(): void
+    {
+        $admin = User::factory()->create()->assignRole('admin');
+        $vehicule = Vehicule::factory()->create();
+
+        $sections = ['statuts', 'sorties', 'interventions', 'operations'];
+
+        foreach ($sections as $section) {
+            $this->actingAs($admin)
+                ->get(route("flotte.vehicules.rapport.export.{$section}.excel", $vehicule))
+                ->assertOk()
+                ->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+            $this->actingAs($admin)
+                ->get(route("flotte.vehicules.rapport.export.{$section}.pdf", $vehicule))
+                ->assertOk()
+                ->assertHeader('content-type', 'application/pdf');
+        }
     }
 }

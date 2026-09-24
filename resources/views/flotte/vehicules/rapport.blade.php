@@ -100,15 +100,27 @@
     </div>
 
     <div class="card shadow-sm border-0 bg-white">
-        <div class="card-header bg-white border-0 pt-3">
+        <div class="card-header bg-white border-0 pt-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
             <ul class="nav nav-tabs card-header-tabs" role="tablist">
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-rapport-statuts" type="button">Changements de statut</button>
+                    <button class="nav-link active" id="onglet-rapport-statuts" data-bs-toggle="tab" data-bs-target="#tab-rapport-statuts" type="button">Changements de statut</button>
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" id="onglet-rapport-sorties" data-bs-toggle="tab" data-bs-target="#tab-rapport-sorties" type="button">Sorties de pièces</button>
                 </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="onglet-rapport-interventions" data-bs-toggle="tab" data-bs-target="#tab-rapport-interventions" type="button">Interventions</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="onglet-rapport-operations" data-bs-toggle="tab" data-bs-target="#tab-rapport-operations" type="button">Opérations programmées</button>
+                </li>
             </ul>
+            <div>
+                <div class="onglet-export" data-onglet="statuts"><x-export-dropdown id-suffix="rapport-statuts" /></div>
+                <div class="onglet-export d-none" data-onglet="sorties"><x-export-dropdown id-suffix="rapport-sorties" /></div>
+                <div class="onglet-export d-none" data-onglet="interventions"><x-export-dropdown id-suffix="rapport-interventions" /></div>
+                <div class="onglet-export d-none" data-onglet="operations"><x-export-dropdown id-suffix="rapport-operations" /></div>
+            </div>
         </div>
         <div class="card-body pt-3">
             <div class="tab-content">
@@ -137,6 +149,37 @@
                                     <th class="text-end">Quantité</th>
                                     <th>Motif</th>
                                     <th>Auteur</th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+                </div>
+                <div class="tab-pane fade" id="tab-rapport-interventions">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0 w-100" id="table-rapport-interventions">
+                            <thead>
+                                <tr>
+                                    <th>Début</th>
+                                    <th>Fin</th>
+                                    <th>Type de panne</th>
+                                    <th>Description</th>
+                                    <th>Rapport</th>
+                                    <th>Clôturée par</th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+                </div>
+                <div class="tab-pane fade" id="tab-rapport-operations">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0 w-100" id="table-rapport-operations">
+                            <thead>
+                                <tr>
+                                    <th>Date de réalisation</th>
+                                    <th>Type</th>
+                                    <th>Échéance prévue</th>
+                                    <th>Réalisé par</th>
+                                    <th>Commentaire</th>
                                 </tr>
                             </thead>
                         </table>
@@ -193,17 +236,97 @@
                 order: [[0, 'desc']],
             });
 
+            const tableInterventions = $('#table-rapport-interventions').DataTable({
+                processing: true,
+                serverSide: true,
+                ajax: { url: '{{ route('flotte.vehicules.rapport.interventions', $vehicule) }}', data: (d) => Object.assign(d, filtres()) },
+                language: { url: 'https://cdn.datatables.net/plug-ins/2.1.8/i18n/fr-FR.json' },
+                columns: [
+                    { data: 'date_debut', name: 'date_debut' },
+                    { data: 'date_fin', name: 'date_fin' },
+                    { data: 'type_panne_libelle', name: 'type_panne_libelle', orderable: false },
+                    { data: 'description', name: 'description', orderable: false },
+                    { data: 'rapport', name: 'rapport', orderable: false },
+                    { data: 'cloturee_par', name: 'clotureePar.name', orderable: false },
+                ],
+                order: [[1, 'desc']],
+            });
+
+            const tableOperations = $('#table-rapport-operations').DataTable({
+                processing: true,
+                serverSide: true,
+                ajax: { url: '{{ route('flotte.vehicules.rapport.operations', $vehicule) }}', data: (d) => Object.assign(d, filtres()) },
+                language: { url: 'https://cdn.datatables.net/plug-ins/2.1.8/i18n/fr-FR.json' },
+                columns: [
+                    { data: 'date_realisation', name: 'date_realisation' },
+                    { data: 'type_operation_libelle', name: 'type_operation_libelle', orderable: false },
+                    { data: 'date_echeance', name: 'date_echeance' },
+                    { data: 'realise_par', name: 'realisePar.name', orderable: false },
+                    { data: 'commentaire', name: 'commentaire', orderable: false },
+                ],
+                order: [[0, 'desc']],
+            });
+
+            const tablesParOnglet = {
+                statuts: tableStatuts,
+                sorties: tableSorties,
+                interventions: tableInterventions,
+                operations: tableOperations,
+            };
+
             $('#onglet-rapport-sorties').on('shown.bs.tab', () => tableSorties.columns.adjust());
+            $('#onglet-rapport-interventions').on('shown.bs.tab', () => tableInterventions.columns.adjust());
+            $('#onglet-rapport-operations').on('shown.bs.tab', () => tableOperations.columns.adjust());
+
+            // Le bouton d'export affiché correspond toujours à l'onglet actif.
+            $('button[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
+                const onglet = $(e.target).attr('id').replace('onglet-rapport-', '');
+                $('.onglet-export').addClass('d-none');
+                $(`.onglet-export[data-onglet="${onglet}"]`).removeClass('d-none');
+            });
 
             $('#btn-filtrer-rapport').on('click', function () {
-                tableStatuts.ajax.reload();
-                tableSorties.ajax.reload();
+                Object.values(tablesParOnglet).forEach((table) => table.ajax.reload());
             });
 
             $('#btn-reset-rapport').on('click', function () {
                 $('#filtres-rapport')[0].reset();
-                tableStatuts.ajax.reload();
-                tableSorties.ajax.reload();
+                Object.values(tablesParOnglet).forEach((table) => table.ajax.reload());
+            });
+
+            function urlAvecFiltres(base) {
+                const params = new URLSearchParams(filtres());
+                return base + '?' + params.toString();
+            }
+
+            const exportRoutes = {
+                statuts: {
+                    excel: '{{ route('flotte.vehicules.rapport.export.statuts.excel', $vehicule) }}',
+                    pdf: '{{ route('flotte.vehicules.rapport.export.statuts.pdf', $vehicule) }}',
+                },
+                sorties: {
+                    excel: '{{ route('flotte.vehicules.rapport.export.sorties.excel', $vehicule) }}',
+                    pdf: '{{ route('flotte.vehicules.rapport.export.sorties.pdf', $vehicule) }}',
+                },
+                interventions: {
+                    excel: '{{ route('flotte.vehicules.rapport.export.interventions.excel', $vehicule) }}',
+                    pdf: '{{ route('flotte.vehicules.rapport.export.interventions.pdf', $vehicule) }}',
+                },
+                operations: {
+                    excel: '{{ route('flotte.vehicules.rapport.export.operations.excel', $vehicule) }}',
+                    pdf: '{{ route('flotte.vehicules.rapport.export.operations.pdf', $vehicule) }}',
+                },
+            };
+
+            Object.keys(exportRoutes).forEach(function (onglet) {
+                $(`#btn-export-excel-rapport-${onglet}`).on('click', function (e) {
+                    e.preventDefault();
+                    window.location = urlAvecFiltres(exportRoutes[onglet].excel);
+                });
+                $(`#btn-export-pdf-rapport-${onglet}`).on('click', function (e) {
+                    e.preventDefault();
+                    window.location = urlAvecFiltres(exportRoutes[onglet].pdf);
+                });
             });
         });
         </script>
