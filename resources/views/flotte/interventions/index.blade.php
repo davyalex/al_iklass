@@ -63,16 +63,13 @@
                     <button type="button" class="btn btn-sm btn-outline-secondary d-none" id="btn-reset-filtre-intervention" title="Réinitialiser les filtres">
                         <i class="bi bi-arrow-counterclockwise"></i>
                     </button>
-                    <a href="{{ route('flotte.interventions.historique.index') }}" class="btn btn-outline-secondary ms-md-auto">
-                        <i class="bi bi-clock-history me-1"></i>Historique
-                    </a>
                     @can('interventions.type.gerer')
-                        <button type="button" class="btn btn-outline-secondary" id="btn-gerer-types-panne">
+                        <button type="button" class="btn btn-outline-secondary ms-md-auto" id="btn-gerer-types-panne">
                             <i class="bi bi-tags me-1"></i>Types de panne
                         </button>
                     @endcan
                     @can('interventions.declarer')
-                        <button type="button" class="btn btn-primary" id="btn-declarer-panne">
+                        <button type="button" class="btn btn-primary ms-md-auto" id="btn-declarer-panne">
                             <i class="bi bi-exclamation-triangle me-1"></i>Déclarer une panne
                         </button>
                     @endcan
@@ -542,28 +539,22 @@
                 const modalCloturer = modalCloturerEl ? new bootstrap.Modal(modalCloturerEl) : null;
                 const $formCloturer = $('#form-cloturer-intervention');
                 let cloturerInterventionId = null;
+                let cloturerVehiculeCode = null;
 
                 $(document).on('click', '.btn-cloturer-intervention', function () {
                     cloturerInterventionId = $(this).data('id');
+                    cloturerVehiculeCode = $(this).data('code');
 
                     $formCloturer[0].reset();
                     $formCloturer.removeClass('was-validated');
-                    $('#cloturer-intervention-code').text($(this).data('code'));
+                    $('#cloturer-intervention-code').text(cloturerVehiculeCode);
                     $formCloturer.find('[name=date_fin]').val(new Date().toISOString().slice(0, 10));
 
                     modalDetail?.hide();
                     modalCloturer.show();
                 });
 
-                $formCloturer.on('submit', function (e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-
-                    if (!$formCloturer[0].checkValidity()) {
-                        $formCloturer.addClass('was-validated');
-                        return;
-                    }
-
+                function envoyerCloture() {
                     $.post(`/flotte/interventions/${cloturerInterventionId}/cloturer`, $formCloturer.serialize())
                         .done(function (res) {
                             modalCloturer.hide();
@@ -575,6 +566,32 @@
                             const msg = erreurs ? Object.values(erreurs).flat()[0] : (xhr.responseJSON?.message || 'Une erreur est survenue.');
                             Swal.fire({ icon: 'error', text: msg });
                         });
+                }
+
+                $formCloturer.on('submit', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    if (!$formCloturer[0].checkValidity()) {
+                        $formCloturer.addClass('was-validated');
+                        return;
+                    }
+
+                    // Clôturer = remettre le véhicule en circulation : on le
+                    // dit explicitement avant d'envoyer, plutôt que de le
+                    // faire silencieusement.
+                    Swal.fire({
+                        icon: 'question',
+                        title: 'Confirmer la clôture',
+                        html: `Le véhicule <strong>${cloturerVehiculeCode}</strong> sera remis en circulation. Êtes-vous d'accord ?`,
+                        showCancelButton: true,
+                        confirmButtonText: 'Oui, confirmer',
+                        cancelButtonText: 'Annuler',
+                    }).then(function (result) {
+                        if (result.isConfirmed) {
+                            envoyerCloture();
+                        }
+                    });
                 });
             @endcan
 
