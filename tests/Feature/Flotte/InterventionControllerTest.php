@@ -142,7 +142,49 @@ class InterventionControllerTest extends TestCase
         $this->assertCount(1, $response->json('historique'));
     }
 
-    public function test_remise_en_circulation_cloture_lintervention_en_cours_avec_le_rapport(): void
+    public function test_remise_en_circulation_admin_cloture_lintervention_en_cours_avec_le_rapport(): void
+    {
+        // Le chef mécanicien n'a plus accès à la Flotte (voir ci-dessous) :
+        // seul l'admin passe encore par cette route ; il partage la même
+        // mécanique de clôture (InterventionService::cloturer) que le
+        // chef mécanicien depuis Interventions.
+        $admin = User::factory()->create()->assignRole('admin');
+        $depannage = StatutVehicule::where('code', 'depannage')->firstOrFail();
+        $vehicule = Vehicule::factory()->create(['statut_id' => $depannage->id]);
+
+        $intervention = Intervention::create([
+            'vehicule_id' => $vehicule->id, 'vehicule_code' => $vehicule->code,
+            'description' => 'Fuite moteur', 'statut' => 'en_cours', 'date_debut' => now(),
+            'declaree_par_id' => $admin->id,
+        ]);
+
+        $this->actingAs($admin)->postJson(route('flotte.vehicules.remise-circulation', $vehicule), [
+            'rapport' => 'Joint de culasse changé, essai routier concluant.',
+        ])->assertOk();
+
+        $intervention->refresh();
+        $this->assertSame('terminee', $intervention->statut);
+        $this->assertSame('Joint de culasse changé, essai routier concluant.', $intervention->rapport);
+        $this->assertSame($admin->id, $intervention->cloturee_par_id);
+        $this->assertNotNull($intervention->date_fin);
+    }
+
+    public function test_remise_en_circulation_sans_intervention_en_cours_fonctionne_normalement(): void
+    {
+        $admin = User::factory()->create()->assignRole('admin');
+        $depannage = StatutVehicule::where('code', 'depannage')->firstOrFail();
+        $vehicule = Vehicule::factory()->create(['statut_id' => $depannage->id]);
+
+        $this->actingAs($admin)->postJson(route('flotte.vehicules.remise-circulation', $vehicule), [
+            'rapport' => 'Simple correction de statut, pas de panne réelle.',
+        ])->assertOk();
+
+        $this->assertDatabaseCount('interventions', 0);
+        $enCirculation = StatutVehicule::where('code', 'en_circulation')->firstOrFail();
+        $this->assertSame($enCirculation->id, $vehicule->fresh()->statut_id);
+    }
+
+    public function test_chef_mecanicien_peut_cloturer_depuis_le_menu_interventions(): void
     {
         $mecanicien = User::factory()->create()->assignRole('chef_mecanicien');
         $depannage = StatutVehicule::where('code', 'depannage')->firstOrFail();
@@ -150,33 +192,49 @@ class InterventionControllerTest extends TestCase
 
         $intervention = Intervention::create([
             'vehicule_id' => $vehicule->id, 'vehicule_code' => $vehicule->code,
-            'description' => 'Fuite moteur', 'statut' => 'en_cours', 'date_debut' => now(),
+            'description' => 'Fuite moteur', 'statut' => 'en_cours', 'date_debut' => now()->subDays(2),
             'declaree_par_id' => $mecanicien->id,
         ]);
 
-        $this->actingAs($mecanicien)->postJson(route('flotte.vehicules.remise-circulation', $vehicule), [
+        $response = $this->actingAs($mecanicien)->postJson(route('flotte.interventions.cloturer', $intervention), [
             'rapport' => 'Joint de culasse changé, essai routier concluant.',
-        ])->assertOk();
+            'date_fin' => now()->toDateString(),
+        ]);
+
+        $response->assertOk();
 
         $intervention->refresh();
         $this->assertSame('terminee', $intervention->statut);
         $this->assertSame('Joint de culasse changé, essai routier concluant.', $intervention->rapport);
         $this->assertSame($mecanicien->id, $intervention->cloturee_par_id);
-        $this->assertNotNull($intervention->date_fin);
-    }
 
-    public function test_remise_en_circulation_sans_intervention_en_cours_fonctionne_normalement(): void
-    {
-        $mecanicien = User::factory()->create()->assignRole('chef_mecanicien');
-        $depannage = StatutVehicule::where('code', 'depannage')->firstOrFail();
-        $vehicule = Vehicule::factory()->create(['statut_id' => $depannage->id]);
-
-        $this->actingAs($mecanicien)->postJson(route('flotte.vehicules.remise-circulation', $vehicule), [
-            'rapport' => 'Simple correction de statut, pas de panne réelle.',
-        ])->assertOk();
-
-        $this->assertDatabaseCount('interventions', 0);
         $enCirculation = StatutVehicule::where('code', 'en_circulation')->firstOrFail();
         $this->assertSame($enCirculation->id, $vehicule->fresh()->statut_id);
+    }
+
+    public function test_cloturer_rejette_une_intervention_deja_terminee(): void
+    {
+        $mecanicien = User::factory()->create()->assignRole('chef_mecanicien');
+        $vehicule = Vehicule::factory()->create();
+
+        $intervention = Intervention::create([
+            'vehicule_id' => $vehicule->id, 'vehicule_code' => $vehicule->code,
+            'description' => 'Déjà réparée', 'statut' => 'terminee',
+            'date_debut' => now()->subDays(5), 'date_fin' => now()->subDays(3),
+            'rapport' => 'Réparée', 'declaree_par_id' => $mecanicien->id, 'cloturee_par_id' => $mecanicien->id,
+        ]);
+
+        $this->actingAs($mecanicien)->postJson(route('flotte.interventions.cloturer', $intervention), [
+            'rapport' => 'Nouveau rapport',
+        ])->assertStatus(422);
+    }
+
+    public function test_chef_mecanicien_na_plus_acces_a_la_flotte_ni_aux_operations(): void
+    {
+        $mecanicien = User::factory()->create()->assignRole('chef_mecanicien');
+        Vehicule::factory()->create();
+
+        $this->actingAs($mecanicien)->get(route('flotte.vehicules.index'))->assertForbidden();
+        $this->actingAs($mecanicien)->get(route('flotte.operations.index'))->assertForbidden();
     }
 }

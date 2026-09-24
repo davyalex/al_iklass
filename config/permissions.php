@@ -106,10 +106,12 @@ return [
             'operations' => ['only' => ['operations.voir', 'operations.gerer']],
         ],
 
+        // Le chef mécanicien n'a accès qu'aux interventions : il déclare une
+        // panne (véhicule, description, statut) puis clôture lui-même avec
+        // son rapport depuis ce même module — jamais la Flotte ni les
+        // opérations programmées.
         'chef_mecanicien' => [
             'stock' => ['only' => ['stock.demande.creer']],
-            'flotte' => ['only' => ['flotte.vehicule.remise_circulation']],
-            'operations' => ['only' => ['operations.voir', 'operations.realiser']],
             'interventions' => ['only' => ['interventions.voir', 'interventions.declarer']],
         ],
 

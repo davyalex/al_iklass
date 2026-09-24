@@ -47,12 +47,13 @@ class VehiculeRapportControllerTest extends TestCase
         $this->actingAs($gestionnaire)->get(route('flotte.vehicules.rapport', $vehicule))->assertForbidden();
     }
 
-    public function test_chef_mecanicien_peut_voir_le_rapport_de_nimporte_quel_vehicule(): void
+    public function test_chef_mecanicien_na_plus_acces_au_rapport_vehicule(): void
     {
+        // N'a plus accès à la Flotte : son seul menu est Interventions.
         $mecanicien = User::factory()->create()->assignRole('chef_mecanicien');
         $vehicule = Vehicule::factory()->create();
 
-        $this->actingAs($mecanicien)->get(route('flotte.vehicules.rapport', $vehicule))->assertOk();
+        $this->actingAs($mecanicien)->get(route('flotte.vehicules.rapport', $vehicule))->assertForbidden();
     }
 
     public function test_le_rapport_expose_uniquement_lhistorique_de_ce_vehicule(): void

@@ -3,9 +3,11 @@
 namespace App\Services\Flotte;
 
 use App\Models\Intervention;
+use App\Models\StatutVehicule;
 use App\Models\TypePanne;
 use App\Models\User;
 use App\Models\Vehicule;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -55,29 +57,38 @@ class InterventionService
     }
 
     /**
-     * Clôture l'intervention 'en_cours' d'un véhicule (appelée depuis la
-     * remise en circulation existante) avec le même rapport. Ne fait rien —
-     * retourne null — s'il n'y a pas d'intervention ouverte : la remise en
-     * circulation doit continuer de fonctionner même sans panne déclarée
-     * (simple correction de statut).
+     * Remet le véhicule en circulation avec son rapport et clôture, le cas
+     * échéant, son intervention 'en_cours' avec ce même rapport — seul point
+     * d'entrée pour "remettre un véhicule en état" (utilisé aussi bien par
+     * l'admin depuis la Flotte que par le chef mécanicien depuis les
+     * Interventions). Retourne null (sans erreur) s'il n'y a pas
+     * d'intervention ouverte : une simple correction de statut reste
+     * possible sans panne déclarée.
      */
-    public function cloturer(Vehicule $vehicule, string $rapport, User $auteur): ?Intervention
+    public function cloturer(Vehicule $vehicule, string $rapport, User $auteur, ?string $dateFin = null): ?Intervention
     {
-        $intervention = Intervention::where('vehicule_id', $vehicule->id)
-            ->where('statut', 'en_cours')
-            ->first();
+        return DB::transaction(function () use ($vehicule, $rapport, $auteur, $dateFin) {
+            $statutEnCirculationId = StatutVehicule::where('code', 'en_circulation')->value('id');
 
-        if (! $intervention) {
-            return null;
-        }
+            $vehicule->commentaireHistorique = $rapport;
+            $vehicule->update(['statut_id' => $statutEnCirculationId]);
 
-        $intervention->update([
-            'statut' => 'terminee',
-            'date_fin' => now(),
-            'rapport' => $rapport,
-            'cloturee_par_id' => $auteur->id,
-        ]);
+            $intervention = Intervention::where('vehicule_id', $vehicule->id)
+                ->where('statut', 'en_cours')
+                ->first();
 
-        return $intervention;
+            if (! $intervention) {
+                return null;
+            }
+
+            $intervention->update([
+                'statut' => 'terminee',
+                'date_fin' => $dateFin ? Carbon::parse($dateFin) : now(),
+                'rapport' => $rapport,
+                'cloturee_par_id' => $auteur->id,
+            ]);
+
+            return $intervention;
+        });
     }
 }

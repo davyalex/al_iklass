@@ -58,18 +58,7 @@ class VehiculeController extends Controller
             $fenetreStatut = ['debut' => $debutFenetre->toIso8601String(), 'fin' => $finFenetre->toIso8601String()];
         }
 
-        // Un chef mécanicien "pur" (aucune vue globale ni "mes véhicules") n'a
-        // qu'un seul usage de cette page : traiter les véhicules en dépannage.
-        // On lui pré-filtre donc la vue sur ce statut à la connexion. Note :
-        // $peutVoirTout inclut déjà remise_circulation, donc on retteste
-        // flotte.vehicule.voir seul ici pour isoler ce profil précis.
-        $statutParDefaut = (! $request->user()->can('flotte.vehicule.voir')
-                && ! $request->user()->can('flotte.vehicule.voir_affectes')
-                && $request->user()->can('flotte.vehicule.remise_circulation'))
-            ? 'depannage'
-            : null;
-
-        return view('flotte.vehicules.index', compact('vehicules', 'statuts', 'vehiculesParStatut', 'gestionnaires', 'kpis', 'fenetreStatut', 'modesPaiement', 'statutParDefaut'));
+        return view('flotte.vehicules.index', compact('vehicules', 'statuts', 'vehiculesParStatut', 'gestionnaires', 'kpis', 'fenetreStatut', 'modesPaiement'));
     }
 
     public function show(Vehicule $vehicule): JsonResponse
@@ -155,19 +144,13 @@ class VehiculeController extends Controller
 
     public function remiseEnCirculation(RemiseEnCirculationRequest $request, Vehicule $vehicule): JsonResponse
     {
-        $statutEnCirculationId = StatutVehicule::where('code', 'en_circulation')->value('id');
-        $rapport = $request->validated('rapport');
-
-        $vehicule->commentaireHistorique = $rapport;
-        $vehicule->update(['statut_id' => $statutEnCirculationId]);
-
-        // Clôture silencieuse de l'intervention en cours (le cas échéant) avec
-        // ce même rapport — aucune action supplémentaire pour l'utilisateur.
-        $this->interventionService->cloturer($vehicule, $rapport, $request->user());
+        // Clôture aussi, le cas échéant, l'intervention 'en_cours' du véhicule
+        // avec ce même rapport (InterventionService::cloturer).
+        $this->interventionService->cloturer($vehicule, $request->validated('rapport'), $request->user());
 
         return response()->json([
             'message' => "Véhicule « {$vehicule->code} » remis en circulation.",
-            'vehicule' => $vehicule->load(['statut', 'gestionnaire']),
+            'vehicule' => $vehicule->fresh()->load(['statut', 'gestionnaire']),
         ]);
     }
 }

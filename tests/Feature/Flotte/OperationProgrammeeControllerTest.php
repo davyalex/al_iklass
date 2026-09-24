@@ -181,8 +181,10 @@ class OperationProgrammeeControllerTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_chef_mecanicien_peut_realiser_mais_pas_planifier(): void
+    public function test_chef_mecanicien_na_plus_acces_aux_operations_programmees(): void
     {
+        // Le chef mécanicien n'a plus que les Interventions : ni planifier,
+        // ni réaliser une opération programmée, ni même voir la page.
         $chefMecanicien = User::factory()->create()->assignRole('chef_mecanicien');
         $admin = User::factory()->create()->assignRole('admin');
         $vehicule = Vehicule::factory()->create();
@@ -203,7 +205,7 @@ class OperationProgrammeeControllerTest extends TestCase
         ])->assertForbidden();
 
         $this->actingAs($chefMecanicien)->postJson(route('flotte.operations.realiser', $operation))
-            ->assertOk();
+            ->assertForbidden();
     }
 
     public function test_realiser_cloture_la_ligne_et_cree_le_cycle_suivant(): void

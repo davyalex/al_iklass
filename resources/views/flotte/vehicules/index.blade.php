@@ -392,11 +392,6 @@
                 $('#filtre-gestionnaire').val('');
                 appliquerFiltres();
             });
-
-            @if ($statutParDefaut)
-                $('#filtre-statut').val('{{ $statutParDefaut }}');
-                appliquerFiltres();
-            @endif
         });
         </script>
     @endpush

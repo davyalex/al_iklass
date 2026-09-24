@@ -8,6 +8,7 @@ use App\Models\Parametre;
 use App\Models\StatutVehicule;
 use App\Models\User;
 use App\Models\Vehicule;
+use App\Services\Flotte\StatutJournalierService;
 use App\Support\FenetreStatutJournalier;
 use Database\Seeders\ParametreSeeder;
 use Database\Seeders\RolePermissionSeeder;
@@ -37,6 +38,11 @@ class StatutJournalierTest extends TestCase
         $dejaEnCirculation = Vehicule::factory()->create(['statut_id' => $enCirculation->id]);
         $aReinitialiser = Vehicule::factory()->create(['statut_id' => $arret->id]);
 
+        // Le seeder marque "déjà fait aujourd'hui" par défaut (cf.
+        // ParametreSeeder) : on l'efface pour tester la commande elle-même,
+        // indépendamment du garde-fou "une fois par jour" (testé à part).
+        Parametre::where('cle', 'flotte.statut_journalier.derniere_execution')->update(['valeur' => '']);
+
         $this->artisan(ReinitialiserStatutsJournaliers::class)->assertSuccessful();
 
         $this->assertSame($enCirculation->id, $aReinitialiser->fresh()->statut_id);
@@ -45,6 +51,45 @@ class StatutJournalierTest extends TestCase
         // Le véhicule déjà en circulation n'a pas été touché une seconde fois.
         $this->assertSame(1, HistoriqueStatutVehicule::where('vehicule_id', $dejaEnCirculation->id)->count());
         $this->assertSame(2, HistoriqueStatutVehicule::where('vehicule_id', $aReinitialiser->id)->count());
+    }
+
+    public function test_service_ne_reinitialise_quune_fois_par_jour(): void
+    {
+        $this->travelTo(Carbon::parse('2026-01-01 00:05'));
+
+        $arret = StatutVehicule::where('code', 'arret')->firstOrFail();
+        $vehicule = Vehicule::factory()->create(['statut_id' => $arret->id]);
+
+        $service = app(StatutJournalierService::class);
+
+        $this->assertSame(1, $service->reinitialiserSiNecessaire());
+
+        // Un second appel le même jour (ex. cron ET filet de sécurité tous
+        // deux déclenchés) ne doit rien refaire ni journaliser en double.
+        // ->fresh() : l'instance $vehicule est périmée depuis le premier
+        // appel (mis à jour par une autre instance dans le service), sans
+        // rafraîchir, Eloquent ne verrait aucun changement à sauvegarder.
+        $vehicule->fresh()->update(['statut_id' => $arret->id]);
+        $this->assertSame(0, $service->reinitialiserSiNecessaire());
+        $this->assertSame($arret->id, $vehicule->fresh()->statut_id);
+
+        // Le lendemain, la réinitialisation redevient effective.
+        $this->travelTo(Carbon::parse('2026-01-02 00:05'));
+        $this->assertSame(1, $service->reinitialiserSiNecessaire());
+    }
+
+    public function test_visiter_une_page_flotte_declenche_le_filet_de_securite(): void
+    {
+        Parametre::where('cle', 'flotte.statut_journalier.derniere_execution')->update(['valeur' => '2025-01-01']);
+
+        $admin = User::factory()->create()->assignRole('admin');
+        $arret = StatutVehicule::where('code', 'arret')->firstOrFail();
+        $vehicule = Vehicule::factory()->create(['statut_id' => $arret->id]);
+
+        $this->actingAs($admin)->get(route('flotte.vehicules.index'))->assertOk();
+
+        $this->assertSame('en_circulation', $vehicule->fresh()->statut->code);
+        $this->assertSame(now()->format('Y-m-d'), Parametre::valeur('flotte.statut_journalier.derniere_execution'));
     }
 
     public function test_fenetre_statut_journalier_respecte_les_parametres(): void
@@ -120,13 +165,15 @@ class StatutJournalierTest extends TestCase
         ])->assertOk();
     }
 
-    public function test_chef_mecanicien_peut_remettre_en_circulation_avec_rapport(): void
+    public function test_admin_peut_remettre_en_circulation_avec_rapport(): void
     {
-        $chefMecanicien = User::factory()->create()->assignRole('chef_mecanicien');
+        // Le chef mécanicien n'a plus accès à cette route (il clôture depuis
+        // Interventions désormais) : seul l'admin l'exerce encore ici.
+        $admin = User::factory()->create()->assignRole('admin');
         $statutDepannage = StatutVehicule::where('code', 'depannage')->firstOrFail();
         $vehicule = Vehicule::factory()->create(['statut_id' => $statutDepannage->id]);
 
-        $response = $this->actingAs($chefMecanicien)->postJson(route('flotte.vehicules.remise-circulation', $vehicule), [
+        $response = $this->actingAs($admin)->postJson(route('flotte.vehicules.remise-circulation', $vehicule), [
             'rapport' => 'Réparation terminée, courroie changée.',
         ]);
 
@@ -143,14 +190,25 @@ class StatutJournalierTest extends TestCase
 
     public function test_remise_en_circulation_sans_rapport_est_rejetee(): void
     {
+        $admin = User::factory()->create()->assignRole('admin');
+        $statutDepannage = StatutVehicule::where('code', 'depannage')->firstOrFail();
+        $vehicule = Vehicule::factory()->create(['statut_id' => $statutDepannage->id]);
+
+        $response = $this->actingAs($admin)->postJson(route('flotte.vehicules.remise-circulation', $vehicule), []);
+
+        $response->assertUnprocessable();
+        $response->assertJsonValidationErrors('rapport');
+    }
+
+    public function test_chef_mecanicien_ne_peut_plus_remettre_en_circulation_via_la_flotte(): void
+    {
         $chefMecanicien = User::factory()->create()->assignRole('chef_mecanicien');
         $statutDepannage = StatutVehicule::where('code', 'depannage')->firstOrFail();
         $vehicule = Vehicule::factory()->create(['statut_id' => $statutDepannage->id]);
 
-        $response = $this->actingAs($chefMecanicien)->postJson(route('flotte.vehicules.remise-circulation', $vehicule), []);
-
-        $response->assertUnprocessable();
-        $response->assertJsonValidationErrors('rapport');
+        $this->actingAs($chefMecanicien)->postJson(route('flotte.vehicules.remise-circulation', $vehicule), [
+            'rapport' => 'Réparé.',
+        ])->assertForbidden();
     }
 
     public function test_gestionnaire_seul_ne_peut_pas_remettre_en_circulation(): void
@@ -164,12 +222,12 @@ class StatutJournalierTest extends TestCase
         ])->assertForbidden();
     }
 
-    public function test_chef_mecanicien_peut_consulter_le_catalogue_vehicules_sans_voir_les_gestionnaires(): void
+    public function test_chef_mecanicien_ne_peut_consulter_ni_le_catalogue_vehicules_ni_les_gestionnaires(): void
     {
         $chefMecanicien = User::factory()->create()->assignRole('chef_mecanicien');
         Vehicule::factory()->create();
 
-        $this->actingAs($chefMecanicien)->get(route('flotte.vehicules.index'))->assertOk();
+        $this->actingAs($chefMecanicien)->get(route('flotte.vehicules.index'))->assertForbidden();
         $this->actingAs($chefMecanicien)->get(route('flotte.gestionnaires.index'))->assertForbidden();
     }
 }

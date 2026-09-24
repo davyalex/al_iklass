@@ -207,40 +207,29 @@ class VehiculeControllerTest extends TestCase
 
     public function test_historique_endpoint_expose_le_rapport_de_remise_en_circulation(): void
     {
-        $mecanicien = User::factory()->create()->assignRole('chef_mecanicien');
+        // Le chef mécanicien n'a plus accès à la Flotte (il clôture désormais
+        // depuis Interventions) : c'est l'admin qui exerce cette route ici.
+        $admin = User::factory()->create()->assignRole('admin');
         $statutDepannage = StatutVehicule::where('code', 'depannage')->firstOrFail();
         $vehicule = Vehicule::factory()->create(['statut_id' => $statutDepannage->id]);
 
-        $this->actingAs($mecanicien)->postJson(route('flotte.vehicules.remise-circulation', $vehicule), [
+        $this->actingAs($admin)->postJson(route('flotte.vehicules.remise-circulation', $vehicule), [
             'rapport' => 'Changement de la courroie de distribution.',
         ])->assertOk();
 
-        $response = $this->actingAs($mecanicien)->getJson(route('flotte.vehicules.historique', $vehicule));
+        $response = $this->actingAs($admin)->getJson(route('flotte.vehicules.historique', $vehicule));
 
         $response->assertOk();
         $evenement = collect($response->json('evenements'))->firstWhere('type', 'changement_statut');
         $this->assertSame('Changement de la courroie de distribution.', $evenement['commentaire']);
-        $this->assertSame($mecanicien->name, $evenement['auteur']);
+        $this->assertSame($admin->name, $evenement['auteur']);
     }
 
-    public function test_chef_mecanicien_a_le_statut_depannage_preselectionne_par_defaut(): void
+    public function test_chef_mecanicien_na_pas_acces_a_la_page_vehicules(): void
     {
         $mecanicien = User::factory()->create()->assignRole('chef_mecanicien');
 
-        $response = $this->actingAs($mecanicien)->get(route('flotte.vehicules.index'));
-
-        $response->assertOk();
-        $this->assertSame('depannage', $response->viewData('statutParDefaut'));
-    }
-
-    public function test_admin_na_pas_de_statut_preselectionne_par_defaut(): void
-    {
-        $admin = User::factory()->create()->assignRole('admin');
-
-        $response = $this->actingAs($admin)->get(route('flotte.vehicules.index'));
-
-        $response->assertOk();
-        $this->assertNull($response->viewData('statutParDefaut'));
+        $this->actingAs($mecanicien)->get(route('flotte.vehicules.index'))->assertForbidden();
     }
 
     public function test_admin_can_change_statut_quickly(): void

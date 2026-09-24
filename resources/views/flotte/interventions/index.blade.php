@@ -47,9 +47,16 @@
                             <p class="small text-muted mb-2 text-truncate">{{ $intervention->description }}</p>
                             <div class="small text-muted mb-3">Depuis le {{ $intervention->date_debut->format('d/m/Y') }}</div>
 
-                            <button type="button" class="btn btn-sm btn-outline-primary mt-auto btn-detail-intervention" data-id="{{ $intervention->vehicule_id }}" data-code="{{ $intervention->vehicule_code }}">
-                                <i class="bi bi-eye me-1"></i>Détail
-                            </button>
+                            <div class="d-flex gap-2 mt-auto">
+                                <button type="button" class="btn btn-sm btn-outline-primary flex-fill btn-detail-intervention" data-id="{{ $intervention->vehicule_id }}" data-code="{{ $intervention->vehicule_code }}">
+                                    <i class="bi bi-eye me-1"></i>Détail
+                                </button>
+                                @can('interventions.declarer')
+                                    <button type="button" class="btn btn-sm btn-success flex-fill btn-cloturer-intervention" data-id="{{ $intervention->id }}" data-code="{{ $intervention->vehicule_code }}">
+                                        <i class="bi bi-check2-circle me-1"></i>Clôturer
+                                    </button>
+                                @endcan
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -68,9 +75,6 @@
                 <div class="modal-body">
                     <h6 class="small text-uppercase text-muted">Intervention en cours</h6>
                     <div id="detail-intervention-active" class="small mb-3"></div>
-                    <p class="small text-muted mb-3" id="detail-intervention-note">
-                        <i class="bi bi-info-circle me-1"></i>Pour clôturer, utilisez la remise en circulation sur la page Véhicules.
-                    </p>
 
                     <div class="d-flex justify-content-between align-items-center">
                         <h6 class="small text-uppercase text-muted mb-0">Historique</h6>
@@ -134,6 +138,36 @@
                         <div class="modal-footer">
                             <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
                             <button type="submit" class="btn btn-primary">Déclarer</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        {{-- Modale clôture : rapport + date, remet le véhicule en circulation --}}
+        <div class="modal fade" id="modal-cloturer-intervention" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <form id="form-cloturer-intervention" class="needs-validation" novalidate>
+                        <div class="modal-header">
+                            <h5 class="modal-title">Clôturer — <span id="cloturer-intervention-code"></span></h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label class="form-label">Date</label>
+                                <input type="date" name="date_fin" class="form-control" required>
+                                <div class="invalid-feedback">La date est obligatoire.</div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Rapport</label>
+                                <textarea name="rapport" class="form-control" rows="3" maxlength="1000" required></textarea>
+                                <div class="invalid-feedback">Le rapport est obligatoire.</div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+                            <button type="submit" class="btn btn-success">Clôturer</button>
                         </div>
                     </form>
                 </div>
@@ -230,15 +264,17 @@
                 $.get(`/flotte/interventions/vehicules/${vehiculeId}/detail`, function (res) {
                     if (!res.active) {
                         $('#detail-intervention-active').html('<p class="text-muted mb-0">Aucune intervention en cours pour ce véhicule.</p>');
-                        $('#detail-intervention-note').addClass('d-none');
                     } else {
                         const a = res.active;
+                        const boutonCloturer = @json(auth()->user()->can('interventions.declarer'))
+                            ? `<button type="button" class="btn btn-sm btn-success mt-2 btn-cloturer-intervention" data-id="${a.id}" data-code="${vehiculeCode}">Clôturer</button>`
+                            : '';
                         $('#detail-intervention-active').html(`<div class="border-bottom py-2">
                             ${a.type_panne_libelle ? '<span class="badge bg-warning text-dark">' + a.type_panne_libelle + '</span> ' : ''}
                             <span>Depuis le <strong>${a.date_debut}</strong></span>
                             <br><span class="text-muted">${a.description}</span>
+                            <br>${boutonCloturer}
                         </div>`);
-                        $('#detail-intervention-note').removeClass('d-none');
                     }
 
                     if (!res.historique.length) {
@@ -291,6 +327,46 @@
                     $.post('{{ route('flotte.interventions.store') }}', $formDeclarer.serialize())
                         .done(function (res) {
                             modalDeclarer.hide();
+                            Swal.fire({ icon: 'success', text: res.message, timer: 1800, showConfirmButton: false })
+                                .then(() => window.location.reload());
+                        })
+                        .fail(function (xhr) {
+                            const erreurs = xhr.responseJSON?.errors;
+                            const msg = erreurs ? Object.values(erreurs).flat()[0] : (xhr.responseJSON?.message || 'Une erreur est survenue.');
+                            Swal.fire({ icon: 'error', text: msg });
+                        });
+                });
+
+                // --- Clôturer une intervention (rapport + date, remet en circulation) ---
+                const modalCloturerEl = document.getElementById('modal-cloturer-intervention');
+                const modalCloturer = modalCloturerEl ? new bootstrap.Modal(modalCloturerEl) : null;
+                const $formCloturer = $('#form-cloturer-intervention');
+                let cloturerInterventionId = null;
+
+                $(document).on('click', '.btn-cloturer-intervention', function () {
+                    cloturerInterventionId = $(this).data('id');
+
+                    $formCloturer[0].reset();
+                    $formCloturer.removeClass('was-validated');
+                    $('#cloturer-intervention-code').text($(this).data('code'));
+                    $formCloturer.find('[name=date_fin]').val(new Date().toISOString().slice(0, 10));
+
+                    modalDetail?.hide();
+                    modalCloturer.show();
+                });
+
+                $formCloturer.on('submit', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    if (!$formCloturer[0].checkValidity()) {
+                        $formCloturer.addClass('was-validated');
+                        return;
+                    }
+
+                    $.post(`/flotte/interventions/${cloturerInterventionId}/cloturer`, $formCloturer.serialize())
+                        .done(function (res) {
+                            modalCloturer.hide();
                             Swal.fire({ icon: 'success', text: res.message, timer: 1800, showConfirmButton: false })
                                 .then(() => window.location.reload());
                         })

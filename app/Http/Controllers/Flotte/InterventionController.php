@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Flotte;
 
 use App\Exports\Flotte\HistoriqueInterventionsExport;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Flotte\ClotureInterventionRequest;
 use App\Http\Requests\Flotte\StoreInterventionRequest;
 use App\Models\Intervention;
 use App\Models\StatutVehicule;
@@ -129,6 +130,27 @@ class InterventionController extends Controller
             'message' => "Panne déclarée pour {$intervention->vehicule_code}.",
             'intervention' => $this->formaterIntervention($intervention),
         ], 201);
+    }
+
+    public function cloturer(Intervention $intervention, ClotureInterventionRequest $request): JsonResponse
+    {
+        if ($intervention->statut !== 'en_cours') {
+            return response()->json(['message' => 'Cette intervention est déjà clôturée.'], 422);
+        }
+
+        $vehicule = Vehicule::findOrFail($intervention->vehicule_id);
+
+        $intervention = $this->service->cloturer(
+            $vehicule,
+            $request->validated('rapport'),
+            $request->user(),
+            $request->validated('date_fin'),
+        );
+
+        return response()->json([
+            'message' => "Intervention clôturée pour {$vehicule->code}.",
+            'intervention' => $this->formaterIntervention($intervention),
+        ]);
     }
 
     /**
