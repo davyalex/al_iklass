@@ -1,29 +1,83 @@
 <x-app-layout>
     <x-slot name="header">Interventions</x-slot>
 
-    <div class="row g-3 mb-3 row-cols-1 row-cols-sm-2">
+    {{-- KPI --}}
+    <div class="row g-3 mb-3 row-cols-1 row-cols-sm-3">
         <div class="col">
             <div class="card shadow-sm border-0 bg-white h-100">
                 <div class="card-body">
-                    <div class="small text-muted">Interventions en cours</div>
-                    <div class="h5 mb-0" style="color: var(--al-navy);">{{ $interventionsEnCours->count() }}</div>
+                    <div class="small text-muted">En cours</div>
+                    <div class="h5 mb-0" style="color: var(--al-navy);" id="kpi-en-cours">—</div>
                 </div>
             </div>
         </div>
-        <div class="col d-flex justify-content-end align-items-center gap-2">
-            <a href="{{ route('flotte.interventions.historique.index') }}" class="btn btn-outline-secondary">
-                <i class="bi bi-clock-history me-1"></i>Historique
-            </a>
-            @can('interventions.type.gerer')
-                <button type="button" class="btn btn-outline-secondary" id="btn-gerer-types-panne">
-                    <i class="bi bi-tags me-1"></i>Types de panne
-                </button>
-            @endcan
-            @can('interventions.declarer')
-                <button type="button" class="btn btn-primary" id="btn-declarer-panne">
-                    <i class="bi bi-exclamation-triangle me-1"></i>Déclarer une panne
-                </button>
-            @endcan
+        <div class="col">
+            <div class="card shadow-sm border-0 bg-white h-100">
+                <div class="card-body">
+                    <div class="small text-muted">Ce mois-ci</div>
+                    <div class="h5 mb-0" style="color: var(--al-navy);" id="kpi-ce-mois">—</div>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card shadow-sm border-0 bg-white h-100">
+                <div class="card-body">
+                    <div class="small text-muted">Sur la période</div>
+                    <div class="h5 mb-0" style="color: var(--al-navy);" id="kpi-periode">—</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Filtres --}}
+    <div class="card border-0 bg-light mb-3">
+        <div class="card-body">
+            <div class="row g-2 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label small mb-1">Véhicule</label>
+                    <select id="filtre-intervention-vehicule" class="form-select form-select-sm select2-filtre-intervention-vehicule">
+                        <option value="">Tous les véhicules</option>
+                        @foreach ($vehicules as $vehicule)
+                            <option value="{{ $vehicule->id }}">{{ $vehicule->code }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label small mb-1">Type</label>
+                    <select id="filtre-intervention-type" class="form-select form-select-sm">
+                        <option value="">Tous les types</option>
+                        @foreach ($typesPanne as $type)
+                            <option value="{{ $type->id }}">{{ $type->libelle }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label small mb-1">Période du</label>
+                    <input type="date" id="filtre-intervention-du" class="form-control form-control-sm">
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label small mb-1">au</label>
+                    <input type="date" id="filtre-intervention-au" class="form-control form-control-sm">
+                </div>
+                <div class="col-12 col-md d-flex flex-wrap align-items-center gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-secondary d-none" id="btn-reset-filtre-intervention" title="Réinitialiser les filtres">
+                        <i class="bi bi-arrow-counterclockwise"></i>
+                    </button>
+                    <a href="{{ route('flotte.interventions.historique.index') }}" class="btn btn-outline-secondary ms-md-auto">
+                        <i class="bi bi-clock-history me-1"></i>Historique
+                    </a>
+                    @can('interventions.type.gerer')
+                        <button type="button" class="btn btn-outline-secondary" id="btn-gerer-types-panne">
+                            <i class="bi bi-tags me-1"></i>Types de panne
+                        </button>
+                    @endcan
+                    @can('interventions.declarer')
+                        <button type="button" class="btn btn-primary" id="btn-declarer-panne">
+                            <i class="bi bi-exclamation-triangle me-1"></i>Déclarer une panne
+                        </button>
+                    @endcan
+                </div>
+            </div>
         </div>
     </div>
 
@@ -35,9 +89,9 @@
             </div>
         </div>
     @else
-        <div class="row g-3 row-cols-1 row-cols-md-2 row-cols-lg-3">
+        <div class="row g-3 row-cols-1 row-cols-md-2 row-cols-lg-3" id="grille-interventions">
             @foreach ($interventionsEnCours as $intervention)
-                <div class="col">
+                <div class="col carte-intervention" data-vehicule-id="{{ $intervention->vehicule_id }}" data-type-panne-id="{{ $intervention->type_panne_id }}" data-date-debut="{{ $intervention->date_debut->toDateString() }}">
                     <div class="card shadow-sm border-0 bg-white h-100 border-start border-4 border-warning">
                         <div class="card-body d-flex flex-column h-100">
                             <div class="fw-semibold">{{ $intervention->vehicule_code }}</div>
@@ -47,11 +101,17 @@
                             <p class="small text-muted mb-2 text-truncate">{{ $intervention->description }}</p>
                             <div class="small text-muted mb-3">Depuis le {{ $intervention->date_debut->format('d/m/Y') }}</div>
 
-                            <div class="d-flex gap-2 mt-auto">
+                            <div class="d-flex flex-wrap gap-2 mt-auto">
                                 <button type="button" class="btn btn-sm btn-outline-primary flex-fill btn-detail-intervention" data-id="{{ $intervention->vehicule_id }}" data-code="{{ $intervention->vehicule_code }}">
                                     <i class="bi bi-eye me-1"></i>Détail
                                 </button>
                                 @can('interventions.declarer')
+                                    <button type="button" class="btn btn-sm btn-outline-secondary flex-fill btn-modifier-intervention"
+                                            data-id="{{ $intervention->id }}" data-code="{{ $intervention->vehicule_code }}"
+                                            data-type-panne-id="{{ $intervention->type_panne_id }}" data-description="{{ $intervention->description }}"
+                                            data-statut-id="{{ $intervention->vehicule->statut_id }}">
+                                        <i class="bi bi-pencil me-1"></i>Modifier
+                                    </button>
                                     <button type="button" class="btn btn-sm btn-success flex-fill btn-cloturer-intervention" data-id="{{ $intervention->id }}" data-code="{{ $intervention->vehicule_code }}">
                                         <i class="bi bi-check2-circle me-1"></i>Clôturer
                                     </button>
@@ -138,6 +198,50 @@
                         <div class="modal-footer">
                             <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
                             <button type="submit" class="btn btn-primary">Déclarer</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        {{-- Modale modification d'une intervention en cours --}}
+        <div class="modal fade" id="modal-modifier-intervention" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <form id="form-modifier-intervention" class="needs-validation" novalidate>
+                        <div class="modal-header">
+                            <h5 class="modal-title">Modifier — <span id="modifier-intervention-code"></span></h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label class="form-label">Type de panne <span class="text-muted">(optionnel)</span></label>
+                                <select name="type_panne_id" class="form-select">
+                                    <option value=""></option>
+                                    @foreach ($typesPanne as $type)
+                                        <option value="{{ $type->id }}">{{ $type->libelle }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Description</label>
+                                <textarea name="description" class="form-control" rows="3" maxlength="1000" required></textarea>
+                                <div class="invalid-feedback">La description est obligatoire.</div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Statut du véhicule</label>
+                                <select name="statut_id" class="form-select" required>
+                                    <option value=""></option>
+                                    @foreach ($statutsPanne as $statut)
+                                        <option value="{{ $statut->id }}">{{ $statut->libelle }}</option>
+                                    @endforeach
+                                </select>
+                                <div class="invalid-feedback">Le statut est obligatoire.</div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+                            <button type="submit" class="btn btn-primary">Enregistrer</button>
                         </div>
                     </form>
                 </div>
@@ -251,6 +355,55 @@
     @push('scripts')
         <script>
         document.addEventListener('DOMContentLoaded', function () {
+            $('.select2-filtre-intervention-vehicule').select2({ width: '100%', selectionCssClass: 'select2-sm' });
+
+            // --- Filtres + KPI ---
+            function filtresInterventions() {
+                return {
+                    vehicule_id: $('#filtre-intervention-vehicule').val() || '',
+                    type_panne_id: $('#filtre-intervention-type').val() || '',
+                    date_debut: $('#filtre-intervention-du').val(),
+                    date_fin: $('#filtre-intervention-au').val(),
+                };
+            }
+
+            function chargerKpis() {
+                $.get('{{ route('flotte.interventions.kpis') }}', filtresInterventions(), function (kpis) {
+                    $('#kpi-en-cours').text(kpis.en_cours);
+                    $('#kpi-ce-mois').text(kpis.ce_mois);
+                    $('#kpi-periode').text(kpis.periode);
+                });
+            }
+
+            function appliquerFiltresInterventions() {
+                const f = filtresInterventions();
+                const filtreActif = !!f.vehicule_id || !!f.type_panne_id || !!f.date_debut || !!f.date_fin;
+
+                $('.carte-intervention').each(function () {
+                    const $carte = $(this);
+                    const correspondVehicule = !f.vehicule_id || String($carte.data('vehicule-id')) === f.vehicule_id;
+                    const correspondType = !f.type_panne_id || String($carte.data('type-panne-id')) === f.type_panne_id;
+                    const dateDebut = String($carte.data('date-debut'));
+                    const correspondDate = (!f.date_debut || dateDebut >= f.date_debut) && (!f.date_fin || dateDebut <= f.date_fin);
+                    $carte.toggleClass('d-none', !(correspondVehicule && correspondType && correspondDate));
+                });
+
+                $('#btn-reset-filtre-intervention').toggleClass('d-none', !filtreActif);
+                chargerKpis();
+            }
+
+            $('#filtre-intervention-vehicule, #filtre-intervention-type, #filtre-intervention-du, #filtre-intervention-au').on('change', appliquerFiltresInterventions);
+
+            $('#btn-reset-filtre-intervention').on('click', function () {
+                $('#filtre-intervention-type').val('');
+                $('#filtre-intervention-du').val('');
+                $('#filtre-intervention-au').val('');
+                $('.select2-filtre-intervention-vehicule').val('').trigger('change');
+                appliquerFiltresInterventions();
+            });
+
+            chargerKpis();
+
             // --- Détail ---
             const modalDetailEl = document.getElementById('modal-detail-intervention');
             const modalDetail = modalDetailEl ? new bootstrap.Modal(modalDetailEl) : null;
@@ -266,14 +419,19 @@
                         $('#detail-intervention-active').html('<p class="text-muted mb-0">Aucune intervention en cours pour ce véhicule.</p>');
                     } else {
                         const a = res.active;
-                        const boutonCloturer = @json(auth()->user()->can('interventions.declarer'))
-                            ? `<button type="button" class="btn btn-sm btn-success mt-2 btn-cloturer-intervention" data-id="${a.id}" data-code="${vehiculeCode}">Clôturer</button>`
-                            : '';
+                        let boutonsActions = '';
+                        if (@json(auth()->user()->can('interventions.declarer'))) {
+                            const descriptionAttr = (a.description || '').replace(/"/g, '&quot;');
+                            boutonsActions = `<div class="d-flex gap-2 mt-2">
+                                <button type="button" class="btn btn-sm btn-outline-secondary btn-modifier-intervention" data-id="${a.id}" data-code="${vehiculeCode}" data-type-panne-id="${a.type_panne_id ?? ''}" data-description="${descriptionAttr}" data-statut-id="${a.statut_vehicule_id}">Modifier</button>
+                                <button type="button" class="btn btn-sm btn-success btn-cloturer-intervention" data-id="${a.id}" data-code="${vehiculeCode}">Clôturer</button>
+                            </div>`;
+                        }
                         $('#detail-intervention-active').html(`<div class="border-bottom py-2">
                             ${a.type_panne_libelle ? '<span class="badge bg-warning text-dark">' + a.type_panne_libelle + '</span> ' : ''}
                             <span>Depuis le <strong>${a.date_debut}</strong></span>
                             <br><span class="text-muted">${a.description}</span>
-                            <br>${boutonCloturer}
+                            ${boutonsActions}
                         </div>`);
                     }
 
@@ -327,6 +485,48 @@
                     $.post('{{ route('flotte.interventions.store') }}', $formDeclarer.serialize())
                         .done(function (res) {
                             modalDeclarer.hide();
+                            Swal.fire({ icon: 'success', text: res.message, timer: 1800, showConfirmButton: false })
+                                .then(() => window.location.reload());
+                        })
+                        .fail(function (xhr) {
+                            const erreurs = xhr.responseJSON?.errors;
+                            const msg = erreurs ? Object.values(erreurs).flat()[0] : (xhr.responseJSON?.message || 'Une erreur est survenue.');
+                            Swal.fire({ icon: 'error', text: msg });
+                        });
+                });
+
+                // --- Modifier une intervention en cours ---
+                const modalModifierEl = document.getElementById('modal-modifier-intervention');
+                const modalModifier = modalModifierEl ? new bootstrap.Modal(modalModifierEl) : null;
+                const $formModifier = $('#form-modifier-intervention');
+                let modifierInterventionId = null;
+
+                $(document).on('click', '.btn-modifier-intervention', function () {
+                    modifierInterventionId = $(this).data('id');
+
+                    $formModifier[0].reset();
+                    $formModifier.removeClass('was-validated');
+                    $('#modifier-intervention-code').text($(this).data('code'));
+                    $formModifier.find('[name=type_panne_id]').val($(this).data('type-panne-id') || '');
+                    $formModifier.find('[name=description]').val($(this).data('description'));
+                    $formModifier.find('[name=statut_id]').val($(this).data('statut-id'));
+
+                    modalDetail?.hide();
+                    modalModifier.show();
+                });
+
+                $formModifier.on('submit', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    if (!$formModifier[0].checkValidity()) {
+                        $formModifier.addClass('was-validated');
+                        return;
+                    }
+
+                    $.post(`/flotte/interventions/${modifierInterventionId}`, $formModifier.serialize() + '&_method=PUT')
+                        .done(function (res) {
+                            modalModifier.hide();
                             Swal.fire({ icon: 'success', text: res.message, timer: 1800, showConfirmButton: false })
                                 .then(() => window.location.reload());
                         })

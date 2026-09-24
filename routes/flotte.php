@@ -105,6 +105,7 @@ Route::middleware(['auth', 'reinitialiser.statut.journalier'])->prefix('flotte')
     // InterventionService::cloturer).
     Route::middleware('permission:interventions.voir')->group(function () {
         Route::get('interventions', [InterventionController::class, 'index'])->name('interventions.index');
+        Route::get('interventions/kpis', [InterventionController::class, 'kpis'])->name('interventions.kpis');
         Route::get('interventions/vehicules/{vehicule}/detail', [InterventionController::class, 'detail'])->name('interventions.detail');
         Route::get('interventions/historique', [InterventionController::class, 'historique'])->name('interventions.historique.index');
         Route::get('interventions/historique/data', [InterventionController::class, 'historiqueData'])->name('interventions.historique.data');
@@ -114,6 +115,7 @@ Route::middleware(['auth', 'reinitialiser.statut.journalier'])->prefix('flotte')
 
     Route::middleware('permission:interventions.declarer')->group(function () {
         Route::post('interventions', [InterventionController::class, 'store'])->name('interventions.store');
+        Route::put('interventions/{intervention}', [InterventionController::class, 'update'])->name('interventions.update');
         Route::post('interventions/{intervention}/cloturer', [InterventionController::class, 'cloturer'])->name('interventions.cloturer');
     });
 

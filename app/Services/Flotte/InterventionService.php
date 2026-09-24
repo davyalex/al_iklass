@@ -91,4 +91,40 @@ class InterventionService
             return $intervention;
         });
     }
+
+    /**
+     * Modifie une intervention encore en cours (type de panne, description,
+     * statut du véhicule — dépannage/maintenance/arrêt selon comment la
+     * panne évolue). Rejette si elle est déjà clôturée : à ce stade, c'est
+     * cloturer() qu'il faut appeler, pas modifier().
+     *
+     * @param  array{type_panne_id?: int|null, description: string, statut_id: int}  $data
+     *
+     * @throws ValidationException
+     */
+    public function modifier(Intervention $intervention, array $data): Intervention
+    {
+        if ($intervention->statut !== 'en_cours') {
+            throw ValidationException::withMessages([
+                'intervention' => 'Cette intervention est déjà clôturée.',
+            ]);
+        }
+
+        $typePanne = ! empty($data['type_panne_id']) ? TypePanne::find($data['type_panne_id']) : null;
+
+        return DB::transaction(function () use ($intervention, $typePanne, $data) {
+            $intervention->update([
+                'type_panne_id' => $typePanne?->id,
+                'type_panne_libelle' => $typePanne?->libelle,
+                'description' => $data['description'],
+            ]);
+
+            $vehicule = Vehicule::findOrFail($intervention->vehicule_id);
+            if ($vehicule->statut_id !== $data['statut_id']) {
+                $vehicule->update(['statut_id' => $data['statut_id']]);
+            }
+
+            return $intervention;
+        });
+    }
 }

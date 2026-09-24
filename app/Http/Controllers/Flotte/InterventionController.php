@@ -6,6 +6,7 @@ use App\Exports\Flotte\HistoriqueInterventionsExport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Flotte\ClotureInterventionRequest;
 use App\Http\Requests\Flotte\StoreInterventionRequest;
+use App\Http\Requests\Flotte\UpdateInterventionRequest;
 use App\Models\Intervention;
 use App\Models\StatutVehicule;
 use App\Models\TypePanne;
@@ -37,12 +38,36 @@ class InterventionController extends Controller
         $statutsPanne = StatutVehicule::where('actif', true)->where('code', '!=', 'en_circulation')->orderBy('id')->get();
 
         $interventionsEnCours = Intervention::where('statut', 'en_cours')
+            ->with('vehicule:id,statut_id')
             ->orderByDesc('date_debut')
             ->get();
 
         return view('flotte.interventions.index', compact(
             'vehicules', 'typesPanne', 'tousLesTypesPanne', 'statutsPanne', 'interventionsEnCours'
         ));
+    }
+
+    public function kpis(Request $request): JsonResponse
+    {
+        $filtres = fn (Builder $q) => $q
+            ->when($request->filled('vehicule_id'), fn (Builder $q) => $q->where('vehicule_id', $request->integer('vehicule_id')))
+            ->when($request->filled('type_panne_id'), fn (Builder $q) => $q->where('type_panne_id', $request->integer('type_panne_id')));
+
+        $enCours = $filtres(Intervention::where('statut', 'en_cours'))->count();
+
+        $debutMois = now()->startOfMonth();
+        $finMois = now()->endOfMonth();
+        $ceMois = $filtres(Intervention::query())->whereBetween('date_debut', [$debutMois, $finMois])->count();
+
+        $du = $request->filled('date_debut') ? $request->string('date_debut')->toString() : $debutMois->toDateString();
+        $au = $request->filled('date_fin') ? $request->string('date_fin')->toString() : $finMois->toDateString();
+        $periode = $filtres(Intervention::query())->whereDate('date_debut', '>=', $du)->whereDate('date_debut', '<=', $au)->count();
+
+        return response()->json([
+            'en_cours' => $enCours,
+            'ce_mois' => $ceMois,
+            'periode' => $periode,
+        ]);
     }
 
     public function historique(): View
@@ -132,6 +157,20 @@ class InterventionController extends Controller
         ], 201);
     }
 
+    public function update(Intervention $intervention, UpdateInterventionRequest $request): JsonResponse
+    {
+        try {
+            $intervention = $this->service->modifier($intervention, $request->validated());
+        } catch (ValidationException $e) {
+            return response()->json(['message' => collect($e->errors())->flatten()->first()], 422);
+        }
+
+        return response()->json([
+            'message' => "Intervention mise à jour pour {$intervention->vehicule_code}.",
+            'intervention' => $this->formaterIntervention($intervention),
+        ]);
+    }
+
     public function cloturer(Intervention $intervention, ClotureInterventionRequest $request): JsonResponse
     {
         if ($intervention->statut !== 'en_cours') {
@@ -160,11 +199,15 @@ class InterventionController extends Controller
     {
         return [
             'id' => $intervention->id,
+            'vehicule_id' => $intervention->vehicule_id,
             'vehicule_code' => $intervention->vehicule_code,
+            'type_panne_id' => $intervention->type_panne_id,
             'type_panne_libelle' => $intervention->type_panne_libelle,
             'description' => $intervention->description,
             'statut' => $intervention->statut,
+            'statut_vehicule_id' => Vehicule::whereKey($intervention->vehicule_id)->value('statut_id'),
             'date_debut' => $intervention->date_debut->format('d/m/Y'),
+            'date_debut_iso' => $intervention->date_debut->toDateString(),
             'date_fin' => $intervention->date_fin?->format('d/m/Y'),
             'rapport' => $intervention->rapport,
             'cloturee_par' => $intervention->relationLoaded('clotureePar') ? $intervention->clotureePar?->name : null,

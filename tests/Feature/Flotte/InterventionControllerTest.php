@@ -237,4 +237,106 @@ class InterventionControllerTest extends TestCase
         $this->actingAs($mecanicien)->get(route('flotte.vehicules.index'))->assertForbidden();
         $this->actingAs($mecanicien)->get(route('flotte.operations.index'))->assertForbidden();
     }
+
+    public function test_chef_mecanicien_peut_modifier_une_intervention_en_cours(): void
+    {
+        $mecanicien = User::factory()->create()->assignRole('chef_mecanicien');
+        $depannage = StatutVehicule::where('code', 'depannage')->firstOrFail();
+        $maintenance = StatutVehicule::where('code', 'maintenance')->firstOrFail();
+        $vehicule = Vehicule::factory()->create(['statut_id' => $depannage->id]);
+        $freinage = TypePanne::where('code', 'freinage')->firstOrFail();
+
+        $intervention = Intervention::create([
+            'vehicule_id' => $vehicule->id, 'vehicule_code' => $vehicule->code,
+            'description' => 'Bruit suspect au freinage', 'statut' => 'en_cours', 'date_debut' => now(),
+            'declaree_par_id' => $mecanicien->id,
+        ]);
+
+        // Le diagnostic évolue : c'est en fait plus grave qu'un dépannage
+        // rapide, la voiture passe en maintenance plus longue.
+        $response = $this->actingAs($mecanicien)->putJson(route('flotte.interventions.update', $intervention), [
+            'type_panne_id' => $freinage->id,
+            'description' => 'Plaquettes et disques à changer, prévoir 2 jours.',
+            'statut_id' => $maintenance->id,
+        ]);
+
+        $response->assertOk();
+
+        $intervention->refresh();
+        $this->assertSame($freinage->id, $intervention->type_panne_id);
+        $this->assertSame('Freinage', $intervention->type_panne_libelle);
+        $this->assertSame('Plaquettes et disques à changer, prévoir 2 jours.', $intervention->description);
+        $this->assertSame($maintenance->id, $vehicule->fresh()->statut_id);
+    }
+
+    public function test_modifier_rejette_une_intervention_deja_terminee(): void
+    {
+        $mecanicien = User::factory()->create()->assignRole('chef_mecanicien');
+        $vehicule = Vehicule::factory()->create();
+
+        $intervention = Intervention::create([
+            'vehicule_id' => $vehicule->id, 'vehicule_code' => $vehicule->code,
+            'description' => 'Déjà réparée', 'statut' => 'terminee',
+            'date_debut' => now()->subDays(5), 'date_fin' => now()->subDays(3),
+            'rapport' => 'Réparée', 'declaree_par_id' => $mecanicien->id, 'cloturee_par_id' => $mecanicien->id,
+        ]);
+
+        $depannage = StatutVehicule::where('code', 'depannage')->firstOrFail();
+
+        $this->actingAs($mecanicien)->putJson(route('flotte.interventions.update', $intervention), [
+            'description' => 'Nouvelle description',
+            'statut_id' => $depannage->id,
+        ])->assertStatus(422);
+    }
+
+    public function test_modifier_rejette_si_statut_reste_en_circulation(): void
+    {
+        $mecanicien = User::factory()->create()->assignRole('chef_mecanicien');
+        $vehicule = Vehicule::factory()->create();
+        $enCirculation = StatutVehicule::where('code', 'en_circulation')->firstOrFail();
+
+        $intervention = Intervention::create([
+            'vehicule_id' => $vehicule->id, 'vehicule_code' => $vehicule->code,
+            'description' => 'En cours', 'statut' => 'en_cours', 'date_debut' => now(),
+            'declaree_par_id' => $mecanicien->id,
+        ]);
+
+        $this->actingAs($mecanicien)->putJson(route('flotte.interventions.update', $intervention), [
+            'description' => 'Toujours en panne',
+            'statut_id' => $enCirculation->id,
+        ])->assertStatus(422);
+    }
+
+    public function test_kpis_reflete_le_filtre_vehicule_et_periode(): void
+    {
+        $admin = User::factory()->create()->assignRole('admin');
+        $vehiculeA = Vehicule::factory()->create();
+        $vehiculeB = Vehicule::factory()->create();
+
+        Intervention::create([
+            'vehicule_id' => $vehiculeA->id, 'vehicule_code' => $vehiculeA->code,
+            'description' => 'En cours A', 'statut' => 'en_cours', 'date_debut' => now(),
+            'declaree_par_id' => $admin->id,
+        ]);
+
+        Intervention::create([
+            'vehicule_id' => $vehiculeB->id, 'vehicule_code' => $vehiculeB->code,
+            'description' => 'Ancienne panne B', 'statut' => 'terminee',
+            'date_debut' => now()->subMonths(2), 'date_fin' => now()->subMonths(2),
+            'rapport' => 'Réparée', 'declaree_par_id' => $admin->id, 'cloturee_par_id' => $admin->id,
+        ]);
+
+        $response = $this->actingAs($admin)->getJson(route('flotte.interventions.kpis'));
+        $response->assertOk();
+        $this->assertSame(1, $response->json('en_cours'));
+        $this->assertSame(1, $response->json('ce_mois'));
+
+        $responseFiltree = $this->actingAs($admin)->getJson(route('flotte.interventions.kpis', ['vehicule_id' => $vehiculeA->id]));
+        $responseFiltree->assertOk();
+        $this->assertSame(1, $responseFiltree->json('en_cours'));
+
+        $responseFiltree = $this->actingAs($admin)->getJson(route('flotte.interventions.kpis', ['vehicule_id' => $vehiculeB->id]));
+        $responseFiltree->assertOk();
+        $this->assertSame(0, $responseFiltree->json('en_cours'));
+    }
 }
