@@ -7,6 +7,34 @@
         </a>
     </div>
 
+    {{-- KPI --}}
+    <div class="row g-3 mb-3 row-cols-1 row-cols-sm-3">
+        <div class="col">
+            <div class="card shadow-sm border-0 bg-white h-100">
+                <div class="card-body">
+                    <div class="small text-muted">En cours</div>
+                    <div class="h5 mb-0" style="color: var(--al-navy);" id="kpi-en-cours">—</div>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card shadow-sm border-0 bg-white h-100">
+                <div class="card-body">
+                    <div class="small text-muted">Ce mois-ci</div>
+                    <div class="h5 mb-0" style="color: var(--al-navy);" id="kpi-ce-mois">—</div>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card shadow-sm border-0 bg-white h-100">
+                <div class="card-body">
+                    <div class="small text-muted">Sur la période</div>
+                    <div class="h5 mb-0" style="color: var(--al-navy);" id="kpi-periode">—</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="card border-0 bg-light mb-3">
         <div class="card-body">
             <form id="filtres-historique-interventions" class="row g-2 align-items-end">
@@ -82,7 +110,16 @@
                 $('#btn-reset-historique-interventions').toggleClass('d-none', !actif);
             }
 
+            function chargerKpis() {
+                $.get('{{ route('flotte.interventions.kpis') }}', filtresHistorique(), function (kpis) {
+                    $('#kpi-en-cours').text(kpis.en_cours);
+                    $('#kpi-ce-mois').text(kpis.ce_mois);
+                    $('#kpi-periode').text(kpis.periode);
+                });
+            }
+
             actualiserBoutonReset();
+            chargerKpis();
 
             const table = $('#table-historique-interventions').DataTable({
                 processing: true,
@@ -106,6 +143,7 @@
             $('#filtres-historique-interventions').on('change', function () {
                 actualiserBoutonReset();
                 table.ajax.reload();
+                chargerKpis();
             });
 
             $('#btn-reset-historique-interventions').on('click', function () {
@@ -113,6 +151,7 @@
                 $('.select2-filtre-historique-vehicule').val('').trigger('change');
                 actualiserBoutonReset();
                 table.ajax.reload();
+                chargerKpis();
             });
 
             function urlAvecFiltres(base) {

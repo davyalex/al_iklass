@@ -1,34 +1,6 @@
 <x-app-layout>
     <x-slot name="header">Interventions</x-slot>
 
-    {{-- KPI --}}
-    <div class="row g-3 mb-3 row-cols-1 row-cols-sm-3">
-        <div class="col">
-            <div class="card shadow-sm border-0 bg-white h-100">
-                <div class="card-body">
-                    <div class="small text-muted">En cours</div>
-                    <div class="h5 mb-0" style="color: var(--al-navy);" id="kpi-en-cours">—</div>
-                </div>
-            </div>
-        </div>
-        <div class="col">
-            <div class="card shadow-sm border-0 bg-white h-100">
-                <div class="card-body">
-                    <div class="small text-muted">Ce mois-ci</div>
-                    <div class="h5 mb-0" style="color: var(--al-navy);" id="kpi-ce-mois">—</div>
-                </div>
-            </div>
-        </div>
-        <div class="col">
-            <div class="card shadow-sm border-0 bg-white h-100">
-                <div class="card-body">
-                    <div class="small text-muted">Sur la période</div>
-                    <div class="h5 mb-0" style="color: var(--al-navy);" id="kpi-periode">—</div>
-                </div>
-            </div>
-        </div>
-    </div>
-
     {{-- Filtres --}}
     <div class="card border-0 bg-light mb-3">
         <div class="card-body">
@@ -354,7 +326,7 @@
         document.addEventListener('DOMContentLoaded', function () {
             $('.select2-filtre-intervention-vehicule').select2({ width: '100%', selectionCssClass: 'select2-sm' });
 
-            // --- Filtres + KPI ---
+            // --- Filtres ---
             function filtresInterventions() {
                 return {
                     vehicule_id: $('#filtre-intervention-vehicule').val() || '',
@@ -362,14 +334,6 @@
                     date_debut: $('#filtre-intervention-du').val(),
                     date_fin: $('#filtre-intervention-au').val(),
                 };
-            }
-
-            function chargerKpis() {
-                $.get('{{ route('flotte.interventions.kpis') }}', filtresInterventions(), function (kpis) {
-                    $('#kpi-en-cours').text(kpis.en_cours);
-                    $('#kpi-ce-mois').text(kpis.ce_mois);
-                    $('#kpi-periode').text(kpis.periode);
-                });
             }
 
             function appliquerFiltresInterventions() {
@@ -386,7 +350,6 @@
                 });
 
                 $('#btn-reset-filtre-intervention').toggleClass('d-none', !filtreActif);
-                chargerKpis();
             }
 
             $('#filtre-intervention-vehicule, #filtre-intervention-type, #filtre-intervention-du, #filtre-intervention-au').on('change', appliquerFiltresInterventions);
@@ -398,8 +361,6 @@
                 $('.select2-filtre-intervention-vehicule').val('').trigger('change');
                 appliquerFiltresInterventions();
             });
-
-            chargerKpis();
 
             // --- Détail ---
             const modalDetailEl = document.getElementById('modal-detail-intervention');
