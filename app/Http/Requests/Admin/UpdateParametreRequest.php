@@ -16,9 +16,10 @@ class UpdateParametreRequest extends FormRequest
         $cle = $this->route('parametre')?->cle ?? '';
 
         $formatHeure = str_contains($cle, '.heure_') ? ['date_format:H:i'] : [];
+        $formatRetention = $cle === 'sauvegarde.retention' ? ['integer', 'min:1', 'max:365'] : [];
 
         return [
-            'valeur' => ['required', 'string', 'max:255', ...$formatHeure],
+            'valeur' => ['required', 'string', 'max:255', ...$formatHeure, ...$formatRetention],
         ];
     }
 }

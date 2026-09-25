@@ -1,6 +1,8 @@
 <?php
 
 use App\Console\Commands\Admin\PurgerJournalAudit;
+use App\Console\Commands\Admin\SauvegarderBaseDeDonnees;
+use App\Console\Commands\Flotte\NotifierOperationsProgrammees;
 use App\Console\Commands\Flotte\ReinitialiserStatutsJournaliers;
 use App\Http\Middleware\ReinitialiserStatutJournalierSiNecessaire;
 use Illuminate\Console\Scheduling\Schedule;
@@ -24,10 +26,20 @@ return Application::configure(basePath: dirname(__DIR__))
         // d'ajustement des gestionnaires (08h par défaut, cf. Paramètres).
         $schedule->command(ReinitialiserStatutsJournaliers::class)->dailyAt('00:05');
 
+        // Cloche de notifications : rappels/échéances des opérations
+        // programmées (vidange, assurance...), après la réinitialisation des
+        // statuts et avant l'arrivée des équipes.
+        $schedule->command(NotifierOperationsProgrammees::class)->dailyAt('06:00');
+
         // Le journal d'audit enregistre chaque écriture : on le vide chaque
         // mois en gardant les 30 derniers jours, pour qu'il reste lisible et
         // ne sature pas la base (hébergement mutualisé).
         $schedule->command(PurgerJournalAudit::class, ['--jours' => 30])->monthlyOn(1, '01:00');
+
+        // Heure configurable depuis Paramètres (comportement identique à
+        // FenetreStatutJournalier) : on vérifie chaque minute, la commande
+        // elle-même ne fait rien tant que l'heure configurée n'est pas atteinte.
+        $schedule->command(SauvegarderBaseDeDonnees::class)->everyMinute()->withoutOverlapping();
     })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([

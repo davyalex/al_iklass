@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\CaisseController;
 use App\Http\Controllers\Admin\ParametreController;
 use App\Http\Controllers\Admin\RoleController;
+use App\Http\Controllers\Admin\SauvegardeController;
 use App\Http\Controllers\Admin\UniteController;
 use App\Http\Controllers\Admin\UserController;
 use Illuminate\Support\Facades\Route;
@@ -67,5 +68,14 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
         Route::put('parametres/{parametre}', [ParametreController::class, 'update'])->name('parametres.update');
         Route::post('parametres/logo', [ParametreController::class, 'uploaderLogo'])->name('parametres.logo');
         Route::delete('parametres/logo', [ParametreController::class, 'retirerLogo'])->name('parametres.logo.retirer');
+        Route::post('parametres/sauvegardes', [SauvegardeController::class, 'creer'])->name('parametres.sauvegardes.creer');
+        Route::get('parametres/sauvegardes/{nom}/telecharger', [SauvegardeController::class, 'telecharger'])->name('parametres.sauvegardes.telecharger');
+    });
+
+    // Restauration : distincte de "parametres.gerer" — réservée au rôle
+    // superadmin quel que soit le rôle des autres comptes ayant par ailleurs
+    // la permission de gérer les paramètres (ex: admin/gérant).
+    Route::middleware(['permission:parametres.gerer', 'role:superadmin'])->group(function () {
+        Route::post('parametres/sauvegardes/{nom}/restaurer', [SauvegardeController::class, 'restaurer'])->name('parametres.sauvegardes.restaurer');
     });
 });

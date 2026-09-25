@@ -1,4 +1,5 @@
 @inject('identiteApplication', \App\Services\Admin\IdentiteApplicationService::class)
+@inject('sauvegardeService', \App\Services\Admin\SauvegardeService::class)
 @php
     $identite = $parametresParGroupe->get('identite_application', collect());
     $nomApplication = $identite->firstWhere('cle', 'application.nom');
@@ -7,6 +8,11 @@
     $statutJournalier = $parametresParGroupe->get('statut_journalier', collect());
     $heureDebut = $statutJournalier->firstWhere('cle', 'flotte.statut_journalier.heure_debut_fenetre');
     $heureFin = $statutJournalier->firstWhere('cle', 'flotte.statut_journalier.heure_fin_fenetre');
+
+    $sauvegarde = $parametresParGroupe->get('sauvegarde', collect());
+    $heureSauvegarde = $sauvegarde->firstWhere('cle', 'sauvegarde.heure_execution');
+    $retentionSauvegarde = $sauvegarde->firstWhere('cle', 'sauvegarde.retention');
+    $dossierSauvegarde = $sauvegarde->firstWhere('cle', 'sauvegarde.dossier_personnalise');
 @endphp
 
 <x-app-layout>
@@ -77,6 +83,58 @@
             </div>
         @endif
 
+        {{-- Bloc : Sauvegarde et restauration --}}
+        @if ($heureSauvegarde && $retentionSauvegarde && $dossierSauvegarde)
+            <div class="col-12 col-lg-6">
+                <div class="card shadow-sm border-0 bg-white h-100">
+                    <div class="card-header bg-white border-0 pt-3">
+                        <h2 class="h6 mb-0"><i class="bi bi-cloud-arrow-down me-1"></i>Sauvegarde et restauration</h2>
+                    </div>
+                    <div class="card-body">
+                        <p class="small text-muted">Sauvegarde automatique quotidienne de la base de données (compressée), avec purge des plus anciennes.</p>
+
+                        <form id="form-sauvegarde-parametres" class="row g-2 align-items-end mb-3">
+                            <input type="hidden" name="id_heure" value="{{ $heureSauvegarde->id }}">
+                            <input type="hidden" name="id_retention" value="{{ $retentionSauvegarde->id }}">
+                            <input type="hidden" name="id_dossier" value="{{ $dossierSauvegarde->id }}">
+                            <div class="col-6">
+                                <label class="form-label small text-muted mb-1">{{ $heureSauvegarde->libelle }}</label>
+                                <input type="time" name="heure" class="form-control form-control-sm" value="{{ $heureSauvegarde->valeur }}"
+                                       @can('parametres.gerer') @else disabled @endcan>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small text-muted mb-1">{{ $retentionSauvegarde->libelle }}</label>
+                                <input type="number" name="retention" min="1" max="365" class="form-control form-control-sm" value="{{ $retentionSauvegarde->valeur }}"
+                                       @can('parametres.gerer') @else disabled @endcan>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label small text-muted mb-1">Dossier de sauvegarde personnalisé (hors application)</label>
+                                <input type="text" name="dossier" class="form-control form-control-sm" placeholder="{{ $sauvegardeService->dossierParDefaut() }}" value="{{ $dossierSauvegarde->valeur }}"
+                                       @can('parametres.gerer') @else disabled @endcan>
+                                <div class="form-text">Par défaut : <code>{{ $sauvegardeService->dossierParDefaut() }}</code> — laisser vide pour l'utiliser.</div>
+                            </div>
+                            @can('parametres.gerer')
+                                <div class="col-12">
+                                    <button type="submit" class="btn btn-sm btn-primary">Enregistrer</button>
+                                </div>
+                            @endcan
+                        </form>
+                        <div class="invalid-feedback d-block small mb-3"></div>
+
+                        @can('parametres.gerer')
+                            <button type="button" class="btn btn-sm btn-outline-primary mb-3" id="btn-sauvegarder-maintenant">
+                                <i class="bi bi-cloud-arrow-up me-1"></i>Sauvegarder maintenant
+                            </button>
+                        @endcan
+
+                        <div id="liste-sauvegardes">
+                            @include('admin.parametres.partials.liste-sauvegardes', ['sauvegardes' => $sauvegardes])
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endif
+
         {{-- Bloc : Statut journalier des véhicules --}}
         @if ($heureDebut && $heureFin)
             <div class="col-12 col-lg-6">
@@ -110,18 +168,6 @@
                 </div>
             </div>
         @endif
-
-        {{-- Bloc : Sauvegarde et restauration (à venir) --}}
-        <div class="col-12 col-lg-6">
-            <div class="card shadow-sm border-0 bg-white h-100">
-                <div class="card-header bg-white border-0 pt-3">
-                    <h2 class="h6 mb-0"><i class="bi bi-cloud-arrow-down me-1"></i>Sauvegarde et restauration</h2>
-                </div>
-                <div class="card-body">
-                    <p class="small text-muted mb-0">Bientôt disponible.</p>
-                </div>
-            </div>
-        </div>
     </div>
 
     @push('scripts')
@@ -177,6 +223,71 @@
                         $form.find('.form-control').addClass('is-invalid');
                         $form.siblings('.invalid-feedback').text(msg);
                     });
+            });
+
+            $('#form-sauvegarde-parametres').on('submit', function (e) {
+                e.preventDefault();
+
+                const $form = $(this);
+                $form.find('.form-control').removeClass('is-invalid');
+                $form.siblings('.invalid-feedback').text('');
+
+                const idHeure = $form.find('[name=id_heure]').val();
+                const idRetention = $form.find('[name=id_retention]').val();
+                const idDossier = $form.find('[name=id_dossier]').val();
+
+                $.when(
+                    $.ajax({ url: `/admin/parametres/${idHeure}`, method: 'PUT', data: { valeur: $form.find('[name=heure]').val() } }),
+                    $.ajax({ url: `/admin/parametres/${idRetention}`, method: 'PUT', data: { valeur: $form.find('[name=retention]').val() } }),
+                    $.ajax({ url: `/admin/parametres/${idDossier}`, method: 'PUT', data: { valeur: $form.find('[name=dossier]').val() } })
+                )
+                    .done(function () {
+                        Swal.fire({ icon: 'success', text: 'Réglages de sauvegarde mis à jour.', timer: 1500, showConfirmButton: false });
+                    })
+                    .fail(function (xhr) {
+                        const msg = xhr.responseJSON?.errors?.valeur?.[0] || xhr.responseJSON?.message || 'Une erreur est survenue.';
+                        $form.find('.form-control').addClass('is-invalid');
+                        $form.siblings('.invalid-feedback').text(msg);
+                    });
+            });
+
+            $('#btn-sauvegarder-maintenant').on('click', function () {
+                const $btn = $(this);
+                $btn.prop('disabled', true);
+
+                $.post('{{ route('admin.parametres.sauvegardes.creer') }}')
+                    .done(function (res) {
+                        Swal.fire({ icon: 'success', text: res.message, timer: 1500, showConfirmButton: false })
+                            .then(() => window.location.reload());
+                    })
+                    .fail(function (xhr) {
+                        Swal.fire({ icon: 'error', text: xhr.responseJSON?.message || 'Une erreur est survenue.' });
+                        $btn.prop('disabled', false);
+                    });
+            });
+
+            $(document).on('click', '.btn-restaurer-sauvegarde', function () {
+                const nom = $(this).data('nom');
+
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Restaurer cette sauvegarde ?',
+                    html: `Toutes les données actuelles seront <strong>définitivement écrasées</strong> par le contenu de « ${nom} ». Cette action est irréversible.`,
+                    showCancelButton: true,
+                    confirmButtonText: 'Restaurer',
+                    cancelButtonText: 'Annuler',
+                    confirmButtonColor: '#dc3545',
+                }).then((result) => {
+                    if (!result.isConfirmed) return;
+
+                    $.post(`/admin/parametres/sauvegardes/${nom}/restaurer`)
+                        .done(function (res) {
+                            Swal.fire({ icon: 'success', text: res.message });
+                        })
+                        .fail(function (xhr) {
+                            Swal.fire({ icon: 'error', text: xhr.responseJSON?.message || 'Une erreur est survenue.' });
+                        });
+                });
             });
 
             /**

@@ -4,7 +4,6 @@
         ->take(2)
         ->map(fn (string $mot) => mb_strtoupper(mb_substr($mot, 0, 1)))
         ->implode('');
-    $notificationsNonLues = 0;
 @endphp
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
@@ -68,14 +67,21 @@
                     </div>
 
                     <div class="d-flex align-items-center gap-1 flex-shrink-0">
-                        <button type="button" class="al-topbar-btn position-relative" title="Notifications" aria-label="Notifications">
-                            <i class="bi bi-bell fs-5"></i>
-                            @if ($notificationsNonLues > 0)
-                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: .6rem; margin-left: -.6rem; margin-top: .55rem;">
-                                    {{ $notificationsNonLues }}
-                                </span>
-                            @endif
-                        </button>
+                        <div class="dropdown">
+                            <button type="button" class="al-topbar-btn position-relative" id="btn-notifications" data-bs-toggle="dropdown" aria-expanded="false" title="Notifications" aria-label="Notifications">
+                                <i class="bi bi-bell fs-5"></i>
+                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none" id="badge-notifications" style="font-size: .6rem; margin-left: -.6rem; margin-top: .55rem;"></span>
+                            </button>
+                            <div class="dropdown-menu dropdown-menu-end p-0" style="width: 320px; max-height: 70vh; overflow-y: auto;" aria-labelledby="btn-notifications">
+                                <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
+                                    <span class="fw-semibold small">Notifications</span>
+                                    <button type="button" class="btn btn-link btn-sm p-0" id="btn-notifications-tout-lu">Tout marquer lu</button>
+                                </div>
+                                <div id="corps-notifications">
+                                    <p class="text-muted small text-center py-3 mb-0">Chargement...</p>
+                                </div>
+                            </div>
+                        </div>
 
                         <div class="dropdown">
                             <button class="al-topbar-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Mon compte">
@@ -109,6 +115,53 @@
                 </main>
             </div>
         </div>
+
+        <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const urlOperationVehicule = '{{ url('/flotte/operations/vehicules') }}';
+
+            const icones = { depasse: 'bi-exclamation-triangle-fill text-danger', jour_j: 'bi-alarm-fill text-warning', a_venir: 'bi-bell-fill text-primary' };
+
+            function rafraichirNotifications() {
+                $.get('{{ route('notifications.index') }}', function (res) {
+                    $('#badge-notifications').toggleClass('d-none', res.non_lues === 0).text(res.non_lues > 9 ? '9+' : res.non_lues);
+
+                    if (res.notifications.length === 0) {
+                        $('#corps-notifications').html('<p class="text-muted small text-center py-3 mb-0">Aucune notification.</p>');
+                        return;
+                    }
+
+                    const lignes = res.notifications.map(function (n) {
+                        const icone = icones[n.statut_alerte] || 'bi-bell';
+                        const lienDebut = n.vehicule_id ? `<a href="${urlOperationVehicule}/${n.vehicule_id}/detail" class="text-decoration-none text-body">` : '<span>';
+                        const lienFin = n.vehicule_id ? '</a>' : '</span>';
+
+                        return `<div class="px-3 py-2 border-bottom small notification-item ${n.lue ? '' : 'bg-light'}" data-id="${n.id}">
+                            ${lienDebut}<i class="bi ${icone} me-2"></i>${n.message}${lienFin}
+                            <div class="text-muted" style="font-size: .75rem;">${n.date}</div>
+                        </div>`;
+                    });
+
+                    $('#corps-notifications').html(lignes.join(''));
+                });
+            }
+
+            $('#btn-notifications').on('click', rafraichirNotifications);
+
+            $(document).on('click', '.notification-item', function () {
+                const id = $(this).data('id');
+                $.post(`/notifications/${id}/lue`);
+            });
+
+            $('#btn-notifications-tout-lu').on('click', function (e) {
+                e.stopPropagation();
+                $.post('{{ route('notifications.tout-lu') }}').done(rafraichirNotifications);
+            });
+
+            rafraichirNotifications();
+            setInterval(rafraichirNotifications, 90000);
+        });
+        </script>
 
         @stack('scripts')
     </body>

@@ -84,27 +84,32 @@
                                         @endif
                                     </p>
 
-                                    <div class="d-flex flex-column gap-2">
+                                    <div class="d-flex gap-2">
                                         @can('update', $utilisateur)
-                                            <button type="button" class="btn btn-sm btn-outline-secondary btn-modifier-utilisateur" data-id="{{ $utilisateur->id }}">
-                                                <i class="bi bi-pencil me-1"></i>Modifier
+                                            <button type="button" class="btn btn-sm btn-outline-secondary al-btn-icon btn-modifier-utilisateur" data-id="{{ $utilisateur->id }}" title="Modifier" aria-label="Modifier">
+                                                <i class="bi bi-pencil"></i>
                                             </button>
                                         @endcan
                                         @can('resetPassword', $utilisateur)
-                                            <button type="button" class="btn btn-sm btn-outline-primary btn-reinitialiser-mdp" data-id="{{ $utilisateur->id }}" data-nom="{{ $utilisateur->name }}">
-                                                <i class="bi bi-key me-1"></i>Réinitialiser le mot de passe
+                                            <button type="button" class="btn btn-sm btn-outline-primary al-btn-icon btn-reinitialiser-mdp" data-id="{{ $utilisateur->id }}" data-nom="{{ $utilisateur->name }}" title="Réinitialiser le mot de passe" aria-label="Réinitialiser le mot de passe">
+                                                <i class="bi bi-key"></i>
                                             </button>
                                         @endcan
                                         @can('toggleActive', $utilisateur)
                                             @if ($utilisateur->is_active)
-                                                <button type="button" class="btn btn-sm btn-outline-danger btn-desactiver-utilisateur" data-id="{{ $utilisateur->id }}" data-nom="{{ $utilisateur->name }}">
-                                                    <i class="bi bi-slash-circle me-1"></i>Désactiver
+                                                <button type="button" class="btn btn-sm btn-outline-danger al-btn-icon btn-desactiver-utilisateur" data-id="{{ $utilisateur->id }}" data-nom="{{ $utilisateur->name }}" title="Désactiver" aria-label="Désactiver">
+                                                    <i class="bi bi-slash-circle"></i>
                                                 </button>
                                             @else
-                                                <button type="button" class="btn btn-sm btn-outline-success btn-activer-utilisateur" data-id="{{ $utilisateur->id }}" data-nom="{{ $utilisateur->name }}">
-                                                    <i class="bi bi-check-circle me-1"></i>Activer
+                                                <button type="button" class="btn btn-sm btn-outline-success al-btn-icon btn-activer-utilisateur" data-id="{{ $utilisateur->id }}" data-nom="{{ $utilisateur->name }}" title="Activer" aria-label="Activer">
+                                                    <i class="bi bi-check-circle"></i>
                                                 </button>
                                             @endif
+                                        @endcan
+                                        @can('delete', $utilisateur)
+                                            <button type="button" class="btn btn-sm btn-outline-danger al-btn-icon btn-supprimer-utilisateur" data-id="{{ $utilisateur->id }}" data-nom="{{ $utilisateur->name }}" title="Supprimer" aria-label="Supprimer">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
                                         @endcan
                                     </div>
                                 </div>
@@ -312,6 +317,32 @@
                     if (!result.isConfirmed) return;
 
                     $.post(`/admin/users/${id}/${activer ? 'activate' : 'deactivate'}`, { _method: 'PATCH' })
+                        .done(function (res) {
+                            Swal.fire({ icon: 'success', text: res.message, timer: 1800, showConfirmButton: false })
+                                .then(() => window.location.reload());
+                        })
+                        .fail(function (xhr) {
+                            Swal.fire({ icon: 'error', text: xhr.responseJSON?.message || 'Une erreur est survenue.' });
+                        });
+                });
+            });
+
+            $('.btn-supprimer-utilisateur').on('click', function () {
+                const id = $(this).data('id');
+                const nom = $(this).data('nom');
+
+                Swal.fire({
+                    icon: 'warning',
+                    title: `Supprimer le compte « ${nom} » ?`,
+                    text: 'Le compte sera archivé (son historique reste consultable) et ne pourra plus se connecter.',
+                    showCancelButton: true,
+                    confirmButtonText: 'Supprimer',
+                    cancelButtonText: 'Annuler',
+                    confirmButtonColor: '#dc3545',
+                }).then((result) => {
+                    if (!result.isConfirmed) return;
+
+                    $.post(`/admin/users/${id}`, { _method: 'DELETE' })
                         .done(function (res) {
                             Swal.fire({ icon: 'success', text: res.message, timer: 1800, showConfirmButton: false })
                                 .then(() => window.location.reload());

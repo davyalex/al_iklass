@@ -7,19 +7,21 @@ use App\Http\Requests\Admin\UpdateParametreRequest;
 use App\Http\Requests\Admin\UploadLogoRequest;
 use App\Models\Parametre;
 use App\Services\Admin\IdentiteApplicationService;
+use App\Services\Admin\SauvegardeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
 class ParametreController extends Controller
 {
-    public function index(): View
+    public function index(SauvegardeService $sauvegardeService): View
     {
         Gate::authorize('viewAny', Parametre::class);
 
         $parametresParGroupe = Parametre::orderBy('ordre')->get()->groupBy('groupe');
+        $sauvegardes = $sauvegardeService->lister();
 
-        return view('admin.parametres.index', compact('parametresParGroupe'));
+        return view('admin.parametres.index', compact('parametresParGroupe', 'sauvegardes'));
     }
 
     public function update(UpdateParametreRequest $request, Parametre $parametre): JsonResponse

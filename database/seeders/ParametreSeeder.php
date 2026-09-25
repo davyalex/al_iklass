@@ -39,6 +39,27 @@ class ParametreSeeder extends Seeder
                 'ordre' => 2,
             ],
             [
+                'cle' => 'sauvegarde.heure_execution',
+                'valeur' => '02:00',
+                'libelle' => 'Heure de la sauvegarde quotidienne',
+                'groupe' => 'sauvegarde',
+                'ordre' => 1,
+            ],
+            [
+                'cle' => 'sauvegarde.retention',
+                'valeur' => '5',
+                'libelle' => 'Nombre de sauvegardes conservées',
+                'groupe' => 'sauvegarde',
+                'ordre' => 2,
+            ],
+            [
+                'cle' => 'sauvegarde.dossier_personnalise',
+                'valeur' => '',
+                'libelle' => 'Dossier de sauvegarde personnalisé (hors application, laisser vide pour le dossier par défaut)',
+                'groupe' => 'sauvegarde',
+                'ordre' => 3,
+            ],
+            [
                 // Marqueur interne (pas affiché dans l'écran Paramètres) :
                 // date de la dernière réinitialisation des statuts
                 // journaliers, posée par StatutJournalierService. Initialisé
