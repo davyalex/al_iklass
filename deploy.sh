@@ -46,17 +46,14 @@ php artisan migrate --force
 # ------------------------------------------------------------------
 # Permissions & rôles (config/permissions.php → base de données).
 #
-# ATTENTION : ce seeder resynchronise INTÉGRALEMENT les permissions de
-# chaque rôle par défaut depuis config/permissions.php via syncPermissions().
-# Si un admin a personnalisé les permissions d'un rôle depuis Admin > Rôles
-# (fonctionnalité normale de l'app), le rejouer ÉCRASE ces personnalisations
-# et les remet à la config d'origine.
-#
-# Ne décommentez cette ligne QUE pour un déploiement qui ajoute ou modifie
-# des permissions dans config/permissions.php (nouveau module, nouvelle
-# permission...) — pas à chaque déploiement de routine.
+# Additif uniquement : crée les permissions manquantes et les attribue aux
+# rôles par défaut, mais ne retire jamais une permission déjà attribuée
+# (contrairement à RolePermissionSeeder::syncPermissions(), qui écraserait
+# les personnalisations faites depuis Admin > Rôles). Sans risque à chaque
+# déploiement, y compris de routine.
 # ------------------------------------------------------------------
-# php artisan db:seed --class=RolePermissionSeeder --force
+echo "==> Permissions : ajout des permissions/rôles manquants (additif, aucune personnalisation écrasée)"
+php artisan permissions:synchroniser
 
 echo "==> Reconstruction des caches (config, routes, vues, évènements)"
 php artisan optimize
