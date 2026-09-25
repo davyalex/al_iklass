@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Vehicule;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -14,7 +15,7 @@ class VehiculeStubTest extends TestCase
     {
         Vehicule::factory()->create(['code' => 'AL-001']);
 
-        $this->expectException(\Illuminate\Database\QueryException::class);
+        $this->expectException(QueryException::class);
 
         Vehicule::factory()->create(['code' => 'AL-001']);
     }

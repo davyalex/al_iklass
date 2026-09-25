@@ -47,7 +47,7 @@ class RoleService
     {
         if ($role->name === 'superadmin') {
             throw ValidationException::withMessages([
-                'permissions' => "Le rôle superadmin a un accès total et ne se configure pas.",
+                'permissions' => 'Le rôle superadmin a un accès total et ne se configure pas.',
             ]);
         }
 
